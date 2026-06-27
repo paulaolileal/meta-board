@@ -127,6 +127,28 @@ export function FieldEditor({
         </div>
       );
     case "select":
+      if (!field.options?.length) {
+        return (
+          <p className="text-xs text-muted-foreground italic">
+            Nenhuma opção definida. Adicione opções nas configurações do board.
+          </p>
+        );
+      }
+      return (
+        <div className="relative">
+          <select
+            value={value != null ? String(value) : ""}
+            onChange={(e) => onChange(e.target.value || undefined)}
+            className="w-full px-3 py-2 pr-8 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 cursor-pointer appearance-none"
+          >
+            <option value="">— Selecione —</option>
+            {field.options.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        </div>
+      );
     case "chip":
       if (!field.options?.length) {
         return (
@@ -143,7 +165,7 @@ export function FieldEditor({
               onClick={() => onChange(opt)}
               className={cn(
                 "px-2.5 py-1 rounded-lg text-xs font-medium border transition",
-                String(value) === opt
+                value === opt
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-surface border-border hover:border-primary/40"
               )}
