@@ -1,5 +1,26 @@
 import { useState } from "react";
-import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  X,
+  Type,
+  AlignLeft,
+  Hash,
+  ToggleLeft,
+  Calendar,
+  CalendarClock,
+  Link,
+  Image,
+  Smile,
+  Tag,
+  ListFilter,
+  List,
+  ListChecks,
+  Mail,
+  Palette,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -8,8 +29,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { getSheetProvider } from "@/shared/providers/providerFactory";
-import type { BoardConfig, FieldDef } from "@/modules/project/domain/types";
-import { DEFAULT_BOARD_FIELDS } from "@/shared/providers/GoogleSheetProvider";
+import type { BoardConfig, FieldDef, FieldType } from "@/modules/project/domain/types";
 
 interface Props {
   open: boolean;
@@ -18,9 +38,76 @@ interface Props {
   onCreated: (board: BoardConfig) => void;
 }
 
+interface CustomField {
+  name: string;
+  type: FieldType;
+}
+
 const EMOJIS = ["📋", "🚀", "✨", "📣", "🎯", "🛠️", "📊", "🔥", "💡", "🌟"];
 
-const DEFAULT_CLOSED_LAYOUT = ["cover_image", "title", "status", "priority", "due_date", "checklist"];
+const FIELD_TYPE_OPTIONS: { type: FieldType; label: string; Icon: React.ElementType }[] = [
+  { type: "text",        label: "Texto",           Icon: Type },
+  { type: "longtext",    label: "Texto longo",      Icon: AlignLeft },
+  { type: "number",      label: "Número",           Icon: Hash },
+  { type: "bool",        label: "Booleano",         Icon: ToggleLeft },
+  { type: "date",        label: "Data",             Icon: Calendar },
+  { type: "datetime",    label: "Data e hora",      Icon: CalendarClock },
+  { type: "url",         label: "URL",              Icon: Link },
+  { type: "image",       label: "Imagem",           Icon: Image },
+  { type: "icon",        label: "Ícone",            Icon: Smile },
+  { type: "chip",        label: "Chip",             Icon: Tag },
+  { type: "select",      label: "Seleção",          Icon: ListFilter },
+  { type: "multiselect", label: "Multi-seleção",    Icon: List },
+  { type: "checklist",   label: "Checklist",        Icon: ListChecks },
+  { type: "email",       label: "E-mail",           Icon: Mail },
+  { type: "color",       label: "Cor",              Icon: Palette },
+];
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function buildFields(customFields: CustomField[]): FieldDef[] {
+  const titleField: FieldDef = {
+    id: "title",
+    boardId: "",
+    label: "Título",
+    type: "text",
+    required: true,
+    visible: true,
+    editable: true,
+    searchable: true,
+    sortable: true,
+    displayOrder: 0,
+  };
+
+  const slugCounts: Record<string, number> = {};
+  const additionalFields: FieldDef[] = customFields
+    .filter((f) => f.name.trim())
+    .map((f, i) => {
+      const base = slugify(f.name.trim()) || `field_${i + 1}`;
+      slugCounts[base] = (slugCounts[base] ?? 0) + 1;
+      const id = slugCounts[base] > 1 ? `${base}_${slugCounts[base]}` : base;
+      return {
+        id,
+        boardId: "",
+        label: f.name.trim(),
+        type: f.type,
+        visible: true,
+        editable: true,
+        searchable: f.type === "text" || f.type === "longtext" || f.type === "email",
+        sortable: true,
+        displayOrder: i + 1,
+      };
+    });
+
+  return [titleField, ...additionalFields];
+}
 
 export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
   const [name, setName] = useState("");
@@ -29,9 +116,21 @@ export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showFields, setShowFields] = useState(false);
-  const [selectedFieldIds, setSelectedFieldIds] = useState<string[]>(
-    () => DEFAULT_BOARD_FIELDS.map((f) => f.id),
-  );
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+
+  function addField() {
+    setCustomFields((prev) => [...prev, { name: "", type: "text" }]);
+  }
+
+  function removeField(index: number) {
+    setCustomFields((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateField(index: number, patch: Partial<CustomField>) {
+    setCustomFields((prev) =>
+      prev.map((f, i) => (i === index ? { ...f, ...patch } : f)),
+    );
+  }
 
   async function handleCreate() {
     if (!name.trim()) { setError("Nome é obrigatório"); return; }
@@ -45,18 +144,12 @@ export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
         throw new Error("Este provider não suporta criação de boards");
       }
 
-      // Ensure spreadsheet structure exists
       if (provider.initializeSpreadsheet) {
         await provider.initializeSpreadsheet();
       }
 
-      const fields: FieldDef[] = DEFAULT_BOARD_FIELDS.filter((f) =>
-        selectedFieldIds.includes(f.id),
-      ).map((f) => ({ ...f, boardId: "" }));
-
-      const cardClosedLayout = DEFAULT_CLOSED_LAYOUT.filter((id) =>
-        selectedFieldIds.includes(id),
-      );
+      const fields = buildFields(customFields);
+      const fieldIds = fields.map((f) => f.id);
 
       const board = await provider.createBoard(
         {
@@ -66,8 +159,8 @@ export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
           groupBy: "status",
           orderBy: "_sort",
           cardTitleField: "title",
-          cardDescriptionField: "description",
-          cardClosedLayout,
+          cardDescriptionField: undefined,
+          cardClosedLayout: fieldIds.slice(0, 4),
           cardOpenLayout: "*",
         },
         fields,
@@ -77,7 +170,7 @@ export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
       setName("");
       setDescription("");
       setIcon("📋");
-      setSelectedFieldIds(DEFAULT_BOARD_FIELDS.map((f) => f.id));
+      setCustomFields([]);
       setShowFields(false);
     } catch (e) {
       setError((e as Error)?.message ?? "Erro ao criar board");
@@ -92,7 +185,7 @@ export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
         <DialogHeader>
           <DialogTitle>Novo board</DialogTitle>
           <DialogDescription>
-            Cria um novo board nesta planilha com campos padrão.
+            Cria um novo board nesta planilha.
           </DialogDescription>
         </DialogHeader>
 
@@ -148,40 +241,24 @@ export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
             </button>
 
             {showFields && (
-              <div className="mt-3 space-y-2 pl-1">
-                {DEFAULT_BOARD_FIELDS.map((f) => {
-                  const selected = selectedFieldIds.includes(f.id);
-                  const required = f.required === true;
-                  return (
-                    <label
-                      key={f.id}
-                      className="flex items-center gap-2.5 cursor-pointer group"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        disabled={required}
-                        onChange={(e) => {
-                          setSelectedFieldIds((prev) =>
-                            e.target.checked
-                              ? [...prev, f.id]
-                              : prev.filter((x) => x !== f.id),
-                          );
-                        }}
-                        className="h-4 w-4 accent-[var(--primary)] disabled:opacity-50"
-                      />
-                      <span className={`text-sm ${!selected ? "text-muted-foreground" : ""}`}>
-                        {f.label}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                        {f.type}
-                      </span>
-                      {required && (
-                        <span className="text-[10px] text-danger">obrigatório</span>
-                      )}
-                    </label>
-                  );
-                })}
+              <div className="mt-3 space-y-2">
+                {customFields.map((field, index) => (
+                  <FieldRow
+                    key={index}
+                    field={field}
+                    onChange={(patch) => updateField(index, patch)}
+                    onRemove={() => removeField(index)}
+                  />
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addField}
+                  className="flex items-center gap-1.5 text-xs text-primary hover:opacity-80 transition font-medium mt-1"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Adicionar campo
+                </button>
               </div>
             )}
           </div>
@@ -207,5 +284,50 @@ export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface FieldRowProps {
+  field: CustomField;
+  onChange: (patch: Partial<CustomField>) => void;
+  onRemove: () => void;
+}
+
+function FieldRow({ field, onChange, onRemove }: FieldRowProps) {
+  const selected = FIELD_TYPE_OPTIONS.find((o) => o.type === field.type) ?? FIELD_TYPE_OPTIONS[0];
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="text"
+        value={field.name}
+        onChange={(e) => onChange({ name: e.target.value })}
+        placeholder="Nome do campo"
+        className="flex-1 min-w-0 px-2.5 py-1.5 bg-surface border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+      />
+
+      <div className="relative">
+        <select
+          value={field.type}
+          onChange={(e) => onChange({ type: e.target.value as FieldType })}
+          className="appearance-none pl-7 pr-6 py-1.5 bg-surface border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 cursor-pointer"
+        >
+          {FIELD_TYPE_OPTIONS.map((opt) => (
+            <option key={opt.type} value={opt.type}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <selected.Icon className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+      </div>
+
+      <button
+        type="button"
+        onClick={onRemove}
+        className="shrink-0 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition text-muted-foreground"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
   );
 }
