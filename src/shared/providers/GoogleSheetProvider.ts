@@ -325,7 +325,7 @@ export class GoogleSheetProvider implements ISheetProvider {
     };
 
     headers.forEach((h, i) => {
-      const raw = row[i] ?? "";
+      const raw = (row[i] ?? "").trim();
       if (h === "_id") { record._id = raw; return; }
       if (h === "board_id") { record.boardId = raw; return; }
       if (h === "_sort") { record._sort = Number(raw) || 0; return; }

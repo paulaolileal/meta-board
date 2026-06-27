@@ -126,7 +126,7 @@ export function FieldEditor({
           )}
         </div>
       );
-    case "select":
+    case "select": {
       if (!field.options?.length) {
         return (
           <p className="text-xs text-muted-foreground italic">
@@ -134,14 +134,19 @@ export function FieldEditor({
           </p>
         );
       }
+      const selectValue = value != null ? String(value).trim() : "";
+      const isOrphan = !!selectValue && !(field.options ?? []).includes(selectValue);
       return (
         <div className="relative">
           <select
-            value={value != null ? String(value) : ""}
+            value={selectValue}
             onChange={(e) => onChange(e.target.value || undefined)}
             className="w-full px-3 py-2 pr-8 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 cursor-pointer appearance-none"
           >
             <option value="">— Selecione —</option>
+            {isOrphan && (
+              <option value={selectValue}>{selectValue}</option>
+            )}
             {field.options.map((opt) => (
               <option key={opt} value={opt}>{opt}</option>
             ))}
@@ -149,6 +154,7 @@ export function FieldEditor({
           <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         </div>
       );
+    }
     case "chip":
       if (!field.options?.length) {
         return (
