@@ -147,6 +147,28 @@
   ::selection {
     background: color-mix(in oklab, var(--primary) 30%, transparent);
   }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--muted-foreground) 25%, transparent);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 25%, transparent) transparent;
+  }
 }
 
 @utility glass {

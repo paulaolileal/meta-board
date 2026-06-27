@@ -44,7 +44,7 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
       onClick={onClick}
       whileHover={{ y: -2 }}
       className={cn(
-        "cursor-pointer rounded-2xl bg-card border border-border overflow-hidden",
+        "cursor-pointer rounded-2xl bg-card border border-border",
         "shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-shadow",
         (isDragging || dragging) && "opacity-50 ring-2 ring-primary/50"
       )}
@@ -61,7 +61,7 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
         )}
 
         {bodyIds.length > 0 && (
-          <div className="grid grid-cols-2 gap-x-2 gap-y-2">
+          <div className="grid grid-cols-3 gap-x-2 gap-y-2">
             {bodyIds.map((id) => {
               const f = fieldMap.get(id);
               if (!f) return null;
@@ -69,7 +69,7 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
               if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) return null;
               const isWide = WIDE_FIELD_TYPES.has(f.type);
               return (
-                <div key={id} className={isWide ? "col-span-2" : "col-span-1"}>
+                <div key={id} className={isWide ? "col-span-3" : "col-span-1"}>
                   <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground block mb-0.5">
                     {f.label}
                   </span>
