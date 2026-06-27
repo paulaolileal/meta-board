@@ -41,7 +41,7 @@ function Column({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col w-[300px] xl:w-[340px] 2xl:w-[380px] shrink-0 rounded-2xl bg-surface/60 border border-border p-3 gap-3 max-h-full",
+        "flex flex-col w-[300px] xl:w-[340px] 2xl:w-[380px] shrink-0 rounded-2xl bg-surface/60 border border-border p-3 gap-3 h-full",
         isOver && "ring-2 ring-primary/40 bg-surface"
       )}
     >
