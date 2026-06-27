@@ -245,6 +245,12 @@ export function FieldEditor({
   }
 }
 
+function readField(record: CardRecord, fieldId: string): unknown {
+  if (fieldId in record) return record[fieldId];
+  const camel = fieldId.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+  return record[camel];
+}
+
 export function CardDrawer() {
   const openCardId = useBoardStore((s) => s.openCardId);
   const cards = useBoardStore((s) => s.cards);
@@ -268,7 +274,8 @@ export function CardDrawer() {
     return () => window.removeEventListener("keydown", onKey);
   }, [openCardId, close]);
 
-  const cover = draft?.["coverImage"] as string | undefined;
+  const coverField = fields.find((f) => f.type === "image" && f.visible !== false);
+  const cover = coverField && draft ? (readField(draft, coverField.id) as string | undefined) : undefined;
   const layoutAll = project?.cardOpenLayout === "*" || !project?.cardOpenLayout;
   const layout = layoutAll
     ? fields.map((f) => f.id)
@@ -350,11 +357,11 @@ export function CardDrawer() {
                           {f.label}
                         </label>
                         {f.editable === false ? (
-                          <FieldRenderer field={f} value={draft[id] as never} mode="open" />
+                          <FieldRenderer field={f} value={readField(draft, id) as never} mode="open" />
                         ) : (
                           <FieldEditor
                             field={f}
-                            value={draft[id]}
+                            value={readField(draft, id)}
                             onChange={(v) => patch(id, v)}
                           />
                         )}

@@ -334,7 +334,7 @@ export class GoogleSheetProvider implements ISheetProvider {
       if (h === "_updated_at") { record._updatedAt = raw; return; }
 
       const fieldType = fieldTypes.get(h);
-      record[toCamel(h)] = fieldType ? this.deserializeValue(raw, fieldType) : raw;
+      record[h] = fieldType ? this.deserializeValue(raw, fieldType) : raw;
     });
 
     return record;
@@ -348,7 +348,7 @@ export class GoogleSheetProvider implements ISheetProvider {
       if (h === "_archived") return String(card._archived);
       if (h === "_created_at") return card._createdAt;
       if (h === "_updated_at") return card._updatedAt;
-      const value = card[toCamel(h)] as FieldValue;
+      const value = (h in card ? card[h] : card[toCamel(h)]) as FieldValue;
       return this.serializeValue(value, fieldTypes.get(h));
     });
   }
