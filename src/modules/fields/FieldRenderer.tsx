@@ -98,14 +98,21 @@ export function FieldRenderer({ field, value, mode }: RenderProps) {
     case "image": {
       const s = asString(value);
       if (!s) return null;
+      if (mode === "closed") {
+        return (
+          <img
+            src={s}
+            alt=""
+            className="w-full object-contain rounded-t-2xl max-h-56 bg-muted/30"
+            loading="lazy"
+          />
+        );
+      }
       return (
         <img
           src={s}
           alt=""
-          className={cn(
-            "w-full object-cover rounded-t-2xl",
-            mode === "closed" ? "h-32" : "h-56 rounded-2xl"
-          )}
+          className="w-full object-contain rounded-2xl max-h-[480px] bg-muted/30"
           loading="lazy"
         />
       );

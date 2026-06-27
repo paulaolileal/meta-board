@@ -1,0 +1,245 @@
+import {
+  // Project & Work
+  Briefcase, Laptop, Monitor, Cpu, Server, Database, Code2, Terminal, GitBranch,
+  Layers, Layout, Component, Boxes, Package, Archive, FolderOpen, FileText,
+  ClipboardList, ClipboardCheck, CheckSquare, ListChecks, KanbanSquare, Trello,
+  // People & Teams
+  User, Users, UserPlus, UserCheck, Contact, Building2, Building, Handshake,
+  // Communication
+  Mail, MessageCircle, MessageSquare, Phone, Video, Bell, BellRing, Megaphone,
+  // Finance
+  CircleDollarSign, Banknote, CreditCard, Wallet, PiggyBank, TrendingUp,
+  TrendingDown, BarChart2, BarChart3, LineChart, PieChart, Receipt,
+  // Time & Calendar
+  Calendar, CalendarCheck, CalendarClock, CalendarDays, Clock, Timer,
+  AlarmClock, Hourglass, History,
+  // Education
+  GraduationCap, BookOpen, Book, BookMarked, Library, Microscope, FlaskConical,
+  // Health & Wellness
+  Heart, HeartPulse, Activity, Stethoscope, Pill, Dumbbell, Apple,
+  // Transport
+  Car, Bus, Train, Bike, Plane, Rocket, Ship, Truck,
+  // Nature & Places
+  Home, TreePine, Flower2, Sun, Moon, Star, Globe, Map, MapPin,
+  Mountain, Waves, Leaf, Cloud,
+  // Food & Lifestyle
+  Coffee, UtensilsCrossed, Utensils, ShoppingCart, ShoppingBag, Gift,
+  // Media & Entertainment
+  Music, Music2, Headphones, Tv, Film, Camera, Gamepad2, Bookmark,
+  // Tools & Settings
+  Settings, Settings2, Wrench, Hammer, Scissors, Key, Lock, Unlock,
+  Shield, ShieldCheck, Search, Filter, SlidersHorizontal,
+  // UI & Actions
+  Plus, Minus, X, Check, ChevronRight, ArrowRight, ArrowUpRight, ArrowDown,
+  Zap, Sparkles, Tag, Flag, Milestone, Target, Crosshair, Focus,
+  // Status & Priority
+  AlertCircle, AlertTriangle, Info, HelpCircle, XCircle, CheckCircle2,
+  Circle, Dot, Radio, Loader2, RefreshCw,
+  // Misc
+  Smile, ThumbsUp, Award, Trophy, Medal, Crown, Gem, Diamond,
+  Lightbulb, Puzzle, Palette, Paintbrush, Pen, Edit3, FileEdit,
+  type LucideProps,
+} from "lucide-react";
+import type { ComponentType } from "react";
+
+type IconComponent = ComponentType<LucideProps>;
+
+export const ICON_REGISTRY: Record<string, IconComponent> = {
+  // Project & Work
+  Briefcase,
+  Laptop,
+  Monitor,
+  Cpu,
+  Server,
+  Database,
+  Code2,
+  Terminal,
+  GitBranch,
+  Layers,
+  Layout,
+  Component,
+  Boxes,
+  Package,
+  Archive,
+  FolderOpen,
+  FileText,
+  ClipboardList,
+  ClipboardCheck,
+  CheckSquare,
+  ListChecks,
+  KanbanSquare,
+  Trello,
+  // People & Teams
+  User,
+  Users,
+  UserPlus,
+  UserCheck,
+  Contact,
+  Building2,
+  Building,
+  Handshake,
+  // Communication
+  Mail,
+  MessageCircle,
+  MessageSquare,
+  Phone,
+  Video,
+  Bell,
+  BellRing,
+  Megaphone,
+  // Finance
+  CircleDollarSign,
+  Banknote,
+  CreditCard,
+  Wallet,
+  PiggyBank,
+  TrendingUp,
+  TrendingDown,
+  BarChart2,
+  BarChart3,
+  LineChart,
+  PieChart,
+  Receipt,
+  // Time & Calendar
+  Calendar,
+  CalendarCheck,
+  CalendarClock,
+  CalendarDays,
+  Clock,
+  Timer,
+  AlarmClock,
+  Hourglass,
+  History,
+  // Education
+  GraduationCap,
+  BookOpen,
+  Book,
+  BookMarked,
+  Library,
+  Microscope,
+  FlaskConical,
+  // Health & Wellness
+  Heart,
+  HeartPulse,
+  Activity,
+  Stethoscope,
+  Pill,
+  Dumbbell,
+  Apple,
+  // Transport
+  Car,
+  Bus,
+  Train,
+  Bike,
+  Plane,
+  Rocket,
+  Ship,
+  Truck,
+  // Nature & Places
+  Home,
+  TreePine,
+  Flower2,
+  Sun,
+  Moon,
+  Star,
+  Globe,
+  Map,
+  MapPin,
+  Mountain,
+  Waves,
+  Leaf,
+  Cloud,
+  // Food & Lifestyle
+  Coffee,
+  UtensilsCrossed,
+  Utensils,
+  ShoppingCart,
+  ShoppingBag,
+  Gift,
+  // Media & Entertainment
+  Music,
+  Music2,
+  Headphones,
+  Tv,
+  Film,
+  Camera,
+  Gamepad2,
+  Bookmark,
+  // Tools & Settings
+  Settings,
+  Settings2,
+  Wrench,
+  Hammer,
+  Scissors,
+  Key,
+  Lock,
+  Unlock,
+  Shield,
+  ShieldCheck,
+  Search,
+  Filter,
+  SlidersHorizontal,
+  // UI & Actions
+  Plus,
+  Minus,
+  XIcon: X,
+  Check,
+  ChevronRight,
+  ArrowRight,
+  ArrowUpRight,
+  ArrowDown,
+  Zap,
+  Sparkles,
+  Tag,
+  Flag,
+  Milestone,
+  Target,
+  Crosshair,
+  Focus,
+  // Status & Priority
+  AlertCircle,
+  AlertTriangle,
+  Info,
+  HelpCircle,
+  XCircle,
+  CheckCircle2,
+  Circle,
+  Dot,
+  Radio,
+  Loader2,
+  RefreshCw,
+  // Misc
+  Smile,
+  ThumbsUp,
+  Award,
+  Trophy,
+  Medal,
+  Crown,
+  Gem,
+  Diamond,
+  Lightbulb,
+  Puzzle,
+  Palette,
+  Paintbrush,
+  Pen,
+  Edit3,
+  FileEdit,
+};
+
+export interface IconEntry {
+  id: string;
+  component: IconComponent;
+}
+
+export const ICON_LIST: IconEntry[] = Object.entries(ICON_REGISTRY).map(([id, component]) => ({
+  id,
+  component,
+}));
+
+export function getIcon(id: string): IconComponent | null {
+  return ICON_REGISTRY[id] ?? null;
+}
+
+export function isLucideIconName(value: string): boolean {
+  return value in ICON_REGISTRY;
+}

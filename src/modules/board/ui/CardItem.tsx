@@ -13,12 +13,25 @@ interface Props {
   dragging?: boolean;
 }
 
+const LABEL_HIDDEN_TYPES = new Set(["text", "image", "chip", "select", "bool"]);
+
 export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card._id, data: { type: "card", card } });
 
   const fieldMap = new Map(fields.map((f) => [f.id, f]));
-  const cover = card["coverImage"];
+
+  const imageFieldId = layout.find((id) => {
+    const f = fieldMap.get(id);
+    return f?.type === "image";
+  });
+  const imageField = imageFieldId ? fieldMap.get(imageFieldId) : undefined;
+  const imageValue = imageFieldId ? (card[imageFieldId] as string | undefined) : undefined;
+
+  const nonImageLayout = layout.filter((id) => {
+    const f = fieldMap.get(id);
+    return f?.type !== "image";
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -39,28 +52,28 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
         (isDragging || dragging) && "opacity-50 ring-2 ring-primary/50"
       )}
     >
-      {cover && layout.includes("coverImage") ? (
-        <FieldRenderer
-          field={fieldMap.get("coverImage")!}
-          value={cover as string}
-          mode="closed"
-        />
+      {imageField && imageValue ? (
+        <FieldRenderer field={imageField} value={imageValue} mode="closed" />
       ) : null}
 
       <div className="p-3 space-y-2">
-        {layout
-          .filter((id) => id !== "coverImage")
-          .map((id) => {
-            const f = fieldMap.get(id);
-            if (!f) return null;
-            const v = card[id] as any;
-            if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) return null;
-            return (
-              <div key={id}>
-                <FieldRenderer field={f} value={v} mode="closed" />
-              </div>
-            );
-          })}
+        {nonImageLayout.map((id) => {
+          const f = fieldMap.get(id);
+          if (!f) return null;
+          const v = card[id] as any;
+          if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) return null;
+          const hideLabel = LABEL_HIDDEN_TYPES.has(f.type);
+          return (
+            <div key={id}>
+              {!hideLabel && (
+                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground block mb-0.5">
+                  {f.label}
+                </span>
+              )}
+              <FieldRenderer field={f} value={v} mode="closed" />
+            </div>
+          );
+        })}
       </div>
     </motion.div>
   );

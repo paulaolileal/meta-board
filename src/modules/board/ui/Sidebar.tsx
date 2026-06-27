@@ -15,6 +15,7 @@ import {
 import { useBoardStore } from "@/modules/board/store";
 import { useThemeStore, type ThemeMode } from "@/modules/settings/themeStore";
 import { isMockMode } from "@/shared/providers/providerFactory";
+import { getIcon } from "@/shared/icons/iconRegistry";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -53,7 +54,15 @@ export function Sidebar({ connectionId }: Props) {
         </Link>
         <div className="flex items-center gap-2.5 mt-2">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center text-lg shadow-[var(--shadow-glow)]">
-            {board?.icon ?? "✨"}
+            {board?.icon
+              ? (() => {
+                  const LucideIcon = getIcon(board.icon);
+                  return LucideIcon
+                    ? <LucideIcon size={18} className="text-white" />
+                    : <span>{board.icon}</span>;
+                })()
+              : "✨"
+            }
           </div>
           <div className="min-w-0">
             <div className="font-semibold truncate">{board?.name ?? "MetaBoard"}</div>

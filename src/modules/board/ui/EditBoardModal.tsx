@@ -1,5 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, ChevronDown, ChevronUp, X, Columns3, Tag, AlignLeft, Hash, ToggleLeft, Calendar, Link, Image, Smile, ListFilter, List, ListChecks, Mail, Palette, Type, CalendarClock } from "lucide-react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import {
+  Loader2, Plus, ChevronDown, ChevronUp, X, Columns3, Tag, AlignLeft, Hash,
+  ToggleLeft, Calendar, Link, Image, Smile, ListFilter, List, ListChecks, Mail,
+  Palette, Type, CalendarClock, GripVertical, Eye, EyeOff, Trash2,
+} from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import type { FieldDef, FieldType } from "@/modules/project/domain/types";
 import {
@@ -13,9 +32,9 @@ import { getSheetProvider, isMockMode, envSpreadsheetId } from "@/shared/provide
 import { useBoardStore } from "@/modules/board/store";
 import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
 import { ENV_CONNECTION_ID } from "@/routes/HomePage";
+import { BoardIconPicker } from "@/shared/icons/BoardIconPicker";
 
 const MOCK_SHEET_ID = "mock";
-const EMOJIS = ["📋", "🚀", "✨", "📣", "🎯", "🛠️", "📊", "🔥", "💡", "🌟"];
 const SELECT_TYPES: FieldType[] = ["select", "chip", "multiselect"];
 
 const FIELD_TYPE_ORDER: FieldType[] = [
@@ -68,6 +87,147 @@ const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   color: "Cor",
 };
 
+interface SortableFieldRowProps {
+  field: FieldDef;
+  isExpanded: boolean;
+  isInClosedLayout: boolean;
+  options: string[];
+  newOption: string;
+  onToggleExpand: () => void;
+  onToggleClosedLayout: () => void;
+  onRemove: () => void;
+  onOptionAdd: () => void;
+  onOptionRemove: (opt: string) => void;
+  onNewOptionChange: (val: string) => void;
+}
+
+function SortableFieldRow({
+  field,
+  isExpanded,
+  isInClosedLayout,
+  options,
+  newOption,
+  onToggleExpand,
+  onToggleClosedLayout,
+  onRemove,
+  onOptionAdd,
+  onOptionRemove,
+  onNewOptionChange,
+}: SortableFieldRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: field.id });
+
+  const Icon = FIELD_TYPE_ICONS[field.type] ?? Type;
+  const isSelectable = SELECT_TYPES.includes(field.type);
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="rounded-lg bg-surface border border-border overflow-hidden">
+      <div className="flex items-center gap-2 px-2 py-2">
+        <button
+          {...attributes}
+          {...listeners}
+          className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing shrink-0"
+          aria-label="Reordenar campo"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+
+        <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <span className="text-sm flex-1 truncate">{field.label}</span>
+
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+          {FIELD_TYPE_LABELS[field.type] ?? field.type}
+        </span>
+
+        {field.required && (
+          <span className="text-[10px] text-primary font-medium shrink-0">obrigatório</span>
+        )}
+
+        <button
+          onClick={onToggleClosedLayout}
+          className={`h-5 w-5 flex items-center justify-center transition shrink-0 ${
+            isInClosedLayout ? "text-primary" : "text-muted-foreground hover:text-foreground"
+          }`}
+          aria-label={isInClosedLayout ? "Ocultar no card fechado" : "Exibir no card fechado"}
+          title={isInClosedLayout ? "Visível no card fechado" : "Oculto no card fechado"}
+        >
+          {isInClosedLayout ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+        </button>
+
+        {isSelectable && (
+          <button
+            onClick={onToggleExpand}
+            className="h-5 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition shrink-0"
+            aria-label={isExpanded ? "Ocultar opções" : "Editar opções"}
+          >
+            {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
+        )}
+
+        {!field.required && (
+          <button
+            onClick={onRemove}
+            className="h-5 w-5 flex items-center justify-center text-muted-foreground hover:text-danger transition shrink-0"
+            aria-label="Remover campo"
+            title="Remover campo"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      {isExpanded && (
+        <div className="px-3 pb-3 pt-2 border-t border-border space-y-2">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Opções ({options.length})
+          </p>
+          {options.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Nenhuma opção ainda.</p>
+          ) : (
+            <div className="space-y-1">
+              {options.map((opt) => (
+                <div key={opt} className="flex items-center justify-between px-2 py-1 rounded bg-muted/40">
+                  <span className="text-xs">{opt}</span>
+                  <button
+                    onClick={() => onOptionRemove(opt)}
+                    className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-danger transition"
+                    aria-label={`Remover opção ${opt}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-1.5">
+            <input
+              value={newOption}
+              onChange={(e) => onNewOptionChange(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && onOptionAdd()}
+              placeholder="Nova opção…"
+              className="flex-1 px-2 py-1 bg-surface border border-border rounded text-xs focus:outline-none focus:ring-2 focus:ring-ring/40"
+            />
+            <button
+              onClick={onOptionAdd}
+              disabled={!newOption.trim()}
+              className="px-2 py-1 rounded bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-40"
+              aria-label="Adicionar opção"
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -92,6 +252,11 @@ export function EditBoardModal({ open, onClose }: Props) {
   const [expandedFieldId, setExpandedFieldId] = useState<string | null>(null);
   const [fieldOptionsMap, setFieldOptionsMap] = useState<Record<string, string[]>>({});
   const [newOptionByField, setNewOptionByField] = useState<Record<string, string>>({});
+  const [orderedFieldIds, setOrderedFieldIds] = useState<string[]>([]);
+  const [closedLayout, setClosedLayout] = useState<string[]>([]);
+  const [fieldsToDelete, setFieldsToDelete] = useState<Set<string>>(new Set());
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const groupableFields = useMemo(
     () => fields.filter((f) => SELECT_TYPES.includes(f.type)),
@@ -115,8 +280,20 @@ export function EditBoardModal({ open, onClose }: Props) {
       setExpandedFieldId(null);
       setFieldOptionsMap({});
       setNewOptionByField({});
+      setFieldsToDelete(new Set());
+      const sorted = [...fields].sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99));
+      setOrderedFieldIds(sorted.map((f) => f.id));
+      setClosedLayout(board.cardClosedLayout ?? []);
     }
-  }, [open, board]);
+  }, [open, board, fields]);
+
+  const visibleFields = useMemo(() => {
+    const fieldMap = new Map(fields.map((f) => [f.id, f]));
+    return orderedFieldIds
+      .filter((id) => !fieldsToDelete.has(id))
+      .map((id) => fieldMap.get(id))
+      .filter((f): f is FieldDef => !!f);
+  }, [orderedFieldIds, fields, fieldsToDelete]);
 
   function getFieldOptions(fieldId: string): string[] {
     if (fieldId in fieldOptionsMap) return fieldOptionsMap[fieldId];
@@ -137,6 +314,29 @@ export function EditBoardModal({ open, onClose }: Props) {
     setFieldOptionsMap((prev) => ({ ...prev, [fieldId]: current.filter((o) => o !== opt) }));
   }
 
+  function toggleClosedLayout(fieldId: string) {
+    setClosedLayout((prev) =>
+      prev.includes(fieldId) ? prev.filter((id) => id !== fieldId) : [...prev, fieldId]
+    );
+  }
+
+  function markFieldForDeletion(fieldId: string) {
+    setFieldsToDelete((prev) => new Set([...prev, fieldId]));
+    setClosedLayout((prev) => prev.filter((id) => id !== fieldId));
+    setOrderedFieldIds((prev) => prev.filter((id) => id !== fieldId));
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setOrderedFieldIds((prev) => {
+        const oldIndex = prev.indexOf(String(active.id));
+        const newIndex = prev.indexOf(String(over.id));
+        return arrayMove(prev, oldIndex, newIndex);
+      });
+    }
+  }
+
   async function handleAddField() {
     const trimmed = newFieldName.trim();
     if (!trimmed || !board) return;
@@ -147,7 +347,7 @@ export function EditBoardModal({ open, onClose }: Props) {
       let id = base;
       let n = 2;
       while (existingIds.has(id)) { id = `${base}_${n++}`; }
-      const maxOrder = fields.reduce((acc, f) => Math.max(acc, f.displayOrder ?? 0), 0);
+      const maxOrder = orderedFieldIds.length;
       const newField: FieldDef = {
         id,
         boardId: board.id,
@@ -161,6 +361,7 @@ export function EditBoardModal({ open, onClose }: Props) {
       };
       const saved = await provider.createField(newField);
       setFields([...fields, saved]);
+      setOrderedFieldIds((prev) => [...prev, saved.id]);
       setNewFieldName("");
       setNewFieldType("text");
       if (SELECT_TYPES.includes(newFieldType)) {
@@ -185,22 +386,37 @@ export function EditBoardModal({ open, onClose }: Props) {
         icon,
         description: description.trim() || undefined,
         groupBy: groupBy || board.groupBy,
+        cardClosedLayout: closedLayout,
       };
       const savedBoard = await provider.saveBoard(updatedBoard);
       setBoard(savedBoard);
 
       const updatedFields = [...fields];
-      for (const [fieldId, options] of Object.entries(fieldOptionsMap)) {
-        const field = fields.find((f) => f.id === fieldId);
-        if (!field) continue;
-        const savedField = await provider.saveField({ ...field, options });
+
+      for (const fieldId of fieldsToDelete) {
         const idx = updatedFields.findIndex((f) => f.id === fieldId);
-        if (idx >= 0) updatedFields[idx] = savedField;
-      }
-      if (Object.keys(fieldOptionsMap).length > 0) {
-        setFields(updatedFields);
+        if (idx >= 0) updatedFields.splice(idx, 1);
       }
 
+      for (let i = 0; i < orderedFieldIds.length; i++) {
+        const fieldId = orderedFieldIds[i];
+        if (fieldsToDelete.has(fieldId)) continue;
+        const field = updatedFields.find((f) => f.id === fieldId);
+        if (!field) continue;
+        const newOptions = fieldOptionsMap[fieldId];
+        const needsUpdate = field.displayOrder !== i || newOptions !== undefined;
+        if (needsUpdate) {
+          const savedField = await provider.saveField({
+            ...field,
+            displayOrder: i,
+            ...(newOptions !== undefined ? { options: newOptions } : {}),
+          });
+          const idx = updatedFields.findIndex((f) => f.id === fieldId);
+          if (idx >= 0) updatedFields[idx] = savedField;
+        }
+      }
+
+      setFields(updatedFields);
       toast.success("Board atualizado");
       onClose();
     } catch (e) {
@@ -235,18 +451,7 @@ export function EditBoardModal({ open, onClose }: Props) {
               <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">
                 Ícone
               </label>
-              <div className="flex flex-wrap gap-2">
-                {EMOJIS.map((e) => (
-                  <button
-                    key={e}
-                    onClick={() => setIcon(e)}
-                    className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition
-                      ${icon === e ? "bg-primary/15 ring-2 ring-primary" : "hover:bg-accent"}`}
-                  >
-                    {e}
-                  </button>
-                ))}
-              </div>
+              <BoardIconPicker value={icon} onChange={setIcon} />
             </div>
 
             <div className="space-y-1.5">
@@ -302,102 +507,42 @@ export function EditBoardModal({ open, onClose }: Props) {
             )}
           </section>
 
-          {/* Fields list with inline options editing */}
+          {/* Fields list with drag-and-drop reordering */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Campos do board
             </h3>
-            {fields.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">
+              Arraste para reordenar. Use <Eye className="inline h-3 w-3" /> para controlar quais campos aparecem no card fechado.
+            </p>
+
+            {visibleFields.length === 0 ? (
               <p className="text-xs text-muted-foreground">Nenhum campo configurado.</p>
             ) : (
-              <div className="space-y-1.5">
-                {fields
-                  .slice()
-                  .sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99))
-                  .map((f) => {
-                    const Icon = FIELD_TYPE_ICONS[f.type] ?? Type;
-                    const isSelectable = SELECT_TYPES.includes(f.type);
-                    const isExpanded = expandedFieldId === f.id;
-                    const options = isSelectable ? getFieldOptions(f.id) : [];
-
-                    return (
-                      <div
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={visibleFields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-1.5">
+                    {visibleFields.map((f) => (
+                      <SortableFieldRow
                         key={f.id}
-                        className="rounded-lg bg-surface border border-border overflow-hidden"
-                      >
-                        <div className="flex items-center gap-2.5 px-3 py-2">
-                          <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="text-sm flex-1 truncate">{f.label}</span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
-                            {FIELD_TYPE_LABELS[f.type] ?? f.type}
-                          </span>
-                          {f.required && (
-                            <span className="text-[10px] text-primary font-medium shrink-0">obrigatório</span>
-                          )}
-                          {isSelectable && (
-                            <button
-                              onClick={() => setExpandedFieldId(isExpanded ? null : f.id)}
-                              className="h-5 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition shrink-0"
-                              aria-label={isExpanded ? "Ocultar opções" : "Editar opções"}
-                            >
-                              {isExpanded
-                                ? <ChevronUp className="h-3.5 w-3.5" />
-                                : <ChevronDown className="h-3.5 w-3.5" />}
-                            </button>
-                          )}
-                        </div>
-
-                        {isExpanded && (
-                          <div className="px-3 pb-3 pt-2 border-t border-border space-y-2">
-                            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                              Opções ({options.length})
-                            </p>
-                            {options.length === 0 ? (
-                              <p className="text-xs text-muted-foreground">Nenhuma opção ainda.</p>
-                            ) : (
-                              <div className="space-y-1">
-                                {options.map((opt) => (
-                                  <div
-                                    key={opt}
-                                    className="flex items-center justify-between px-2 py-1 rounded bg-muted/40"
-                                  >
-                                    <span className="text-xs">{opt}</span>
-                                    <button
-                                      onClick={() => removeFieldOption(f.id, opt)}
-                                      className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-danger transition"
-                                      aria-label={`Remover opção ${opt}`}
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            <div className="flex gap-1.5">
-                              <input
-                                value={newOptionByField[f.id] ?? ""}
-                                onChange={(e) =>
-                                  setNewOptionByField((prev) => ({ ...prev, [f.id]: e.target.value }))
-                                }
-                                onKeyDown={(e) => e.key === "Enter" && addFieldOption(f.id)}
-                                placeholder="Nova opção…"
-                                className="flex-1 px-2 py-1 bg-surface border border-border rounded text-xs focus:outline-none focus:ring-2 focus:ring-ring/40"
-                              />
-                              <button
-                                onClick={() => addFieldOption(f.id)}
-                                disabled={!(newOptionByField[f.id] ?? "").trim()}
-                                className="px-2 py-1 rounded bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-40"
-                                aria-label="Adicionar opção"
-                              >
-                                <Plus className="h-3 w-3" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
+                        field={f}
+                        isExpanded={expandedFieldId === f.id}
+                        isInClosedLayout={closedLayout.includes(f.id)}
+                        options={SELECT_TYPES.includes(f.type) ? getFieldOptions(f.id) : []}
+                        newOption={newOptionByField[f.id] ?? ""}
+                        onToggleExpand={() => setExpandedFieldId(expandedFieldId === f.id ? null : f.id)}
+                        onToggleClosedLayout={() => toggleClosedLayout(f.id)}
+                        onRemove={() => markFieldForDeletion(f.id)}
+                        onOptionAdd={() => addFieldOption(f.id)}
+                        onOptionRemove={(opt) => removeFieldOption(f.id, opt)}
+                        onNewOptionChange={(val) =>
+                          setNewOptionByField((prev) => ({ ...prev, [f.id]: val }))
+                        }
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
             )}
 
             <div className="flex items-center gap-2 pt-1">
