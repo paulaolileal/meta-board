@@ -1,0 +1,181 @@
+import { format, isValid, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { CheckCircle2, Circle, Link as LinkIcon, Calendar } from "lucide-react";
+import type { ChecklistItem, FieldDef, FieldValue } from "@/modules/project/domain/types";
+import { cn } from "@/lib/utils";
+
+interface RenderProps {
+  field: FieldDef;
+  value: FieldValue;
+  mode: "closed" | "open";
+}
+
+const PRIORITY_COLORS: Record<string, string> = {
+  Urgente: "bg-danger/15 text-danger ring-1 ring-danger/30",
+  Alta: "bg-warning/20 text-warning-foreground ring-1 ring-warning/40",
+  Média: "bg-primary/15 text-primary ring-1 ring-primary/30",
+  Baixa: "bg-muted text-muted-foreground ring-1 ring-border",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  Backlog: "bg-muted text-muted-foreground",
+  "Em progresso": "bg-primary/15 text-primary",
+  Revisão: "bg-warning/20 text-warning-foreground",
+  Concluído: "bg-success/20 text-success",
+};
+
+function asString(v: FieldValue): string {
+  if (v == null) return "";
+  if (Array.isArray(v)) return v.join(", ");
+  return String(v);
+}
+
+export function FieldRenderer({ field, value, mode }: RenderProps) {
+  switch (field.type) {
+    case "text":
+      return (
+        <span className={cn(mode === "closed" ? "font-semibold text-foreground" : "text-foreground")}>
+          {asString(value) || <span className="text-muted-foreground">—</span>}
+        </span>
+      );
+    case "longtext":
+      return (
+        <p className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
+          {asString(value) || "—"}
+        </p>
+      );
+    case "number":
+      return <span className="tabular-nums">{asString(value) || "—"}</span>;
+    case "bool":
+      return value ? (
+        <CheckCircle2 className="h-4 w-4 text-success" />
+      ) : (
+        <Circle className="h-4 w-4 text-muted-foreground" />
+      );
+    case "date":
+    case "datetime": {
+      const s = asString(value);
+      if (!s) return <span className="text-muted-foreground text-xs">Sem data</span>;
+      const d = parseISO(s);
+      if (!isValid(d)) return <span className="text-muted-foreground text-xs">{s}</span>;
+      const fmt = field.type === "datetime" ? "dd MMM, HH:mm" : "dd MMM yyyy";
+      return (
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Calendar className="h-3.5 w-3.5" />
+          {format(d, fmt, { locale: ptBR })}
+        </span>
+      );
+    }
+    case "url": {
+      const s = asString(value);
+      if (!s) return <span className="text-muted-foreground">—</span>;
+      return (
+        <a
+          href={s}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 text-primary hover:underline text-sm"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <LinkIcon className="h-3.5 w-3.5" />
+          {s.replace(/^https?:\/\//, "").slice(0, 40)}
+        </a>
+      );
+    }
+    case "image": {
+      const s = asString(value);
+      if (!s) return null;
+      return (
+        <img
+          src={s}
+          alt=""
+          className={cn(
+            "w-full object-cover rounded-t-2xl",
+            mode === "closed" ? "h-32" : "h-56 rounded-2xl"
+          )}
+          loading="lazy"
+        />
+      );
+    }
+    case "chip": {
+      const s = asString(value);
+      if (!s) return null;
+      const color = PRIORITY_COLORS[s] ?? "bg-accent text-accent-foreground";
+      return (
+        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium", color)}>
+          {s}
+        </span>
+      );
+    }
+    case "select": {
+      const s = asString(value);
+      if (!s) return null;
+      const color = STATUS_COLORS[s] ?? "bg-accent text-accent-foreground";
+      return (
+        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium", color)}>
+          {s}
+        </span>
+      );
+    }
+    case "multiselect": {
+      const arr = Array.isArray(value) ? (value as string[]) : [];
+      if (!arr.length) return null;
+      return (
+        <div className="flex flex-wrap gap-1">
+          {arr.map((t) => (
+            <span
+              key={t}
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground"
+            >
+              #{t}
+            </span>
+          ))}
+        </div>
+      );
+    }
+    case "checklist": {
+      const items = Array.isArray(value) ? (value as ChecklistItem[]) : [];
+      if (!items.length) return null;
+      const done = items.filter((i) => i.done).length;
+      const pct = Math.round((done / items.length) * 100);
+      if (mode === "closed") {
+        return (
+          <div className="flex items-center gap-2">
+            <div className="h-1 flex-1 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-primary to-primary-glow transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="text-[10px] tabular-nums text-muted-foreground">
+              {done}/{items.length}
+            </span>
+          </div>
+        );
+      }
+      return (
+        <ul className="space-y-1.5">
+          {items.map((it) => (
+            <li key={it.id} className="flex items-center gap-2 text-sm">
+              {it.done ? (
+                <CheckCircle2 className="h-4 w-4 text-success" />
+              ) : (
+                <Circle className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span className={cn(it.done && "line-through text-muted-foreground")}>{it.text}</span>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    case "color": {
+      const s = asString(value);
+      if (!s) return null;
+      return <span className="inline-block w-4 h-4 rounded-full border" style={{ background: s }} />;
+    }
+    case "email":
+    case "icon":
+    default:
+      return <span>{asString(value)}</span>;
+  }
+}
