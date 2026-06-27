@@ -11,14 +11,14 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
-import { Plus } from "lucide-react";
+import { Plus, LayoutList } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBoardStore } from "@/modules/board/store";
 import { useCardMutations } from "@/modules/board/useCardMutations";
 import { CardItem } from "./CardItem";
 import { CardDrawer } from "./CardDrawer";
 import { CreateCardModal } from "./CreateCardModal";
-import type { CardRecord } from "@/modules/project/domain/types";
+import type { CardRecord, FieldDef } from "@/modules/project/domain/types";
 import { cn } from "@/lib/utils";
 
 function Column({
@@ -137,6 +137,7 @@ export function KanbanBoard() {
   }, [filtered, groups, groupField]);
 
   const layout = project?.cardClosedLayout ?? ["title"];
+  const hasConfiguredGroups = groups.length > 0;
 
   function handleDragStart(e: DragStartEvent) {
     const card = cards.find((c) => c._id === e.active.id);
@@ -178,6 +179,26 @@ export function KanbanBoard() {
     updateCard(updated);
   }
 
+  if (!hasConfiguredGroups) {
+    return (
+      <>
+        <FlatCardList
+          cards={filtered}
+          fields={fields}
+          layout={layout}
+          onOpen={openCard}
+          onAdd={() => setPendingGroupValue("")}
+        />
+        <CardDrawer />
+        <CreateCardModal
+          open={pendingGroupValue !== null}
+          onClose={() => setPendingGroupValue(null)}
+          initialValues={{}}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <DndContext
@@ -217,5 +238,60 @@ export function KanbanBoard() {
         }
       />
     </>
+  );
+}
+
+function FlatCardList({
+  cards,
+  fields,
+  layout,
+  onOpen,
+  onAdd,
+}: {
+  cards: CardRecord[];
+  fields: FieldDef[];
+  layout: string[];
+  onOpen: (id: string) => void;
+  onAdd: () => void;
+}) {
+  return (
+    <div className="flex flex-col h-full p-4 md:p-6 xl:p-8 gap-4 overflow-y-auto scrollbar-thin">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <LayoutList className="h-4 w-4" />
+          <span>
+            {cards.length} {cards.length === 1 ? "card" : "cards"}
+          </span>
+        </div>
+        <button
+          onClick={onAdd}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition"
+        >
+          <Plus className="h-4 w-4" />
+          Adicionar card
+        </button>
+      </div>
+
+      {cards.length === 0 && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+          <LayoutList className="h-10 w-10 opacity-30" />
+          <p className="text-sm">Nenhum card ainda. Clique em "Adicionar card" para começar.</p>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 max-w-2xl">
+        <AnimatePresence initial={false}>
+          {cards.map((card) => (
+            <CardItem
+              key={card._id}
+              card={card}
+              fields={fields}
+              layout={layout}
+              onClick={() => onOpen(card._id)}
+            />
+          ))}
+        </AnimatePresence>
+      </div>
+    </div>
   );
 }

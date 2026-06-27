@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { Loader2, Plus, Trash2, AlertTriangle, Columns3, Tag, AlignLeft, Hash, ToggleLeft, Calendar, Link, Image, Smile, ListFilter, List, ListChecks, Mail, Palette, Type, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
+import type { FieldType } from "@/modules/project/domain/types";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,42 @@ import { ENV_CONNECTION_ID } from "@/routes/HomePage";
 
 const MOCK_SHEET_ID = "mock";
 const EMOJIS = ["📋", "🚀", "✨", "📣", "🎯", "🛠️", "📊", "🔥", "💡", "🌟"];
+
+const FIELD_TYPE_ICONS: Record<FieldType, React.ElementType> = {
+  text: Type,
+  longtext: AlignLeft,
+  number: Hash,
+  bool: ToggleLeft,
+  date: Calendar,
+  datetime: CalendarClock,
+  url: Link,
+  image: Image,
+  icon: Smile,
+  chip: Tag,
+  select: ListFilter,
+  multiselect: List,
+  checklist: ListChecks,
+  email: Mail,
+  color: Palette,
+};
+
+const FIELD_TYPE_LABELS: Record<FieldType, string> = {
+  text: "Texto",
+  longtext: "Texto longo",
+  number: "Número",
+  bool: "Booleano",
+  date: "Data",
+  datetime: "Data e hora",
+  url: "URL",
+  image: "Imagem",
+  icon: "Ícone",
+  chip: "Chip",
+  select: "Seleção",
+  multiselect: "Multi-seleção",
+  checklist: "Checklist",
+  email: "E-mail",
+  color: "Cor",
+};
 
 interface Props {
   open: boolean;
@@ -33,10 +70,16 @@ export function EditBoardModal({ open, onClose }: Props) {
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("📋");
   const [description, setDescription] = useState("");
+  const [groupBy, setGroupBy] = useState("");
   const [columns, setColumns] = useState<string[]>([]);
   const [newColumn, setNewColumn] = useState("");
   const [loading, setLoading] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+
+  const groupableFields = useMemo(
+    () => fields.filter((f) => f.options && f.options.length > 0),
+    [fields],
+  );
 
   const sheetId = useMemo(() => {
     if (isMockMode()) return MOCK_SHEET_ID;
@@ -51,14 +94,23 @@ export function EditBoardModal({ open, onClose }: Props) {
       setName(board.name);
       setIcon(board.icon);
       setDescription(board.description ?? "");
+      setGroupBy(board.groupBy ?? "");
       const groupByField = fields.find((f) => f.id === board.groupBy);
       setColumns(groupByField?.options ?? []);
       setNewColumn("");
     }
   }, [open, board, fields]);
 
+  function handleGroupByChange(fieldId: string) {
+    setGroupBy(fieldId);
+    const field = fields.find((f) => f.id === fieldId);
+    setColumns(field?.options ?? []);
+    setNewColumn("");
+  }
+
   function cardsInColumn(col: string): number {
-    return cards.filter((c) => !c._archived && c[board!.groupBy] === col).length;
+    const field = groupBy || board!.groupBy;
+    return cards.filter((c) => !c._archived && c[field] === col).length;
   }
 
   function addColumn() {
@@ -88,11 +140,13 @@ export function EditBoardModal({ open, onClose }: Props) {
         name: name.trim(),
         icon,
         description: description.trim() || undefined,
+        groupBy: groupBy || board.groupBy,
       };
       const savedBoard = await provider.saveBoard(updatedBoard);
       setBoard(savedBoard);
 
-      const groupByField = fields.find((f) => f.id === board.groupBy);
+      const targetGroupBy = groupBy || board.groupBy;
+      const groupByField = fields.find((f) => f.id === targetGroupBy);
       if (groupByField) {
         const updatedField = { ...groupByField, options: columns };
         const savedField = await provider.saveField(updatedField);
@@ -110,7 +164,8 @@ export function EditBoardModal({ open, onClose }: Props) {
 
   if (!board) return null;
 
-  const groupByLabel = fields.find((f) => f.id === board.groupBy)?.label ?? board.groupBy;
+  const activeGroupByField = fields.find((f) => f.id === (groupBy || board.groupBy));
+  const groupByLabel = activeGroupByField?.label ?? groupBy ?? board.groupBy;
 
   return (
     <>
@@ -168,57 +223,123 @@ export function EditBoardModal({ open, onClose }: Props) {
               </div>
             </section>
 
-            {/* Columns management */}
+            {/* Group by field selector */}
             <section className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Colunas ({groupByLabel})
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Columns3 className="h-3.5 w-3.5" />
+                Agrupamento (colunas do board)
               </h3>
 
-              <div className="space-y-2">
-                {columns.map((col) => {
-                  const count = cardsInColumn(col);
-                  return (
-                    <div
-                      key={col}
-                      className="flex items-center justify-between px-3 py-2 rounded-lg bg-surface border border-border"
-                    >
-                      <span className="text-sm">{col}</span>
-                      <div className="flex items-center gap-2">
-                        {count > 0 && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                            {count} card{count !== 1 ? "s" : ""}
-                          </span>
-                        )}
-                        <button
-                          onClick={() => requestRemoveColumn(col)}
-                          className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-danger hover:bg-danger/10 transition"
-                          aria-label={`Remover coluna ${col}`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {groupableFields.length === 0 ? (
+                <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
+                  Nenhum campo com opções definidas. Adicione campos do tipo Seleção, Chip ou Multi-seleção para criar colunas.
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Campo de agrupamento</label>
+                  <select
+                    value={groupBy}
+                    onChange={(e) => handleGroupByChange(e.target.value)}
+                    className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                  >
+                    <option value="">— sem agrupamento (lista) —</option>
+                    {groupableFields.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </section>
 
-              <div className="flex gap-2">
-                <input
-                  value={newColumn}
-                  onChange={(e) => setNewColumn(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && addColumn()}
-                  placeholder="Nova coluna…"
-                  className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-                />
-                <button
-                  onClick={addColumn}
-                  disabled={!newColumn.trim() || columns.includes(newColumn.trim())}
-                  className="px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-40"
-                  aria-label="Adicionar coluna"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
+            {/* Columns management (only shown when a groupBy field is selected) */}
+            {groupBy && (
+              <section className="space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Colunas ({groupByLabel})
+                </h3>
+
+                <div className="space-y-2">
+                  {columns.map((col) => {
+                    const count = cardsInColumn(col);
+                    return (
+                      <div
+                        key={col}
+                        className="flex items-center justify-between px-3 py-2 rounded-lg bg-surface border border-border"
+                      >
+                        <span className="text-sm">{col}</span>
+                        <div className="flex items-center gap-2">
+                          {count > 0 && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                              {count} card{count !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => requestRemoveColumn(col)}
+                            className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-danger hover:bg-danger/10 transition"
+                            aria-label={`Remover coluna ${col}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    value={newColumn}
+                    onChange={(e) => setNewColumn(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addColumn()}
+                    placeholder="Nova coluna…"
+                    className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                  />
+                  <button
+                    onClick={addColumn}
+                    disabled={!newColumn.trim() || columns.includes(newColumn.trim())}
+                    className="px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-40"
+                    aria-label="Adicionar coluna"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </section>
+            )}
+
+            {/* Existing fields */}
+            <section className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Campos do board
+              </h3>
+              {fields.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhum campo configurado.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {fields
+                    .slice()
+                    .sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99))
+                    .map((f) => {
+                      const Icon = FIELD_TYPE_ICONS[f.type] ?? Type;
+                      return (
+                        <div
+                          key={f.id}
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-surface border border-border"
+                        >
+                          <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-sm flex-1 truncate">{f.label}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+                            {FIELD_TYPE_LABELS[f.type] ?? f.type}
+                          </span>
+                          {f.required && (
+                            <span className="text-[10px] text-primary font-medium shrink-0">obrigatório</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
             </section>
           </div>
 
