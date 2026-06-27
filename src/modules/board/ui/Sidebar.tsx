@@ -10,19 +10,19 @@ import {
   Monitor,
   X,
   ChevronLeft,
-  LayoutGrid,
 } from "lucide-react";
 import { useBoardStore } from "@/modules/board/store";
 import { useThemeStore, type ThemeMode } from "@/modules/settings/themeStore";
 import { isMockMode } from "@/shared/providers/providerFactory";
 import { getIcon } from "@/shared/icons/iconRegistry";
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 interface Props {
   connectionId: string;
 }
 
-export function Sidebar({ connectionId }: Props) {
+function SidebarContent({ connectionId }: Props) {
   const board = useBoardStore((s) => s.board);
   const cards = useBoardStore((s) => s.cards);
   const fields = useBoardStore((s) => s.fields);
@@ -43,7 +43,7 @@ export function Sidebar({ connectionId }: Props) {
   const backTo = isMock ? "/" : `/s/${connectionId}`;
 
   return (
-    <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <>
       <div className="p-4 border-b border-sidebar-border space-y-1">
         <Link
           to={backTo}
@@ -110,7 +110,7 @@ export function Sidebar({ connectionId }: Props) {
                     key={t}
                     onClick={() => toggleFilterTag(t)}
                     className={cn(
-                      "px-2 py-0.5 rounded-md text-[11px] font-medium border transition",
+                      "px-2.5 py-1 rounded-md text-xs font-medium border transition",
                       active
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-surface text-muted-foreground border-border hover:border-primary/40",
@@ -158,9 +158,32 @@ export function Sidebar({ connectionId }: Props) {
           MetaBoard · planilha como banco de dados
         </div>
       </div>
+    </>
+  );
+}
+
+export function Sidebar({ connectionId }: Props) {
+  return (
+    <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+      <SidebarContent connectionId={connectionId} />
     </aside>
   );
 }
 
-// silence unused import warning
-void LayoutGrid;
+interface MobileSidebarProps extends Props {
+  open: boolean;
+  onClose: () => void;
+}
+
+export function MobileSidebar({ connectionId, open, onClose }: MobileSidebarProps) {
+  return (
+    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent
+        side="left"
+        className="p-0 w-[280px] flex flex-col bg-sidebar text-sidebar-foreground border-sidebar-border"
+      >
+        <SidebarContent connectionId={connectionId} />
+      </SheetContent>
+    </Sheet>
+  );
+}
