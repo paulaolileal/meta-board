@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   X, Trash2, Calendar, Link as LinkIcon,
@@ -283,10 +283,18 @@ export function CardDrawer() {
 
   const card = cards.find((c) => c._id === openCardId) ?? null;
   const [draft, setDraft] = useState<CardRecord | null>(card);
+  const isDirtyRef = useRef(false);
 
   useEffect(() => {
+    isDirtyRef.current = false;
     setDraft(card);
   }, [card?._id]);
+
+  useEffect(() => {
+    if (!isDirtyRef.current && card) {
+      setDraft(card);
+    }
+  }, [card]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -305,6 +313,7 @@ export function CardDrawer() {
 
   function patch<K extends string>(key: K, v: unknown) {
     if (!draft) return;
+    isDirtyRef.current = true;
     const next = { ...draft, [key]: v } as CardRecord;
     setDraft(next);
     updateCard(next);
