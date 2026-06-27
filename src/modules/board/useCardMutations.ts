@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
-import { getSheetProvider, isMockMode } from "@/shared/providers/providerFactory";
+import { getSheetProvider, isMockMode, envSpreadsheetId } from "@/shared/providers/providerFactory";
+import { ENV_CONNECTION_ID } from "@/routes/HomePage";
 import { useBoardStore } from "@/modules/board/store";
 import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
 import type { CardRecord } from "@/modules/project/domain/types";
@@ -20,6 +21,7 @@ export function useCardMutations() {
 
   const sheetId = useMemo(() => {
     if (isMockMode()) return MOCK_SHEET_ID;
+    if (connectionId === ENV_CONNECTION_ID) return envSpreadsheetId ?? "";
     return connections.find((c) => c.id === connectionId)?.sheetId ?? "";
   }, [connectionId, connections]);
 

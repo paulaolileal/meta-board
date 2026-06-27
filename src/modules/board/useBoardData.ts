@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getSheetProvider, isMockMode } from "@/shared/providers/providerFactory";
+import { getSheetProvider, isMockMode, envSpreadsheetId } from "@/shared/providers/providerFactory";
+import { ENV_CONNECTION_ID } from "@/routes/HomePage";
 import { useBoardStore } from "@/modules/board/store";
 import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
 import { cacheGet, cacheSet } from "@/shared/cache/localCache";
@@ -13,7 +14,9 @@ export function useBoardData(connectionId: string, boardId: string) {
 
   const sheetId = isMockMode()
     ? MOCK_SHEET_ID
-    : (connections.find((c) => c.id === connectionId)?.sheetId ?? "");
+    : connectionId === ENV_CONNECTION_ID
+      ? (envSpreadsheetId ?? "")
+      : (connections.find((c) => c.id === connectionId)?.sheetId ?? "");
 
   const cacheKey = `board:${connectionId}:${boardId}`;
 

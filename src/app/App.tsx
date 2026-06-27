@@ -1,8 +1,17 @@
-import { Routes, Route } from "react-router-dom";
+import type { ReactNode } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { HomePage } from "@/routes/HomePage";
 import { SpreadsheetPage } from "@/routes/SpreadsheetPage";
 import { BoardPage } from "@/routes/BoardPage";
 import { Link } from "react-router-dom";
+import { isMockMode, googleAuthService } from "@/shared/providers/providerFactory";
+
+function ProtectedRoute({ children }: { children: ReactNode }) {
+  if (!isMockMode() && !googleAuthService.isAuthenticated()) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
 
 function NotFound() {
   return (
@@ -22,8 +31,8 @@ export function AppRouter() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
-      <Route path="/s/:connectionId" element={<SpreadsheetPage />} />
-      <Route path="/s/:connectionId/b/:boardId" element={<BoardPage />} />
+      <Route path="/s/:connectionId" element={<ProtectedRoute><SpreadsheetPage /></ProtectedRoute>} />
+      <Route path="/s/:connectionId/b/:boardId" element={<ProtectedRoute><BoardPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

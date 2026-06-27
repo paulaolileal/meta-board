@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Plus, LogIn, LogOut, Loader2 } from "lucide-react";
+import { Sparkles, Plus, LogOut, Loader2, LogIn } from "lucide-react";
 import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
-import { isMockMode, googleAuthService } from "@/shared/providers/providerFactory";
+import { isMockMode, googleAuthService, envSpreadsheetId } from "@/shared/providers/providerFactory";
 import type { SpreadsheetConnection } from "@/modules/project/domain/types";
 import { SpreadsheetList } from "@/modules/project/ui/SpreadsheetList";
 import { ConnectSheetModal } from "@/modules/project/ui/ConnectSheetModal";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 const MOCK_CONNECTION_ID = "mock";
+export const ENV_CONNECTION_ID = "env";
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -18,8 +19,13 @@ export function HomePage() {
   const [connectOpen, setConnectOpen] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const mock = isMockMode();
+  const isAuthenticated = mock || googleAuthService.isAuthenticated();
 
-  const isAuthenticated = !mock && googleAuthService.isAuthenticated();
+  useEffect(() => {
+    if (isAuthenticated && envSpreadsheetId) {
+      navigate(`/s/${ENV_CONNECTION_ID}`, { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   async function handleSignIn() {
     setIsSigningIn(true);
@@ -42,6 +48,10 @@ export function HomePage() {
     navigate(`/s/${MOCK_CONNECTION_ID}/b/${boardId}`);
   }
 
+  if (!mock && !isAuthenticated) {
+    return <LoginPage onSignIn={handleSignIn} isSigningIn={isSigningIn} />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <div className="absolute inset-0 -z-10 pointer-events-none">
@@ -52,38 +62,20 @@ export function HomePage() {
       <header className="px-6 py-5 flex items-center justify-between border-b border-border/50">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center text-lg shadow-[var(--shadow-glow)]">
-            ���
+            📋
           </div>
           <span className="font-semibold text-lg">MetaBoard</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          {!mock && (
-            <>
-              {isAuthenticated ? (
-                <button
-                  onClick={handleSignOut}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg border border-border hover:bg-accent transition"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sair
-                </button>
-              ) : (
-                <button
-                  onClick={handleSignIn}
-                  disabled={isSigningIn}
-                  className={cn(
-                    "inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground font-medium shadow-[var(--shadow-glow)] hover:opacity-90 transition",
-                    isSigningIn && "opacity-70 cursor-not-allowed",
-                  )}
-                >
-                  {isSigningIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
-                  {isSigningIn ? "Conectando…" : "Entrar com Google"}
-                </button>
-              )}
-            </>
-          )}
-        </div>
+        {!mock && (
+          <button
+            onClick={handleSignOut}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg border border-border hover:bg-accent transition"
+          >
+            <LogOut className="h-4 w-4" />
+            Sair
+          </button>
+        )}
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-12">
@@ -111,6 +103,53 @@ export function HomePage() {
           navigate(`/s/${conn.id}`);
         }}
       />
+    </div>
+  );
+}
+
+function LoginPage({ onSignIn, isSigningIn }: { onSignIn: () => void; isSigningIn: boolean }) {
+  return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+      <div className="absolute inset-0 -z-10 pointer-events-none">
+        <div className="absolute top-1/4 -left-20 w-[500px] h-[500px] rounded-full bg-primary/10 blur-[120px]" />
+        <div className="absolute bottom-1/4 right-0 w-[500px] h-[500px] rounded-full bg-primary-glow/8 blur-[140px]" />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-sm text-center"
+      >
+        <div className="flex justify-center mb-6">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center text-3xl shadow-[var(--shadow-glow)]">
+            📋
+          </div>
+        </div>
+
+        <h1 className="text-3xl font-bold tracking-tight mb-2">MetaBoard</h1>
+        <p className="text-muted-foreground mb-8">
+          Gerencie seus projetos direto no Google Sheets.
+        </p>
+
+        <button
+          onClick={onSignIn}
+          disabled={isSigningIn}
+          className={cn(
+            "w-full inline-flex items-center justify-center gap-3 px-6 py-3 rounded-xl",
+            "bg-primary text-primary-foreground font-medium text-sm",
+            "shadow-[var(--shadow-glow)] hover:opacity-90 transition",
+            isSigningIn && "opacity-70 cursor-not-allowed",
+          )}
+        >
+          {isSigningIn ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <LogIn className="h-5 w-5" />
+          )}
+          {isSigningIn ? "Conectando…" : "Entrar com Google"}
+        </button>
+      </motion.div>
     </div>
   );
 }

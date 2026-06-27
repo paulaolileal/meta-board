@@ -3,7 +3,8 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Plus, Loader2, AlertCircle } from "lucide-react";
 import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
-import { getSheetProvider, isMockMode } from "@/shared/providers/providerFactory";
+import { getSheetProvider, isMockMode, envSpreadsheetId } from "@/shared/providers/providerFactory";
+import { ENV_CONNECTION_ID } from "@/routes/HomePage";
 import type { BoardConfig } from "@/modules/project/domain/types";
 import { CreateBoardModal } from "@/modules/project/ui/CreateBoardModal";
 import { cn } from "@/lib/utils";
@@ -22,8 +23,13 @@ export function SpreadsheetPage() {
   const [createOpen, setCreateOpen] = useState(false);
 
   const mock = isMockMode() || connectionId === MOCK_CONNECTION_ID;
+  const isEnvConnection = connectionId === ENV_CONNECTION_ID;
   const connection = connections.find((c) => c.id === connectionId);
-  const sheetId = mock ? MOCK_SHEET_ID : (connection?.sheetId ?? "");
+  const sheetId = mock
+    ? MOCK_SHEET_ID
+    : isEnvConnection
+      ? (envSpreadsheetId ?? "")
+      : (connection?.sheetId ?? "");
 
   useEffect(() => {
     if (!connectionId) return;
@@ -47,7 +53,11 @@ export function SpreadsheetPage() {
     navigate(`/s/${connectionId}/b/${board.id}`);
   }
 
-  const title = mock ? "Boards de exemplo" : (connection?.name ?? "Planilha");
+  const title = mock
+    ? "Boards de exemplo"
+    : isEnvConnection
+      ? "Minha Planilha"
+      : (connection?.name ?? "Planilha");
 
   return (
     <div className="min-h-screen bg-background">
