@@ -107,12 +107,24 @@ export function FieldEditor({
       );
     case "image":
       return (
-        <input
-          value={value ?? ""}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="URL da imagem"
-          className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm"
-        />
+        <div className="flex flex-col gap-2">
+          <input
+            value={value ?? ""}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="URL da imagem"
+            className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm"
+          />
+          {value && (
+            <img
+              src={value}
+              alt="Preview"
+              className="w-full max-h-48 object-contain rounded-lg border border-border bg-surface"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
+          )}
+        </div>
       );
     case "select":
     case "chip":
