@@ -17,6 +17,7 @@ import { useBoardStore } from "@/modules/board/store";
 import { useCardMutations } from "@/modules/board/useCardMutations";
 import { CardItem } from "./CardItem";
 import { CardDrawer } from "./CardDrawer";
+import { CreateCardModal } from "./CreateCardModal";
 import type { CardRecord } from "@/modules/project/domain/types";
 import { cn } from "@/lib/utils";
 
@@ -40,7 +41,7 @@ function Column({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col w-[300px] shrink-0 rounded-2xl bg-surface/60 border border-border p-3 gap-3 max-h-full",
+        "flex flex-col w-[300px] xl:w-[340px] 2xl:w-[380px] shrink-0 rounded-2xl bg-surface/60 border border-border p-3 gap-3 max-h-full",
         isOver && "ring-2 ring-primary/40 bg-surface"
       )}
     >
@@ -91,8 +92,9 @@ export function KanbanBoard() {
   const search = useBoardStore((s) => s.search);
   const filterTags = useBoardStore((s) => s.filterTags);
   const openCard = useBoardStore((s) => s.openCard);
-  const { persistReorder, createCard, updateCard } = useCardMutations();
+  const { persistReorder, updateCard } = useCardMutations();
   const [active, setActive] = useState<CardRecord | null>(null);
+  const [pendingGroupValue, setPendingGroupValue] = useState<string | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -184,7 +186,7 @@ export function KanbanBoard() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto scrollbar-thin h-full p-6 pt-4">
+        <div className="flex gap-4 xl:gap-5 2xl:gap-6 overflow-x-auto scrollbar-thin h-full p-4 md:p-6 xl:p-8">
           {groups.map((g) => (
             <Column
               key={g}
@@ -192,7 +194,7 @@ export function KanbanBoard() {
               cards={byGroup.get(g) ?? []}
               layout={layout}
               onOpen={openCard}
-              onAdd={() => createCard({ [groupField]: g, title: "Novo card" } as Partial<CardRecord>)}
+              onAdd={() => setPendingGroupValue(g)}
             />
           ))}
         </div>
@@ -207,6 +209,13 @@ export function KanbanBoard() {
         </DragOverlay>
       </DndContext>
       <CardDrawer />
+      <CreateCardModal
+        open={pendingGroupValue !== null}
+        onClose={() => setPendingGroupValue(null)}
+        initialValues={
+          pendingGroupValue !== null ? { [groupField]: pendingGroupValue } : {}
+        }
+      />
     </>
   );
 }

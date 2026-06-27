@@ -7,7 +7,7 @@ import { FieldRenderer } from "@/modules/fields/FieldRenderer";
 import type { CardRecord, FieldDef, ChecklistItem } from "@/modules/project/domain/types";
 import { cn } from "@/lib/utils";
 
-function FieldEditor({
+export function FieldEditor({
   field,
   value,
   onChange,

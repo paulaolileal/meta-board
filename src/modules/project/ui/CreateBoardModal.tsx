@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,12 +20,18 @@ interface Props {
 
 const EMOJIS = ["📋", "🚀", "✨", "📣", "🎯", "🛠️", "📊", "🔥", "💡", "🌟"];
 
+const DEFAULT_CLOSED_LAYOUT = ["cover_image", "title", "status", "priority", "due_date", "checklist"];
+
 export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("📋");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showFields, setShowFields] = useState(false);
+  const [selectedFieldIds, setSelectedFieldIds] = useState<string[]>(
+    () => DEFAULT_BOARD_FIELDS.map((f) => f.id),
+  );
 
   async function handleCreate() {
     if (!name.trim()) { setError("Nome é obrigatório"); return; }
@@ -44,10 +50,13 @@ export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
         await provider.initializeSpreadsheet();
       }
 
-      const fields: FieldDef[] = DEFAULT_BOARD_FIELDS.map((f) => ({
-        ...f,
-        boardId: "",
-      }));
+      const fields: FieldDef[] = DEFAULT_BOARD_FIELDS.filter((f) =>
+        selectedFieldIds.includes(f.id),
+      ).map((f) => ({ ...f, boardId: "" }));
+
+      const cardClosedLayout = DEFAULT_CLOSED_LAYOUT.filter((id) =>
+        selectedFieldIds.includes(id),
+      );
 
       const board = await provider.createBoard(
         {
@@ -58,7 +67,7 @@ export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
           orderBy: "_sort",
           cardTitleField: "title",
           cardDescriptionField: "description",
-          cardClosedLayout: ["cover_image", "title", "status", "priority", "due_date", "checklist"],
+          cardClosedLayout,
           cardOpenLayout: "*",
         },
         fields,
@@ -68,6 +77,8 @@ export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
       setName("");
       setDescription("");
       setIcon("📋");
+      setSelectedFieldIds(DEFAULT_BOARD_FIELDS.map((f) => f.id));
+      setShowFields(false);
     } catch (e) {
       setError((e as Error)?.message ?? "Erro ao criar board");
     } finally {
@@ -124,6 +135,55 @@ export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
               placeholder="Opcional"
               className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring/40"
             />
+          </div>
+
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowFields((v) => !v)}
+              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition"
+            >
+              {showFields ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              Personalizar campos
+            </button>
+
+            {showFields && (
+              <div className="mt-3 space-y-2 pl-1">
+                {DEFAULT_BOARD_FIELDS.map((f) => {
+                  const selected = selectedFieldIds.includes(f.id);
+                  const required = f.required === true;
+                  return (
+                    <label
+                      key={f.id}
+                      className="flex items-center gap-2.5 cursor-pointer group"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        disabled={required}
+                        onChange={(e) => {
+                          setSelectedFieldIds((prev) =>
+                            e.target.checked
+                              ? [...prev, f.id]
+                              : prev.filter((x) => x !== f.id),
+                          );
+                        }}
+                        className="h-4 w-4 accent-[var(--primary)] disabled:opacity-50"
+                      />
+                      <span className={`text-sm ${!selected ? "text-muted-foreground" : ""}`}>
+                        {f.label}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                        {f.type}
+                      </span>
+                      {required && (
+                        <span className="text-[10px] text-danger">obrigatório</span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {error && <p className="text-xs text-danger">{error}</p>}

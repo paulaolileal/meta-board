@@ -13,6 +13,8 @@ interface BoardState {
   hydrated: boolean;
 
   setAll: (board: BoardConfig, fields: FieldDef[], cards: CardRecord[], connectionId: string, boardId: string) => void;
+  setBoard: (board: BoardConfig) => void;
+  setFields: (fields: FieldDef[]) => void;
   setSearch: (q: string) => void;
   toggleFilterTag: (t: string) => void;
   clearFilters: () => void;
@@ -35,6 +37,10 @@ export const useBoardStore = create<BoardState>((set) => ({
 
   setAll: (board, fields, cards, connectionId, boardId) =>
     set({ board, fields, cards, connectionId, boardId, hydrated: true }),
+
+  setBoard: (board) => set({ board }),
+
+  setFields: (fields) => set({ fields }),
 
   setSearch: (search) => set({ search }),
 

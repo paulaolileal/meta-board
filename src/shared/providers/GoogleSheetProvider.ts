@@ -155,6 +155,31 @@ export class GoogleSheetProvider implements ISheetProvider {
     await this.api.setValues(this.sheetId, `_cards!${colLetter(archivedIndex + 1)}${sheetRow}`, [["true"]]);
   }
 
+  async saveBoard(board: BoardConfig): Promise<BoardConfig> {
+    const values = await this.api.getValues(this.sheetId, "_boards");
+    if (values.length < 2) throw new Error("Aba _boards não encontrada");
+    const [headers, ...rows] = values;
+    const rowIndex = rows.findIndex((row) => row[0] === board.id);
+    if (rowIndex < 0) throw new Error(`Board ${board.id} não encontrado`);
+    const updated = { ...board, updatedAt: now() };
+    const newRow = this.boardConfigToRow(updated);
+    const sheetRow = rowIndex + 2;
+    await this.api.setValues(this.sheetId, `_boards!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`, [newRow]);
+    return updated;
+  }
+
+  async saveField(field: FieldDef): Promise<FieldDef> {
+    const values = await this.api.getValues(this.sheetId, "_fields");
+    if (values.length < 2) throw new Error("Aba _fields não encontrada");
+    const [headers, ...rows] = values;
+    const rowIndex = rows.findIndex((row) => row[0] === field.id && row[1] === field.boardId);
+    if (rowIndex < 0) throw new Error(`Campo ${field.id} não encontrado`);
+    const newRow = this.fieldDefToRow(field);
+    const sheetRow = rowIndex + 2;
+    await this.api.setValues(this.sheetId, `_fields!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`, [newRow]);
+    return field;
+  }
+
   async sync(): Promise<void> {
     // Writes are synchronous per-operation; no batch buffer needed yet
   }

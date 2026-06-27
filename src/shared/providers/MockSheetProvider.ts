@@ -195,6 +195,23 @@ export class MockSheetProvider implements ISheetProvider {
     if (idx >= 0) this.cards[idx] = { ...this.cards[idx], _archived: true };
   }
 
+  async saveBoard(board: BoardConfig): Promise<BoardConfig> {
+    await this.delay(80);
+    const idx = this.boards.findIndex((b) => b.id === board.id);
+    if (idx < 0) throw new Error(`Board ${board.id} não encontrado`);
+    const updated = { ...board, updatedAt: now() };
+    this.boards[idx] = updated;
+    return updated;
+  }
+
+  async saveField(field: FieldDef): Promise<FieldDef> {
+    await this.delay(80);
+    const idx = this.fields.findIndex((f) => f.id === field.id && f.boardId === field.boardId);
+    if (idx < 0) throw new Error(`Campo ${field.id} não encontrado`);
+    this.fields[idx] = { ...field };
+    return field;
+  }
+
   async sync(): Promise<void> {
     // noop in mock
   }

@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useBoardData } from "@/modules/board/useBoardData";
 import { useBoardStore } from "@/modules/board/store";
 import { Sidebar } from "@/modules/board/ui/Sidebar";
 import { KanbanBoard } from "@/modules/board/ui/KanbanBoard";
-import { Loader2 } from "lucide-react";
+import { EditBoardModal } from "@/modules/board/ui/EditBoardModal";
+import { Loader2, Settings } from "lucide-react";
 
 export function BoardPage() {
   const { connectionId, boardId } = useParams<{ connectionId: string; boardId: string }>();
@@ -11,6 +13,7 @@ export function BoardPage() {
   const { isLoading, isError, error } = useBoardData(connectionId!, boardId!);
   const hydrated = useBoardStore((s) => s.hydrated);
   const board = useBoardStore((s) => s.board);
+  const [editOpen, setEditOpen] = useState(false);
 
   return (
     <div className="h-screen w-full flex bg-background overflow-hidden">
@@ -29,6 +32,16 @@ export function BoardPage() {
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> sincronizando…
             </div>
           )}
+          {board && (
+            <button
+              onClick={() => setEditOpen(true)}
+              className="ml-auto h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition"
+              aria-label="Editar board"
+              title="Editar board"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          )}
         </header>
 
         <div className="flex-1 min-h-0 overflow-hidden">
@@ -41,6 +54,7 @@ export function BoardPage() {
           )}
         </div>
       </div>
+      <EditBoardModal open={editOpen} onClose={() => setEditOpen(false)} />
     </div>
   );
 }
