@@ -58,6 +58,7 @@ export function FieldRenderer({ field, value, mode }: RenderProps) {
         </p>
       );
     case "number":
+    case "longnumber":
       return <span className="tabular-nums">{asString(value) || "—"}</span>;
     case "bool":
       return value ? (
@@ -103,7 +104,7 @@ export function FieldRenderer({ field, value, mode }: RenderProps) {
           <img
             src={s}
             alt=""
-            className="w-full object-contain rounded-t-2xl max-h-56 bg-muted/30"
+            className="w-full h-40 object-cover rounded-t-2xl bg-muted/30"
             loading="lazy"
           />
         );

@@ -2,6 +2,7 @@ export type FieldType =
   | "text"
   | "longtext"
   | "number"
+  | "longnumber"
   | "bool"
   | "date"
   | "datetime"

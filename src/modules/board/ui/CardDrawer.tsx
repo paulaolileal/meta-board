@@ -1,11 +1,35 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Trash2, Calendar, Link as LinkIcon } from "lucide-react";
+import {
+  X, Trash2, Calendar, Link as LinkIcon,
+  Type, AlignLeft, Hash, ToggleLeft, CalendarClock,
+  Image, Smile, Tag, ChevronDown, List, ListChecks, Mail, Palette,
+  type LucideIcon,
+} from "lucide-react";
 import { useBoardStore } from "@/modules/board/store";
 import { useCardMutations } from "@/modules/board/useCardMutations";
 import { FieldRenderer } from "@/modules/fields/FieldRenderer";
-import type { CardRecord, FieldDef, ChecklistItem } from "@/modules/project/domain/types";
+import type { CardRecord, FieldDef, ChecklistItem, FieldType } from "@/modules/project/domain/types";
 import { cn } from "@/lib/utils";
+
+const FIELD_TYPE_ICONS: Partial<Record<FieldType, LucideIcon>> = {
+  text: Type,
+  longtext: AlignLeft,
+  number: Hash,
+  longnumber: Hash,
+  bool: ToggleLeft,
+  date: Calendar,
+  datetime: CalendarClock,
+  url: LinkIcon,
+  image: Image,
+  icon: Smile,
+  chip: Tag,
+  select: ChevronDown,
+  multiselect: List,
+  checklist: ListChecks,
+  email: Mail,
+  color: Palette,
+};
 
 export function FieldEditor({
   field,
@@ -35,6 +59,7 @@ export function FieldEditor({
         />
       );
     case "number":
+    case "longnumber":
       return (
         <input
           type="number"
@@ -106,7 +131,7 @@ export function FieldEditor({
               onClick={() => onChange(opt)}
               className={cn(
                 "px-2.5 py-1 rounded-lg text-xs font-medium border transition",
-                value === opt
+                String(value) === opt
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-surface border-border hover:border-primary/40"
               )}
@@ -305,9 +330,11 @@ export function CardDrawer() {
                   .map((id) => {
                     const f = fields.find((x) => x.id === id);
                     if (!f || f.visible === false) return null;
+                    const FieldIcon = FIELD_TYPE_ICONS[f.type];
                     return (
                       <div key={id} className="space-y-1.5">
-                        <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                        <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                          {FieldIcon && <FieldIcon className="h-3 w-3 shrink-0" />}
                           {f.label}
                         </label>
                         {f.editable === false ? (
