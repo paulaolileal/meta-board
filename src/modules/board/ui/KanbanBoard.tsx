@@ -61,7 +61,7 @@ function Column({
         </button>
       </div>
 
-      <div className="flex flex-col gap-2 overflow-y-auto scrollbar-thin pr-1 min-h-[40px]">
+      <div className="flex flex-col gap-2 overflow-y-auto scrollbar-thin pr-1 flex-1 min-h-0">
         <SortableContext items={cards.map((c) => c._id)} strategy={verticalListSortingStrategy}>
           <AnimatePresence initial={false}>
             {cards.map((card) => (
