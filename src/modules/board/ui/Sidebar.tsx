@@ -16,7 +16,7 @@ import { useThemeStore, type ThemeMode } from "@/modules/settings/themeStore";
 import { isMockMode } from "@/shared/providers/providerFactory";
 import { getIcon } from "@/shared/icons/iconRegistry";
 import { cn } from "@/lib/utils";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 interface Props {
   connectionId: string;
@@ -180,8 +180,9 @@ export function MobileSidebar({ connectionId, open, onClose }: MobileSidebarProp
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
       <SheetContent
         side="left"
-        className="p-0 w-[280px] flex flex-col bg-sidebar text-sidebar-foreground border-sidebar-border"
+        className="p-0 w-[280px] flex flex-col bg-sidebar text-sidebar-foreground border-sidebar-border [&>button:first-child]:hidden"
       >
+        <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
         <SidebarContent connectionId={connectionId} />
       </SheetContent>
     </Sheet>

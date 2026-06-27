@@ -3,6 +3,7 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  TouchSensor,
   pointerWithin,
   closestCorners,
   useSensor,
@@ -43,7 +44,7 @@ function Column({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col w-[300px] xl:w-[340px] 2xl:w-[380px] shrink-0 rounded-2xl bg-surface/60 border border-border p-3 gap-3 h-full",
+        "flex flex-col w-[260px] sm:w-[280px] lg:w-[300px] xl:w-[340px] 2xl:w-[380px] shrink-0 rounded-2xl bg-surface/60 border border-border p-3 gap-3 h-full",
         isOver && "ring-2 ring-primary/40 bg-surface"
       )}
     >
@@ -56,7 +57,7 @@ function Column({
         </div>
         <button
           onClick={onAdd}
-          className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition"
+          className="h-9 w-9 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition"
           aria-label="Adicionar card"
         >
           <Plus className="h-4 w-4" />
@@ -103,7 +104,10 @@ export function KanbanBoard() {
   const [active, setActive] = useState<CardRecord | null>(null);
   const [pendingGroupValue, setPendingGroupValue] = useState<string | null>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+  );
 
   const groupField = project?.groupBy ?? "status";
   const groups: string[] = useMemo(() => {

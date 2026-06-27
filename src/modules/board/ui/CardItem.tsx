@@ -87,7 +87,7 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
           {hasCollapsible && (
             <button
               onClick={handleToggle}
-              className="shrink-0 mt-0.5 h-4 w-4 rounded flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
+              className="shrink-0 mt-0.5 h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
               aria-label={collapsed ? "Expandir card" : "Colapsar card"}
             >
               {collapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
@@ -105,7 +105,7 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
               transition={{ duration: 0.16 }}
               className="overflow-hidden"
             >
-              <div className="grid grid-cols-3 gap-x-2 gap-y-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2">
                 {bodyIds.map((id) => {
                   const f = fieldMap.get(id);
                   if (!f) return null;
@@ -113,7 +113,7 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
                   if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) return null;
                   const isWide = WIDE_FIELD_TYPES.has(f.type);
                   return (
-                    <div key={id} className={isWide ? "col-span-3" : "col-span-1"}>
+                    <div key={id} className={isWide ? "col-span-2 sm:col-span-3" : "col-span-1"}>
                       <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground block mb-0.5">
                         {f.label}
                       </span>

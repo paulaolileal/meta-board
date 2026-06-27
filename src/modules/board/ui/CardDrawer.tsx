@@ -354,7 +354,7 @@ export function CardDrawer() {
                     const copy = await createCard(rest);
                     if (copy) close(copy._id);
                   }}
-                  className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent"
+                  className="h-10 w-10 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent"
                   aria-label="Duplicar"
                 >
                   <Copy className="h-4 w-4" />
@@ -364,14 +364,14 @@ export function CardDrawer() {
                     deleteCard(draft._id);
                     close(null);
                   }}
-                  className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-danger hover:bg-danger/10"
+                  className="h-10 w-10 rounded-md flex items-center justify-center text-muted-foreground hover:text-danger hover:bg-danger/10"
                   aria-label="Excluir"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => close(null)}
-                  className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent"
+                  className="h-10 w-10 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent"
                   aria-label="Fechar"
                 >
                   <X className="h-4 w-4" />
@@ -381,10 +381,10 @@ export function CardDrawer() {
 
             <div className="flex-1 overflow-y-auto scrollbar-thin">
               {cover && (
-                <img src={cover} alt="" className="w-full h-48 object-cover" />
+                <img src={cover} alt="" className="w-full h-32 sm:h-48 object-cover" />
               )}
 
-              <div className="p-6 space-y-5">
+              <div className="p-4 sm:p-6 space-y-5">
                 <input
                   value={(draft["title"] as string) ?? ""}
                   onChange={(e) => patch("title", e.target.value)}
