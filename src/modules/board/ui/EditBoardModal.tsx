@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Trash2, AlertTriangle, Columns3, Tag, AlignLeft, Hash, ToggleLeft, Calendar, Link, Image, Smile, ListFilter, List, ListChecks, Mail, Palette, Type, CalendarClock } from "lucide-react";
+import { Loader2, Plus, ChevronDown, ChevronUp, X, Columns3, Tag, AlignLeft, Hash, ToggleLeft, Calendar, Link, Image, Smile, ListFilter, List, ListChecks, Mail, Palette, Type, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 import type { FieldDef, FieldType } from "@/modules/project/domain/types";
 import {
@@ -16,6 +16,7 @@ import { ENV_CONNECTION_ID } from "@/routes/HomePage";
 
 const MOCK_SHEET_ID = "mock";
 const EMOJIS = ["📋", "🚀", "✨", "📣", "🎯", "🛠️", "📊", "🔥", "💡", "🌟"];
+const SELECT_TYPES: FieldType[] = ["select", "chip", "multiselect"];
 
 const FIELD_TYPE_ORDER: FieldType[] = [
   "text", "longtext", "number", "bool", "date", "datetime",
@@ -75,7 +76,6 @@ interface Props {
 export function EditBoardModal({ open, onClose }: Props) {
   const board = useBoardStore((s) => s.board);
   const fields = useBoardStore((s) => s.fields);
-  const cards = useBoardStore((s) => s.cards);
   const setBoard = useBoardStore((s) => s.setBoard);
   const setFields = useBoardStore((s) => s.setFields);
   const connectionId = useBoardStore((s) => s.connectionId);
@@ -85,16 +85,16 @@ export function EditBoardModal({ open, onClose }: Props) {
   const [icon, setIcon] = useState("📋");
   const [description, setDescription] = useState("");
   const [groupBy, setGroupBy] = useState("");
-  const [columns, setColumns] = useState<string[]>([]);
-  const [newColumn, setNewColumn] = useState("");
   const [loading, setLoading] = useState(false);
-  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [newFieldName, setNewFieldName] = useState("");
   const [newFieldType, setNewFieldType] = useState<FieldType>("text");
   const [addingField, setAddingField] = useState(false);
+  const [expandedFieldId, setExpandedFieldId] = useState<string | null>(null);
+  const [fieldOptionsMap, setFieldOptionsMap] = useState<Record<string, string[]>>({});
+  const [newOptionByField, setNewOptionByField] = useState<Record<string, string>>({});
 
   const groupableFields = useMemo(
-    () => fields.filter((f) => f.options && f.options.length > 0),
+    () => fields.filter((f) => SELECT_TYPES.includes(f.type)),
     [fields],
   );
 
@@ -112,39 +112,29 @@ export function EditBoardModal({ open, onClose }: Props) {
       setIcon(board.icon);
       setDescription(board.description ?? "");
       setGroupBy(board.groupBy ?? "");
-      const groupByField = fields.find((f) => f.id === board.groupBy);
-      setColumns(groupByField?.options ?? []);
-      setNewColumn("");
+      setExpandedFieldId(null);
+      setFieldOptionsMap({});
+      setNewOptionByField({});
     }
-  }, [open, board, fields]);
+  }, [open, board]);
 
-  function handleGroupByChange(fieldId: string) {
-    setGroupBy(fieldId);
-    const field = fields.find((f) => f.id === fieldId);
-    setColumns(field?.options ?? []);
-    setNewColumn("");
+  function getFieldOptions(fieldId: string): string[] {
+    if (fieldId in fieldOptionsMap) return fieldOptionsMap[fieldId];
+    return fields.find((f) => f.id === fieldId)?.options ?? [];
   }
 
-  function cardsInColumn(col: string): number {
-    const field = groupBy || board!.groupBy;
-    return cards.filter((c) => !c._archived && c[field] === col).length;
+  function addFieldOption(fieldId: string) {
+    const input = (newOptionByField[fieldId] ?? "").trim();
+    if (!input) return;
+    const current = getFieldOptions(fieldId);
+    if (current.includes(input)) return;
+    setFieldOptionsMap((prev) => ({ ...prev, [fieldId]: [...current, input] }));
+    setNewOptionByField((prev) => ({ ...prev, [fieldId]: "" }));
   }
 
-  function addColumn() {
-    const trimmed = newColumn.trim();
-    if (!trimmed || columns.includes(trimmed)) return;
-    setColumns((prev) => [...prev, trimmed]);
-    setNewColumn("");
-  }
-
-  function requestRemoveColumn(col: string) {
-    setConfirmRemove(col);
-  }
-
-  function confirmRemoveColumn() {
-    if (!confirmRemove) return;
-    setColumns((prev) => prev.filter((c) => c !== confirmRemove));
-    setConfirmRemove(null);
+  function removeFieldOption(fieldId: string, opt: string) {
+    const current = getFieldOptions(fieldId);
+    setFieldOptionsMap((prev) => ({ ...prev, [fieldId]: current.filter((o) => o !== opt) }));
   }
 
   async function handleAddField() {
@@ -173,6 +163,9 @@ export function EditBoardModal({ open, onClose }: Props) {
       setFields([...fields, saved]);
       setNewFieldName("");
       setNewFieldType("text");
+      if (SELECT_TYPES.includes(newFieldType)) {
+        setExpandedFieldId(saved.id);
+      }
       toast.success(`Campo "${saved.label}" adicionado`);
     } catch (e) {
       toast.error((e as Error)?.message ?? "Erro ao adicionar campo");
@@ -196,12 +189,16 @@ export function EditBoardModal({ open, onClose }: Props) {
       const savedBoard = await provider.saveBoard(updatedBoard);
       setBoard(savedBoard);
 
-      const targetGroupBy = groupBy || board.groupBy;
-      const groupByField = fields.find((f) => f.id === targetGroupBy);
-      if (groupByField) {
-        const updatedField = { ...groupByField, options: columns };
-        const savedField = await provider.saveField(updatedField);
-        setFields(fields.map((f) => (f.id === savedField.id ? savedField : f)));
+      const updatedFields = [...fields];
+      for (const [fieldId, options] of Object.entries(fieldOptionsMap)) {
+        const field = fields.find((f) => f.id === fieldId);
+        if (!field) continue;
+        const savedField = await provider.saveField({ ...field, options });
+        const idx = updatedFields.findIndex((f) => f.id === fieldId);
+        if (idx >= 0) updatedFields[idx] = savedField;
+      }
+      if (Object.keys(fieldOptionsMap).length > 0) {
+        setFields(updatedFields);
       }
 
       toast.success("Board atualizado");
@@ -215,170 +212,120 @@ export function EditBoardModal({ open, onClose }: Props) {
 
   if (!board) return null;
 
-  const activeGroupByField = fields.find((f) => f.id === (groupBy || board.groupBy));
   const NewFieldIcon = FIELD_TYPE_ICONS[newFieldType] ?? Type;
-  const groupByLabel = activeGroupByField?.label ?? groupBy ?? board.groupBy;
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Editar board</DialogTitle>
-            <DialogDescription>
-              Atualize as configurações e colunas do board.
-            </DialogDescription>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Editar board</DialogTitle>
+          <DialogDescription>
+            Atualize as configurações do board.
+          </DialogDescription>
+        </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto scrollbar-thin space-y-6 mt-2 pr-1">
-            {/* General settings */}
-            <section className="space-y-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Geral
-              </h3>
+        <div className="flex-1 overflow-y-auto scrollbar-thin space-y-6 mt-2 pr-1">
+          {/* General settings */}
+          <section className="space-y-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Geral
+            </h3>
 
-              <div>
-                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">
-                  Ícone
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {EMOJIS.map((e) => (
-                    <button
-                      key={e}
-                      onClick={() => setIcon(e)}
-                      className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition
-                        ${icon === e ? "bg-primary/15 ring-2 ring-primary" : "hover:bg-accent"}`}
-                    >
-                      {e}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Nome *</label>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Descrição</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={2}
-                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring/40"
-                />
-              </div>
-            </section>
-
-            {/* Group by field selector */}
-            <section className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Columns3 className="h-3.5 w-3.5" />
-                Agrupamento (colunas do board)
-              </h3>
-
-              {groupableFields.length === 0 ? (
-                <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
-                  Nenhum campo com opções definidas. Adicione campos do tipo Seleção, Chip ou Multi-seleção para criar colunas.
-                </p>
-              ) : (
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Campo de agrupamento</label>
-                  <select
-                    value={groupBy}
-                    onChange={(e) => handleGroupByChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">
+                Ícone
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {EMOJIS.map((e) => (
+                  <button
+                    key={e}
+                    onClick={() => setIcon(e)}
+                    className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition
+                      ${icon === e ? "bg-primary/15 ring-2 ring-primary" : "hover:bg-accent"}`}
                   >
-                    <option value="">— sem agrupamento (lista) —</option>
-                    {groupableFields.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </section>
+                    {e}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-            {/* Columns management (only shown when a groupBy field is selected) */}
-            {groupBy && (
-              <section className="space-y-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Colunas ({groupByLabel})
-                </h3>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Nome *</label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+              />
+            </div>
 
-                <div className="space-y-2">
-                  {columns.map((col) => {
-                    const count = cardsInColumn(col);
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Descrição</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring/40"
+              />
+            </div>
+          </section>
+
+          {/* Group by field selector */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Columns3 className="h-3.5 w-3.5" />
+              Agrupamento (colunas do board)
+            </h3>
+
+            {groupableFields.length === 0 ? (
+              <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
+                Nenhum campo de seleção criado. Adicione um campo do tipo Seleção, Chip ou Multi-seleção para habilitar o modo kanban.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Campo de agrupamento</label>
+                <select
+                  value={groupBy}
+                  onChange={(e) => setGroupBy(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                >
+                  <option value="">— sem agrupamento (lista) —</option>
+                  {groupableFields.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-muted-foreground">
+                  As opções do campo selecionado viram colunas do kanban. Edite as opções na lista de campos abaixo.
+                </p>
+              </div>
+            )}
+          </section>
+
+          {/* Fields list with inline options editing */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Campos do board
+            </h3>
+            {fields.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Nenhum campo configurado.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {fields
+                  .slice()
+                  .sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99))
+                  .map((f) => {
+                    const Icon = FIELD_TYPE_ICONS[f.type] ?? Type;
+                    const isSelectable = SELECT_TYPES.includes(f.type);
+                    const isExpanded = expandedFieldId === f.id;
+                    const options = isSelectable ? getFieldOptions(f.id) : [];
+
                     return (
                       <div
-                        key={col}
-                        className="flex items-center justify-between px-3 py-2 rounded-lg bg-surface border border-border"
+                        key={f.id}
+                        className="rounded-lg bg-surface border border-border overflow-hidden"
                       >
-                        <span className="text-sm">{col}</span>
-                        <div className="flex items-center gap-2">
-                          {count > 0 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                              {count} card{count !== 1 ? "s" : ""}
-                            </span>
-                          )}
-                          <button
-                            onClick={() => requestRemoveColumn(col)}
-                            className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-danger hover:bg-danger/10 transition"
-                            aria-label={`Remover coluna ${col}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex gap-2">
-                  <input
-                    value={newColumn}
-                    onChange={(e) => setNewColumn(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addColumn()}
-                    placeholder="Nova coluna…"
-                    className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-                  />
-                  <button
-                    onClick={addColumn}
-                    disabled={!newColumn.trim() || columns.includes(newColumn.trim())}
-                    className="px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-40"
-                    aria-label="Adicionar coluna"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
-              </section>
-            )}
-
-            {/* Existing fields */}
-            <section className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Campos do board
-              </h3>
-              {fields.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhum campo configurado.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {fields
-                    .slice()
-                    .sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99))
-                    .map((f) => {
-                      const Icon = FIELD_TYPE_ICONS[f.type] ?? Type;
-                      return (
-                        <div
-                          key={f.id}
-                          className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-surface border border-border"
-                        >
+                        <div className="flex items-center gap-2.5 px-3 py-2">
                           <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                           <span className="text-sm flex-1 truncate">{f.label}</span>
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
@@ -387,97 +334,123 @@ export function EditBoardModal({ open, onClose }: Props) {
                           {f.required && (
                             <span className="text-[10px] text-primary font-medium shrink-0">obrigatório</span>
                           )}
+                          {isSelectable && (
+                            <button
+                              onClick={() => setExpandedFieldId(isExpanded ? null : f.id)}
+                              className="h-5 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition shrink-0"
+                              aria-label={isExpanded ? "Ocultar opções" : "Editar opções"}
+                            >
+                              {isExpanded
+                                ? <ChevronUp className="h-3.5 w-3.5" />
+                                : <ChevronDown className="h-3.5 w-3.5" />}
+                            </button>
+                          )}
                         </div>
-                      );
-                    })}
-                </div>
-              )}
 
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="text"
-                  value={newFieldName}
-                  onChange={(e) => setNewFieldName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddField()}
-                  placeholder="Nome do campo"
-                  className="flex-1 min-w-0 px-2.5 py-1.5 bg-surface border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-                />
-                <div className="relative">
-                  <NewFieldIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                  <select
-                    value={newFieldType}
-                    onChange={(e) => setNewFieldType(e.target.value as FieldType)}
-                    className="appearance-none pl-7 pr-6 py-1.5 bg-surface border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 cursor-pointer"
-                  >
-                    {FIELD_TYPE_ORDER.map((type) => (
-                      <option key={type} value={type}>{FIELD_TYPE_LABELS[type]}</option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAddField}
-                  disabled={!newFieldName.trim() || addingField}
-                  className="shrink-0 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm hover:opacity-90 transition disabled:opacity-40 inline-flex items-center gap-1.5"
-                >
-                  {addingField ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                  Adicionar
-                </button>
+                        {isExpanded && (
+                          <div className="px-3 pb-3 pt-2 border-t border-border space-y-2">
+                            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                              Opções ({options.length})
+                            </p>
+                            {options.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">Nenhuma opção ainda.</p>
+                            ) : (
+                              <div className="space-y-1">
+                                {options.map((opt) => (
+                                  <div
+                                    key={opt}
+                                    className="flex items-center justify-between px-2 py-1 rounded bg-muted/40"
+                                  >
+                                    <span className="text-xs">{opt}</span>
+                                    <button
+                                      onClick={() => removeFieldOption(f.id, opt)}
+                                      className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-danger transition"
+                                      aria-label={`Remover opção ${opt}`}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex gap-1.5">
+                              <input
+                                value={newOptionByField[f.id] ?? ""}
+                                onChange={(e) =>
+                                  setNewOptionByField((prev) => ({ ...prev, [f.id]: e.target.value }))
+                                }
+                                onKeyDown={(e) => e.key === "Enter" && addFieldOption(f.id)}
+                                placeholder="Nova opção…"
+                                className="flex-1 px-2 py-1 bg-surface border border-border rounded text-xs focus:outline-none focus:ring-2 focus:ring-ring/40"
+                              />
+                              <button
+                                onClick={() => addFieldOption(f.id)}
+                                disabled={!(newOptionByField[f.id] ?? "").trim()}
+                                className="px-2 py-1 rounded bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-40"
+                                aria-label="Adicionar opção"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
-            </section>
-          </div>
+            )}
 
-          <div className="flex gap-2 justify-end pt-4 border-t border-border mt-4">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-accent transition"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!name.trim() || loading}
-              className="px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition disabled:opacity-50 inline-flex items-center gap-2"
-            >
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              Salvar alterações
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Column removal confirmation */}
-      <Dialog open={confirmRemove !== null} onOpenChange={(v) => !v && setConfirmRemove(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-warning" />
-              Remover coluna
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-2">
-            <p className="text-sm text-muted-foreground">
-              Ao remover a coluna <strong className="text-foreground">"{confirmRemove}"</strong>,
-              os cards nesta coluna não serão deletados, mas ficarão sem coluna definida e podem
-              desaparecer do quadro.
-            </p>
-            <div className="flex gap-2 justify-end">
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="text"
+                value={newFieldName}
+                onChange={(e) => setNewFieldName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddField()}
+                placeholder="Nome do campo"
+                className="flex-1 min-w-0 px-2.5 py-1.5 bg-surface border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+              />
+              <div className="relative">
+                <NewFieldIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                <select
+                  value={newFieldType}
+                  onChange={(e) => setNewFieldType(e.target.value as FieldType)}
+                  className="appearance-none pl-7 pr-6 py-1.5 bg-surface border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 cursor-pointer"
+                >
+                  {FIELD_TYPE_ORDER.map((type) => (
+                    <option key={type} value={type}>{FIELD_TYPE_LABELS[type]}</option>
+                  ))}
+                </select>
+              </div>
               <button
-                onClick={() => setConfirmRemove(null)}
-                className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-accent transition"
+                type="button"
+                onClick={handleAddField}
+                disabled={!newFieldName.trim() || addingField}
+                className="shrink-0 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm hover:opacity-90 transition disabled:opacity-40 inline-flex items-center gap-1.5"
               >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmRemoveColumn}
-                className="px-4 py-2 text-sm rounded-lg bg-danger text-danger-foreground font-medium hover:opacity-90 transition"
-              >
-                Remover coluna
+                {addingField ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                Adicionar
               </button>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+          </section>
+        </div>
+
+        <div className="flex gap-2 justify-end pt-4 border-t border-border mt-4">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-accent transition"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!name.trim() || loading}
+            className="px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+            Salvar alterações
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

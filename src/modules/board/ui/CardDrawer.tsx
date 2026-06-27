@@ -91,9 +91,16 @@ export function FieldEditor({
       );
     case "select":
     case "chip":
+      if (!field.options?.length) {
+        return (
+          <p className="text-xs text-muted-foreground italic">
+            Nenhuma opção definida. Adicione opções nas configurações do board.
+          </p>
+        );
+      }
       return (
         <div className="flex flex-wrap gap-1.5">
-          {(field.options ?? []).map((opt) => (
+          {field.options.map((opt) => (
             <button
               key={opt}
               onClick={() => onChange(opt)}
@@ -111,9 +118,16 @@ export function FieldEditor({
       );
     case "multiselect": {
       const arr: string[] = Array.isArray(value) ? value : [];
+      if (!field.options?.length) {
+        return (
+          <p className="text-xs text-muted-foreground italic">
+            Nenhuma opção definida. Adicione opções nas configurações do board.
+          </p>
+        );
+      }
       return (
         <div className="flex flex-wrap gap-1.5">
-          {(field.options ?? []).map((opt) => {
+          {field.options.map((opt) => {
             const on = arr.includes(opt);
             return (
               <button
