@@ -3,11 +3,13 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  pointerWithin,
   closestCorners,
   useSensor,
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
+  type CollisionDetection,
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
@@ -85,6 +87,11 @@ function Column({
   );
 }
 
+const kanbanCollision: CollisionDetection = (args) => {
+  const pointer = pointerWithin(args);
+  return pointer.length > 0 ? pointer : closestCorners(args);
+};
+
 export function KanbanBoard() {
   const project = useBoardStore((s) => s.board);
   const fields = useBoardStore((s) => s.fields);
@@ -92,7 +99,7 @@ export function KanbanBoard() {
   const search = useBoardStore((s) => s.search);
   const filterTags = useBoardStore((s) => s.filterTags);
   const openCard = useBoardStore((s) => s.openCard);
-  const { persistReorder, updateCard } = useCardMutations();
+  const { persistReorder } = useCardMutations();
   const [active, setActive] = useState<CardRecord | null>(null);
   const [pendingGroupValue, setPendingGroupValue] = useState<string | null>(null);
 
@@ -176,7 +183,6 @@ export function KanbanBoard() {
     const merged = [...others, ...targetList].map((c, i) => ({ ...c, _sort: i }));
 
     persistReorder(merged);
-    updateCard(updated);
   }
 
   if (!hasConfiguredGroups) {
@@ -203,7 +209,7 @@ export function KanbanBoard() {
     <>
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={kanbanCollision}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >

@@ -46,6 +46,6 @@ export function useBoardData(connectionId: string, boardId: string) {
     },
     enabled: !!connectionId && !!boardId && (isMockMode() || !!sheetId),
     staleTime: 30_000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 }
