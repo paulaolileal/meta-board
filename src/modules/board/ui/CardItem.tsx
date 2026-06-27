@@ -53,10 +53,10 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
           .map((id) => {
             const f = fieldMap.get(id);
             if (!f) return null;
-            const v = card[id] as never;
+            const v = card[id] as any;
             if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) return null;
             return (
-              <div key={id} className={f.type === "title" ? "" : ""}>
+              <div key={id}>
                 <FieldRenderer field={f} value={v} mode="closed" />
               </div>
             );
