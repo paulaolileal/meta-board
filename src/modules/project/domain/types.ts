@@ -17,35 +17,42 @@ export type FieldType =
 
 export interface FieldDef {
   id: string;
+  boardId: string;
   label: string;
   type: FieldType;
   required?: boolean;
-  default?: unknown;
+  defaultValue?: unknown;
   visible?: boolean;
   editable?: boolean;
   searchable?: boolean;
   sortable?: boolean;
-  options?: string[]; // for select/multiselect/chip; for chip first option is color hint
+  options?: string[];
   width?: number;
-  order?: number;
+  displayOrder?: number;
 }
 
-export interface ProjectConfig {
+export interface BoardConfig {
   id: string;
   name: string;
   icon: string;
   description?: string;
-  version: string;
-  theme: "light" | "dark" | "auto";
   groupBy: string;
   orderBy: string;
   cardTitleField: string;
   cardDescriptionField?: string;
-  cardClosedLayout: string[]; // field ids
+  cardClosedLayout: string[];
   cardOpenLayout: string[] | "*";
   archivedColumn?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SpreadsheetConnection {
+  id: string;
+  sheetId: string;
+  name: string;
+  connectedAt: string;
+  lastAccessedAt: string;
 }
 
 export interface ChecklistItem {
@@ -65,6 +72,7 @@ export type FieldValue =
 
 export interface CardRecord {
   _id: string;
+  boardId: string;
   _sort: number;
   _archived: boolean;
   _createdAt: string;

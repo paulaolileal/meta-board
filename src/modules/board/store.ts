@@ -1,15 +1,18 @@
 import { create } from "zustand";
-import type { CardRecord, FieldDef, ProjectConfig } from "@/modules/project/domain/types";
+import type { CardRecord, FieldDef, BoardConfig } from "@/modules/project/domain/types";
 
 interface BoardState {
-  project: ProjectConfig | null;
+  board: BoardConfig | null;
   fields: FieldDef[];
   cards: CardRecord[];
+  connectionId: string | null;
+  boardId: string | null;
   search: string;
   filterTags: string[];
   openCardId: string | null;
   hydrated: boolean;
-  setAll: (p: ProjectConfig, f: FieldDef[], c: CardRecord[]) => void;
+
+  setAll: (board: BoardConfig, fields: FieldDef[], cards: CardRecord[], connectionId: string, boardId: string) => void;
   setSearch: (q: string) => void;
   toggleFilterTag: (t: string) => void;
   clearFilters: () => void;
@@ -20,23 +23,32 @@ interface BoardState {
 }
 
 export const useBoardStore = create<BoardState>((set) => ({
-  project: null,
+  board: null,
   fields: [],
   cards: [],
+  connectionId: null,
+  boardId: null,
   search: "",
   filterTags: [],
   openCardId: null,
   hydrated: false,
-  setAll: (project, fields, cards) => set({ project, fields, cards, hydrated: true }),
+
+  setAll: (board, fields, cards, connectionId, boardId) =>
+    set({ board, fields, cards, connectionId, boardId, hydrated: true }),
+
   setSearch: (search) => set({ search }),
+
   toggleFilterTag: (t) =>
     set((s) => ({
       filterTags: s.filterTags.includes(t)
         ? s.filterTags.filter((x) => x !== t)
         : [...s.filterTags, t],
     })),
+
   clearFilters: () => set({ search: "", filterTags: [] }),
+
   openCard: (id) => set({ openCardId: id }),
+
   upsertCard: (c) =>
     set((s) => {
       const idx = s.cards.findIndex((x) => x._id === c._id);
@@ -45,6 +57,8 @@ export const useBoardStore = create<BoardState>((set) => ({
       else next.push(c);
       return { cards: next };
     }),
+
   removeCard: (id) => set((s) => ({ cards: s.cards.filter((c) => c._id !== id) })),
+
   reorderCards: (cards) => set({ cards }),
 }));

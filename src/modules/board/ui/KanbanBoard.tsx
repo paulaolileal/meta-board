@@ -85,7 +85,7 @@ function Column({
 }
 
 export function KanbanBoard() {
-  const project = useBoardStore((s) => s.project);
+  const project = useBoardStore((s) => s.board);
   const fields = useBoardStore((s) => s.fields);
   const cards = useBoardStore((s) => s.cards);
   const search = useBoardStore((s) => s.search);

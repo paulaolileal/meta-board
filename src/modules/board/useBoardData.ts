@@ -1,42 +1,47 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getSheetProvider } from "@/shared/providers/providerFactory";
+import { getSheetProvider, isMockMode } from "@/shared/providers/providerFactory";
 import { useBoardStore } from "@/modules/board/store";
+import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
 import { cacheGet, cacheSet } from "@/shared/cache/localCache";
 
-/**
- * Stale-while-revalidate load:
- * 1. hydrate from IndexedDB cache (L2) immediately
- * 2. fetch fresh data from provider in background
- * 3. write back to cache + store
- */
-export function useBoardData() {
+const MOCK_SHEET_ID = "mock";
+
+export function useBoardData(connectionId: string, boardId: string) {
   const setAll = useBoardStore((s) => s.setAll);
+  const connections = useSpreadsheetStore((s) => s.connections);
+
+  const sheetId = isMockMode()
+    ? MOCK_SHEET_ID
+    : (connections.find((c) => c.id === connectionId)?.sheetId ?? "");
+
+  const cacheKey = `board:${connectionId}:${boardId}`;
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const cached = await cacheGet<{ project: any; fields: any; cards: any }>("board");
-      if (cached && !cancelled) setAll(cached.project, cached.fields, cached.cards);
+      const cached = await cacheGet<{ board: unknown; fields: unknown; cards: unknown }>(cacheKey);
+      if (cached && !cancelled) {
+        setAll(cached.board as any, cached.fields as any, cached.cards as any, connectionId, boardId);
+      }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [setAll]);
+    return () => { cancelled = true; };
+  }, [cacheKey, connectionId, boardId, setAll]);
 
   return useQuery({
-    queryKey: ["board"],
+    queryKey: ["board", connectionId, boardId],
     queryFn: async () => {
-      const provider = getSheetProvider();
-      const [project, fields, cards] = await Promise.all([
-        provider.loadProject(),
-        provider.loadFields(),
-        provider.loadCards(),
+      const provider = getSheetProvider(sheetId);
+      const [board, fields, cards] = await Promise.all([
+        provider.loadBoard(boardId),
+        provider.loadFields(boardId),
+        provider.loadCards(boardId),
       ]);
-      setAll(project, fields, cards);
-      await cacheSet("board", { project, fields, cards });
-      return { project, fields, cards };
+      setAll(board, fields, cards, connectionId, boardId);
+      await cacheSet(cacheKey, { board, fields, cards });
+      return { board, fields, cards };
     },
+    enabled: !!connectionId && !!boardId && (isMockMode() || !!sheetId),
     staleTime: 30_000,
     refetchOnWindowFocus: true,
   });

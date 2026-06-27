@@ -198,7 +198,7 @@ export function CardDrawer() {
   const openCardId = useBoardStore((s) => s.openCardId);
   const cards = useBoardStore((s) => s.cards);
   const fields = useBoardStore((s) => s.fields);
-  const project = useBoardStore((s) => s.project);
+  const project = useBoardStore((s) => s.board);
   const close = useBoardStore((s) => s.openCard);
   const { updateCard, deleteCard } = useCardMutations();
 

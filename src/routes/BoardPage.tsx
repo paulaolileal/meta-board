@@ -1,37 +1,27 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { useParams } from "react-router-dom";
 import { useBoardData } from "@/modules/board/useBoardData";
 import { useBoardStore } from "@/modules/board/store";
 import { Sidebar } from "@/modules/board/ui/Sidebar";
 import { KanbanBoard } from "@/modules/board/ui/KanbanBoard";
 import { Loader2 } from "lucide-react";
 
-export const Route = createFileRoute("/board")({
-  head: () => ({
-    meta: [
-      { title: "Quadro · MetaBoard" },
-      { name: "description", content: "Visualize e edite seus cards em modo Kanban." },
-    ],
-  }),
-  component: BoardPage,
-});
+export function BoardPage() {
+  const { connectionId, boardId } = useParams<{ connectionId: string; boardId: string }>();
 
-function BoardPage() {
-  const { isLoading, isError, error } = useBoardData();
+  const { isLoading, isError, error } = useBoardData(connectionId!, boardId!);
   const hydrated = useBoardStore((s) => s.hydrated);
-  const project = useBoardStore((s) => s.project);
+  const board = useBoardStore((s) => s.board);
 
   return (
     <div className="h-screen w-full flex bg-background overflow-hidden">
-      <Sidebar />
+      <Sidebar connectionId={connectionId!} />
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-14 shrink-0 border-b border-border flex items-center px-6 gap-3 glass">
-          <div className="lg:hidden font-semibold">{project?.name ?? "MetaBoard"}</div>
-          <div className="hidden lg:block font-semibold text-lg">
-            {project?.name ?? "Quadro"}
-          </div>
-          {project?.description && (
+          <div className="lg:hidden font-semibold">{board?.name ?? "MetaBoard"}</div>
+          <div className="hidden lg:block font-semibold text-lg">{board?.name ?? "Quadro"}</div>
+          {board?.description && (
             <div className="hidden md:block text-sm text-muted-foreground truncate">
-              · {project.description}
+              · {board.description}
             </div>
           )}
           {isLoading && !hydrated && (
@@ -45,7 +35,7 @@ function BoardPage() {
           {!hydrated && isLoading ? (
             <BoardSkeleton />
           ) : isError ? (
-            <div className="p-8 text-danger">{String((error as Error)?.message ?? "Erro")}</div>
+            <div className="p-8 text-danger">{String((error as Error)?.message ?? "Erro ao carregar board")}</div>
           ) : (
             <KanbanBoard />
           )}

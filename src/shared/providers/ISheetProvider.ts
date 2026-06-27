@@ -1,12 +1,18 @@
-import type { CardRecord, FieldDef, ProjectConfig } from "@/modules/project/domain/types";
+import type { BoardConfig, CardRecord, FieldDef } from "@/modules/project/domain/types";
 
 export interface ISheetProvider {
   readonly mode: "mock" | "google";
-  loadProject(): Promise<ProjectConfig>;
-  loadFields(): Promise<FieldDef[]>;
-  loadCards(): Promise<CardRecord[]>;
+  loadBoards(): Promise<BoardConfig[]>;
+  loadBoard(boardId: string): Promise<BoardConfig>;
+  loadFields(boardId: string): Promise<FieldDef[]>;
+  loadCards(boardId: string): Promise<CardRecord[]>;
   saveCard(card: CardRecord): Promise<CardRecord>;
-  createCard(partial: Partial<CardRecord>): Promise<CardRecord>;
+  createCard(boardId: string, partial: Partial<CardRecord>): Promise<CardRecord>;
   deleteCard(id: string): Promise<void>;
   sync(): Promise<void>;
+  initializeSpreadsheet?(): Promise<void>;
+  createBoard?(
+    config: Omit<BoardConfig, "id" | "createdAt" | "updatedAt">,
+    fields: FieldDef[],
+  ): Promise<BoardConfig>;
 }

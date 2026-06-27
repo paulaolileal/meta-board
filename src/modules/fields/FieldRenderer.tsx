@@ -10,19 +10,32 @@ interface RenderProps {
   mode: "closed" | "open";
 }
 
-const PRIORITY_COLORS: Record<string, string> = {
-  Urgente: "bg-danger/15 text-danger ring-1 ring-danger/30",
-  Alta: "bg-warning/20 text-warning-foreground ring-1 ring-warning/40",
-  Média: "bg-primary/15 text-primary ring-1 ring-primary/30",
-  Baixa: "bg-muted text-muted-foreground ring-1 ring-border",
-};
+// Default color palettes (fallback when option has no explicit color)
+const CHIP_PALETTE = [
+  "bg-danger/15 text-danger ring-1 ring-danger/30",
+  "bg-warning/20 text-warning-foreground ring-1 ring-warning/40",
+  "bg-primary/15 text-primary ring-1 ring-primary/30",
+  "bg-muted text-muted-foreground ring-1 ring-border",
+  "bg-success/15 text-success ring-1 ring-success/30",
+];
 
-const STATUS_COLORS: Record<string, string> = {
-  Backlog: "bg-muted text-muted-foreground",
-  "Em progresso": "bg-primary/15 text-primary",
-  Revisão: "bg-warning/20 text-warning-foreground",
-  Concluído: "bg-success/20 text-success",
-};
+const SELECT_PALETTE = [
+  "bg-muted text-muted-foreground",
+  "bg-primary/15 text-primary",
+  "bg-warning/20 text-warning-foreground",
+  "bg-success/20 text-success",
+  "bg-danger/15 text-danger",
+];
+
+function chipColor(value: string, options: string[]): string {
+  const idx = options.indexOf(value);
+  return CHIP_PALETTE[idx >= 0 ? idx % CHIP_PALETTE.length : 0];
+}
+
+function selectColor(value: string, options: string[]): string {
+  const idx = options.indexOf(value);
+  return SELECT_PALETTE[idx >= 0 ? idx % SELECT_PALETTE.length : 0];
+}
 
 function asString(v: FieldValue): string {
   if (v == null) return "";
@@ -100,7 +113,7 @@ export function FieldRenderer({ field, value, mode }: RenderProps) {
     case "chip": {
       const s = asString(value);
       if (!s) return null;
-      const color = PRIORITY_COLORS[s] ?? "bg-accent text-accent-foreground";
+      const color = chipColor(s, field.options ?? []);
       return (
         <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium", color)}>
           {s}
@@ -110,7 +123,7 @@ export function FieldRenderer({ field, value, mode }: RenderProps) {
     case "select": {
       const s = asString(value);
       if (!s) return null;
-      const color = STATUS_COLORS[s] ?? "bg-accent text-accent-foreground";
+      const color = selectColor(s, field.options ?? []);
       return (
         <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium", color)}>
           {s}
