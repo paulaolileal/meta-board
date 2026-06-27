@@ -212,6 +212,12 @@ export class MockSheetProvider implements ISheetProvider {
     return field;
   }
 
+  async createField(field: FieldDef): Promise<FieldDef> {
+    await this.delay(80);
+    this.fields.push({ ...field });
+    return field;
+  }
+
   async sync(): Promise<void> {
     // noop in mock
   }

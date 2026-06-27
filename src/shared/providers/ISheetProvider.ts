@@ -11,6 +11,7 @@ export interface ISheetProvider {
   deleteCard(id: string): Promise<void>;
   saveBoard(board: BoardConfig): Promise<BoardConfig>;
   saveField(field: FieldDef): Promise<FieldDef>;
+  createField(field: FieldDef): Promise<FieldDef>;
   sync(): Promise<void>;
   initializeSpreadsheet?(): Promise<void>;
   createBoard?(

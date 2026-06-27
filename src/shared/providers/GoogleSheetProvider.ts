@@ -180,6 +180,12 @@ export class GoogleSheetProvider implements ISheetProvider {
     return field;
   }
 
+  async createField(field: FieldDef): Promise<FieldDef> {
+    await this.api.appendValues(this.sheetId, "_fields", [this.fieldDefToRow(field)]);
+    await this.ensureCardColumns([field.id]);
+    return field;
+  }
+
   async sync(): Promise<void> {
     // Writes are synchronous per-operation; no batch buffer needed yet
   }

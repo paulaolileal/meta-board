@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Plus, Trash2, AlertTriangle, Columns3, Tag, AlignLeft, Hash, ToggleLeft, Calendar, Link, Image, Smile, ListFilter, List, ListChecks, Mail, Palette, Type, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
-import type { FieldType } from "@/modules/project/domain/types";
+import type { FieldDef, FieldType } from "@/modules/project/domain/types";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,20 @@ import { ENV_CONNECTION_ID } from "@/routes/HomePage";
 
 const MOCK_SHEET_ID = "mock";
 const EMOJIS = ["📋", "🚀", "✨", "📣", "🎯", "🛠️", "📊", "🔥", "💡", "🌟"];
+
+const FIELD_TYPE_ORDER: FieldType[] = [
+  "text", "longtext", "number", "bool", "date", "datetime",
+  "url", "image", "icon", "chip", "select", "multiselect", "checklist", "email", "color",
+];
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
 
 const FIELD_TYPE_ICONS: Record<FieldType, React.ElementType> = {
   text: Type,
@@ -75,6 +89,9 @@ export function EditBoardModal({ open, onClose }: Props) {
   const [newColumn, setNewColumn] = useState("");
   const [loading, setLoading] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
+  const [newFieldName, setNewFieldName] = useState("");
+  const [newFieldType, setNewFieldType] = useState<FieldType>("text");
+  const [addingField, setAddingField] = useState(false);
 
   const groupableFields = useMemo(
     () => fields.filter((f) => f.options && f.options.length > 0),
@@ -130,6 +147,40 @@ export function EditBoardModal({ open, onClose }: Props) {
     setConfirmRemove(null);
   }
 
+  async function handleAddField() {
+    const trimmed = newFieldName.trim();
+    if (!trimmed || !board) return;
+    setAddingField(true);
+    try {
+      const base = slugify(trimmed) || `field_${fields.length + 1}`;
+      const existingIds = new Set(fields.map((f) => f.id));
+      let id = base;
+      let n = 2;
+      while (existingIds.has(id)) { id = `${base}_${n++}`; }
+      const maxOrder = fields.reduce((acc, f) => Math.max(acc, f.displayOrder ?? 0), 0);
+      const newField: FieldDef = {
+        id,
+        boardId: board.id,
+        label: trimmed,
+        type: newFieldType,
+        visible: true,
+        editable: true,
+        searchable: newFieldType === "text" || newFieldType === "longtext" || newFieldType === "email",
+        sortable: true,
+        displayOrder: maxOrder + 1,
+      };
+      const saved = await provider.createField(newField);
+      setFields([...fields, saved]);
+      setNewFieldName("");
+      setNewFieldType("text");
+      toast.success(`Campo "${saved.label}" adicionado`);
+    } catch (e) {
+      toast.error((e as Error)?.message ?? "Erro ao adicionar campo");
+    } finally {
+      setAddingField(false);
+    }
+  }
+
   async function handleSave() {
     if (!board) return;
     if (!name.trim()) return;
@@ -165,6 +216,7 @@ export function EditBoardModal({ open, onClose }: Props) {
   if (!board) return null;
 
   const activeGroupByField = fields.find((f) => f.id === (groupBy || board.groupBy));
+  const NewFieldIcon = FIELD_TYPE_ICONS[newFieldType] ?? Type;
   const groupByLabel = activeGroupByField?.label ?? groupBy ?? board.groupBy;
 
   return (
@@ -340,6 +392,38 @@ export function EditBoardModal({ open, onClose }: Props) {
                     })}
                 </div>
               )}
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="text"
+                  value={newFieldName}
+                  onChange={(e) => setNewFieldName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddField()}
+                  placeholder="Nome do campo"
+                  className="flex-1 min-w-0 px-2.5 py-1.5 bg-surface border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                />
+                <div className="relative">
+                  <NewFieldIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  <select
+                    value={newFieldType}
+                    onChange={(e) => setNewFieldType(e.target.value as FieldType)}
+                    className="appearance-none pl-7 pr-6 py-1.5 bg-surface border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 cursor-pointer"
+                  >
+                    {FIELD_TYPE_ORDER.map((type) => (
+                      <option key={type} value={type}>{FIELD_TYPE_LABELS[type]}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddField}
+                  disabled={!newFieldName.trim() || addingField}
+                  className="shrink-0 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm hover:opacity-90 transition disabled:opacity-40 inline-flex items-center gap-1.5"
+                >
+                  {addingField ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  Adicionar
+                </button>
+              </div>
             </section>
           </div>
 
