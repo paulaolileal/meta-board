@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  X, Trash2, Calendar, Link as LinkIcon,
+  X, Trash2, Copy, Calendar, Link as LinkIcon,
   Type, AlignLeft, Hash, ToggleLeft, CalendarClock,
   Image, Smile, Tag, ChevronDown, List, ListChecks, Mail, Palette,
   type LucideIcon,
@@ -285,7 +285,7 @@ export function CardDrawer() {
   const fields = useBoardStore((s) => s.fields);
   const project = useBoardStore((s) => s.board);
   const close = useBoardStore((s) => s.openCard);
-  const { updateCard, deleteCard } = useCardMutations();
+  const { updateCard, createCard, deleteCard } = useCardMutations();
 
   const card = cards.find((c) => c._id === openCardId) ?? null;
   const [draft, setDraft] = useState<CardRecord | null>(card);
@@ -348,6 +348,17 @@ export function CardDrawer() {
                 Card · atualizado {new Date(draft._updatedAt).toLocaleTimeString("pt-BR")}
               </div>
               <div className="flex items-center gap-1">
+                <button
+                  onClick={async () => {
+                    const { _id, _createdAt, _updatedAt, ...rest } = draft;
+                    const copy = await createCard(rest);
+                    if (copy) close(copy._id);
+                  }}
+                  className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent"
+                  aria-label="Duplicar"
+                >
+                  <Copy className="h-4 w-4" />
+                </button>
                 <button
                   onClick={() => {
                     deleteCard(draft._id);
