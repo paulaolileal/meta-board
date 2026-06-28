@@ -10,12 +10,6 @@ function toCamel(snake: string): string {
   return prefix + rest.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
 }
 
-function toSnake(camel: string): string {
-  const prefix = camel.match(/^_+/)?.[0] ?? "";
-  const rest = camel.slice(prefix.length);
-  return prefix + rest.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
-}
-
 // Column letter from 1-based index (A=1, Z=26, AA=27...)
 function colLetter(n: number): string {
   let result = "";
@@ -38,7 +32,7 @@ const FIELDS_HEADERS = [
   "visible", "editable", "searchable", "sortable", "options", "width", "display_order",
 ];
 
-const CARDS_FIXED_HEADERS = ["_id", "board_id", "_sort", "_archived", "_created_at", "_updated_at"];
+const CARDS_FIXED_HEADERS = ["_id", "board_id", "_sort", "_archived", "_created_at", "_updated_at", "values"];
 
 export const DEFAULT_BOARD_FIELDS: Array<Omit<FieldDef, "boardId">> = [
   { id: "title", label: "Título", type: "text", required: true, visible: true, editable: true, searchable: true, displayOrder: 1 },
@@ -111,10 +105,8 @@ export class GoogleSheetProvider implements ISheetProvider {
     const rowIndex = rows.findIndex((row) => row[0] === card._id);
     if (rowIndex < 0) throw new Error(`Card ${card._id} não encontrado`);
 
-    const fieldValues = await this.api.getValues(this.sheetId, "_fields");
-    const fieldMap = this.buildFieldTypeMap(fieldValues, card.boardId as string);
     const updated = { ...card, _updatedAt: now() };
-    const newRow = this.cardToRow(headers, updated, fieldMap);
+    const newRow = this.cardToRow(headers, updated);
     const sheetRow = rowIndex + 2;
     await this.api.setValues(this.sheetId, `_cards!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`, [newRow]);
     return updated;
@@ -134,9 +126,7 @@ export class GoogleSheetProvider implements ISheetProvider {
       ...partial,
     };
 
-    const fieldValues = await this.api.getValues(this.sheetId, "_fields");
-    const fieldMap = this.buildFieldTypeMap(fieldValues, boardId);
-    await this.api.appendValues(this.sheetId, "_cards", [this.cardToRow(headers, card, fieldMap)]);
+    await this.api.appendValues(this.sheetId, "_cards", [this.cardToRow(headers, card)]);
     return card;
   }
 
@@ -182,7 +172,6 @@ export class GoogleSheetProvider implements ISheetProvider {
 
   async createField(field: FieldDef): Promise<FieldDef> {
     await this.api.appendValues(this.sheetId, "_fields", [this.fieldDefToRow(field)]);
-    await this.ensureCardColumns([field.id]);
     return field;
   }
 
@@ -227,19 +216,58 @@ export class GoogleSheetProvider implements ISheetProvider {
       await this.api.appendValues(this.sheetId, "_fields", rows);
     }
 
-    await this.ensureCardColumns(fields.map((f) => f.id));
     return newBoard;
   }
 
-  private async ensureCardColumns(fieldIds: string[]): Promise<void> {
-    const headerValues = await this.api.getValues(this.sheetId, "_cards!1:1");
-    const existing = headerValues[0] ?? [];
-    const newIds = fieldIds.filter((id) => !existing.includes(id));
-    if (!newIds.length) return;
+  async migrateToJsonValues(): Promise<{ migrated: number }> {
+    const [cardValues, fieldValues] = await Promise.all([
+      this.api.getValues(this.sheetId, "_cards"),
+      this.api.getValues(this.sheetId, "_fields"),
+    ]);
 
-    const startCol = existing.length + 1;
-    const endCol = startCol + newIds.length - 1;
-    await this.api.setValues(this.sheetId, `_cards!${colLetter(startCol)}1:${colLetter(endCol)}1`, [newIds]);
+    if (cardValues.length < 1) return { migrated: 0 };
+    const [headers, ...rows] = cardValues;
+
+    if (headers.includes("values")) return { migrated: 0 };
+
+    const boardFieldTypes = this.buildAllBoardFieldTypeMap(fieldValues);
+
+    const fixedSet = new Set(["_id", "board_id", "_sort", "_archived", "_created_at", "_updated_at"]);
+    const dynamicHeaders = headers.filter((h) => !fixedSet.has(h));
+
+    const newRows = rows
+      .filter((row) => row[0])
+      .map((row) => {
+        const boardId = row[headers.indexOf("board_id")];
+        const fieldTypes = boardFieldTypes.get(boardId) ?? new Map<string, FieldType>();
+
+        const values: Record<string, unknown> = {};
+        for (const fieldId of dynamicHeaders) {
+          const type = fieldTypes.get(fieldId);
+          if (!type) continue;
+          const raw = row[headers.indexOf(fieldId)] ?? "";
+          if (raw === "") continue;
+          values[fieldId] = this.deserializeValue(raw, type);
+        }
+
+        return [
+          row[headers.indexOf("_id")] ?? "",
+          boardId,
+          row[headers.indexOf("_sort")] ?? "",
+          row[headers.indexOf("_archived")] ?? "",
+          row[headers.indexOf("_created_at")] ?? "",
+          row[headers.indexOf("_updated_at")] ?? "",
+          JSON.stringify(values),
+        ];
+      });
+
+    await this.api.clearValues(this.sheetId, "_cards");
+    await this.api.setValues(this.sheetId, `_cards!A1:${colLetter(CARDS_FIXED_HEADERS.length)}1`, [CARDS_FIXED_HEADERS]);
+    if (newRows.length) {
+      await this.api.appendValues(this.sheetId, "_cards", newRows);
+    }
+
+    return { migrated: newRows.length };
   }
 
   private buildFieldTypeMap(fieldValues: string[][], boardId: string): Map<string, FieldType> {
@@ -253,6 +281,22 @@ export class GoogleSheetProvider implements ISheetProvider {
       .filter((r) => r[boardIdx] === boardId && r[idIdx])
       .forEach((r) => map.set(r[idIdx], r[typeIdx] as FieldType));
     return map;
+  }
+
+  private buildAllBoardFieldTypeMap(fieldValues: string[][]): Map<string, Map<string, FieldType>> {
+    const boardMap = new Map<string, Map<string, FieldType>>();
+    if (fieldValues.length < 2) return boardMap;
+    const [headers, ...rows] = fieldValues;
+    const idIdx = headers.indexOf("id");
+    const boardIdx = headers.indexOf("board_id");
+    const typeIdx = headers.indexOf("type");
+    for (const row of rows) {
+      if (!row[idIdx]) continue;
+      const bid = row[boardIdx];
+      if (!boardMap.has(bid)) boardMap.set(bid, new Map());
+      boardMap.get(bid)!.set(row[idIdx], row[typeIdx] as FieldType);
+    }
+    return boardMap;
   }
 
   private rowToBoardConfig(headers: string[], row: string[]): BoardConfig {
@@ -332,15 +376,19 @@ export class GoogleSheetProvider implements ISheetProvider {
       if (h === "_archived") { record._archived = raw === "true" || raw === "TRUE"; return; }
       if (h === "_created_at") { record._createdAt = raw; return; }
       if (h === "_updated_at") { record._updatedAt = raw; return; }
-
-      const fieldType = fieldTypes.get(h);
-      record[h] = fieldType ? this.deserializeValue(raw, fieldType) : raw;
+      if (h === "values") {
+        const parsed: Record<string, unknown> = raw ? JSON.parse(raw) : {};
+        for (const [fieldId, val] of Object.entries(parsed)) {
+          const type = fieldTypes.get(fieldId);
+          record[fieldId] = type ? this.deserializeTypedValue(val, type) : (val as FieldValue);
+        }
+      }
     });
 
     return record;
   }
 
-  private cardToRow(headers: string[], card: CardRecord, fieldTypes: Map<string, FieldType>): string[] {
+  private cardToRow(headers: string[], card: CardRecord): string[] {
     return headers.map((h) => {
       if (h === "_id") return card._id;
       if (h === "board_id") return card.boardId as string;
@@ -348,16 +396,45 @@ export class GoogleSheetProvider implements ISheetProvider {
       if (h === "_archived") return String(card._archived);
       if (h === "_created_at") return card._createdAt;
       if (h === "_updated_at") return card._updatedAt;
-      const value = (h in card ? card[h] : card[toCamel(h)]) as FieldValue;
-      return this.serializeValue(value, fieldTypes.get(h));
+      if (h === "values") {
+        const values: Record<string, unknown> = {};
+        for (const [key, val] of Object.entries(card)) {
+          if (key.startsWith("_") || key === "boardId") continue;
+          if (val != null) values[key] = val;
+        }
+        return JSON.stringify(values);
+      }
+      return "";
     });
   }
 
+  // Accepts unknown because values come from JSON.parse — no string-to-type coercion needed for most types
+  private deserializeTypedValue(val: unknown, type: FieldType): FieldValue {
+    if (val == null) return undefined;
+    switch (type) {
+      case "bool":
+        return typeof val === "boolean" ? val : String(val).toLowerCase() === "true";
+      case "number":
+      case "longnumber":
+        return typeof val === "number" ? val : Number(val);
+      case "multiselect":
+        return Array.isArray(val) ? (val as string[]) : [];
+      case "checklist":
+        return Array.isArray(val) ? (val as ChecklistItem[]) : [];
+      case "duration":
+        return typeof val === "object" && !Array.isArray(val) ? (val as DurationValue) : undefined;
+      default:
+        return String(val ?? "");
+    }
+  }
+
+  // Used only during migration from the legacy column-per-field format
   private deserializeValue(raw: string, type: FieldType): FieldValue {
     if (!raw) return undefined;
     switch (type) {
       case "bool": return raw.toLowerCase() === "true";
-      case "number": return Number(raw);
+      case "number":
+      case "longnumber": return Number(raw);
       case "multiselect":
         try { return JSON.parse(raw); } catch { return raw.split(",").map((s) => s.trim()); }
       case "checklist":
@@ -367,18 +444,4 @@ export class GoogleSheetProvider implements ISheetProvider {
       default: return raw;
     }
   }
-
-  private serializeValue(value: FieldValue, type?: FieldType): string {
-    if (value == null) return "";
-    if (type === "duration") {
-      return typeof value === "object" && !Array.isArray(value) ? JSON.stringify(value) : String(value);
-    }
-    if (type === "multiselect" || type === "checklist") {
-      return Array.isArray(value) ? JSON.stringify(value) : String(value);
-    }
-    return String(value);
-  }
 }
-
-// silence unused import warning
-void toSnake;

@@ -218,6 +218,10 @@ export class MockSheetProvider implements ISheetProvider {
     return field;
   }
 
+  async migrateToJsonValues(): Promise<{ migrated: number }> {
+    return { migrated: 0 };
+  }
+
   async sync(): Promise<void> {
     // noop in mock
   }

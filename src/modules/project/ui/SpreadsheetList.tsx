@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { MoreHorizontal, Trash2, ExternalLink } from "lucide-react";
+import { MoreHorizontal, Trash2, ExternalLink, ArrowUpFromLine, Loader2 } from "lucide-react";
 import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
 import type { SpreadsheetConnection } from "@/modules/project/domain/types";
 import { formatDistanceToNow } from "date-fns";
@@ -10,8 +11,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getSheetProvider, isMockMode } from "@/shared/providers/providerFactory";
+import { toast } from "sonner";
 
 interface Props {
   connections: SpreadsheetConnection[];
@@ -47,6 +51,24 @@ function SpreadsheetCard({
   onOpen: () => void;
   onRemove: () => void;
 }) {
+  const [migrating, setMigrating] = useState(false);
+
+  async function handleMigrate() {
+    setMigrating(true);
+    try {
+      const provider = getSheetProvider(connection.sheetId);
+      const result = await provider.migrateToJsonValues();
+      if (result.migrated === 0) {
+        toast.info("Planilha já está no novo formato.");
+      } else {
+        toast.success(`${result.migrated} cards migrados com sucesso.`);
+      }
+    } catch (e) {
+      toast.error(`Erro na migração: ${(e as Error)?.message ?? "Erro desconhecido"}`);
+    } finally {
+      setMigrating(false);
+    }
+  }
   const lastAccess = (() => {
     try {
       return formatDistanceToNow(new Date(connection.lastAccessedAt), {
@@ -86,11 +108,27 @@ function SpreadsheetCard({
               <MoreHorizontal className="h-4 w-4" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuItem onClick={onOpen} className="cursor-pointer">
               <ExternalLink className="h-4 w-4 mr-2" />
               Abrir
             </DropdownMenuItem>
+            {!isMockMode() && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleMigrate}
+                  disabled={migrating}
+                  className="cursor-pointer"
+                >
+                  {migrating
+                    ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    : <ArrowUpFromLine className="h-4 w-4 mr-2" />}
+                  Migrar formato
+                </DropdownMenuItem>
+              </>
+            )}
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={onRemove}
               className="cursor-pointer text-danger focus:text-danger"
