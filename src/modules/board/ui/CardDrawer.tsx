@@ -315,7 +315,7 @@ export function CardDrawer() {
   const cover = coverField && draft ? (readField(draft, coverField.id) as string | undefined) : undefined;
   const layoutAll = project?.cardOpenLayout === "*" || !project?.cardOpenLayout;
   const layout = layoutAll
-    ? fields.map((f) => f.id)
+    ? [...fields].sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99)).map((f) => f.id)
     : (project!.cardOpenLayout as string[]);
 
   function patch<K extends string>(key: K, v: unknown) {

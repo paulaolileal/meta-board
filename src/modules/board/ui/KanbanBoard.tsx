@@ -147,7 +147,13 @@ export function KanbanBoard() {
     return map;
   }, [filtered, groups, groupField]);
 
-  const layout = project?.cardClosedLayout ?? ["title"];
+  const layout = useMemo(() => {
+    const closedSet = new Set(project?.cardClosedLayout ?? []);
+    return [...fields]
+      .sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99))
+      .map((f) => f.id)
+      .filter((id) => closedSet.has(id));
+  }, [project, fields]);
   const hasConfiguredGroups = groups.length > 0;
 
   function handleDragStart(e: DragStartEvent) {
