@@ -218,22 +218,20 @@ export function AiCardModal({ open, onClose }: Props) {
 
       {/* Card stack + arrows + approve/reject */}
       <TooltipProvider delayDuration={400}>
-        <div className="flex-1 flex flex-col min-h-0 px-4 pt-4">
-          <div className={`flex-1 min-h-0 flex items-stretch gap-3 w-full max-w-2xl mx-auto ${cards.length > 1 ? "" : "justify-center"}`}>
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-4">
+          <div className={`flex items-center gap-3 w-full max-w-2xl ${cards.length > 1 ? "" : "justify-center"}`}>
             {cards.length > 1 && (
-              <div className="flex items-center">
-                <button
-                  onClick={() => navigate("prev")}
-                  className="shrink-0 p-2 rounded-full border border-border hover:bg-accent transition relative z-20"
-                  aria-label="Card anterior"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-              </div>
+              <button
+                onClick={() => navigate("prev")}
+                className="shrink-0 p-2 rounded-full border border-border hover:bg-accent transition relative z-20"
+                aria-label="Card anterior"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
             )}
 
-            {/* Stack container */}
-            <div className="relative flex-1 min-h-0">
+            {/* Stack container — sizes to front card's natural height */}
+            <div className="relative flex-1">
               {Array.from(
                 { length: Math.min(MAX_STACK + 1, cards.length) },
                 (_, pos) => ({
@@ -242,18 +240,26 @@ export function AiCardModal({ open, onClose }: Props) {
                 }),
               )
                 .reverse()
-                .map(({ cardIndex, relIdx }) => (
-                  <div
-                    key={cardIndex}
-                    className={`absolute inset-0 rounded-xl border bg-card transition-all duration-300 ease-out ${relIdx === 0 ? cardRingClass : ""}`}
-                    style={{
-                      transform: `translateX(${relIdx * STACK_X_OFFSET}px) scale(${1 - relIdx * STACK_SCALE})`,
-                      zIndex: 10 - relIdx,
-                      pointerEvents: relIdx === 0 ? "auto" : "none",
-                    }}
-                  >
-                    {relIdx === 0 && (
-                      <div className="h-full overflow-y-auto scrollbar-thin px-4 py-3 space-y-3">
+                .map(({ cardIndex, relIdx }) => {
+                  const transform = `translateX(${relIdx * STACK_X_OFFSET}px) scale(${1 - relIdx * STACK_SCALE})`;
+
+                  if (relIdx > 0) {
+                    return (
+                      <div
+                        key={cardIndex}
+                        className="absolute inset-0 rounded-xl border bg-card transition-all duration-300 ease-out"
+                        style={{ transform, zIndex: 10 - relIdx }}
+                      />
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={cardIndex}
+                      className={`relative z-10 rounded-xl border bg-card transition-all duration-300 ease-out overflow-y-auto scrollbar-thin ${cardRingClass}`}
+                      style={{ transform, maxHeight: "calc(100vh - 220px)" }}
+                    >
+                      <div className="px-4 py-3 space-y-3">
                         {editableFields.map((f) => {
                           const val = cardValues[currentIndex]?.[f.id as keyof Partial<CardRecord>];
                           const source = currentCard?.sources[f.id];
@@ -310,9 +316,9 @@ export function AiCardModal({ open, onClose }: Props) {
                           );
                         })}
                       </div>
-                    )}
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
             </div>
 
             {cards.length > 1 && (
