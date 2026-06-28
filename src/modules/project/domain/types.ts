@@ -14,7 +14,9 @@ export type FieldType =
   | "multiselect"
   | "checklist"
   | "email"
-  | "color";
+  | "color"
+  | "location"
+  | "duration";
 
 export interface FieldDef {
   id: string;
@@ -62,12 +64,18 @@ export interface ChecklistItem {
   done: boolean;
 }
 
+export interface DurationValue {
+  value: number;
+  unit: "seg" | "min" | "hr" | "dia";
+}
+
 export type FieldValue =
   | string
   | number
   | boolean
   | string[]
   | ChecklistItem[]
+  | DurationValue
   | null
   | undefined;
 

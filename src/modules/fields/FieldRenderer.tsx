@@ -1,7 +1,7 @@
 import { format, isValid, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle2, Circle, Link as LinkIcon, Calendar } from "lucide-react";
-import type { ChecklistItem, FieldDef, FieldValue } from "@/modules/project/domain/types";
+import { CheckCircle2, Circle, Link as LinkIcon, Calendar, MapPin, Clock } from "lucide-react";
+import type { ChecklistItem, DurationValue, FieldDef, FieldValue } from "@/modules/project/domain/types";
 import { cn } from "@/lib/utils";
 
 interface RenderProps {
@@ -195,6 +195,39 @@ export function FieldRenderer({ field, value, mode }: RenderProps) {
       const s = asString(value);
       if (!s) return null;
       return <span className="inline-block w-4 h-4 rounded-full border" style={{ background: s }} />;
+    }
+    case "location": {
+      const s = asString(value);
+      if (!s) return <span className="text-muted-foreground">—</span>;
+      const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(s)}`;
+      return (
+        <a
+          href={mapsUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 text-primary hover:underline text-sm"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MapPin className="h-3.5 w-3.5 shrink-0" />
+          {s.slice(0, 50)}
+        </a>
+      );
+    }
+    case "duration": {
+      if (value == null || value === "") return <span className="text-muted-foreground">—</span>;
+      let dur: DurationValue | null = null;
+      if (typeof value === "object" && !Array.isArray(value)) {
+        dur = value as DurationValue;
+      } else if (typeof value === "string") {
+        try { dur = JSON.parse(value) as DurationValue; } catch { return <span>{asString(value)}</span>; }
+      }
+      if (!dur) return <span className="text-muted-foreground">—</span>;
+      return (
+        <span className="inline-flex items-center gap-1.5 text-sm tabular-nums">
+          <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          {dur.value} ({dur.unit})
+        </span>
+      );
     }
     case "email":
     case "icon":

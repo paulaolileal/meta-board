@@ -4,12 +4,13 @@ import {
   X, Trash2, Copy, Calendar, Link as LinkIcon,
   Type, AlignLeft, Hash, ToggleLeft, CalendarClock,
   Image, Smile, Tag, ChevronDown, List, ListChecks, Mail, Palette,
+  MapPin, Clock,
   type LucideIcon,
 } from "lucide-react";
 import { useBoardStore } from "@/modules/board/store";
 import { useCardMutations } from "@/modules/board/useCardMutations";
 import { FieldRenderer } from "@/modules/fields/FieldRenderer";
-import type { CardRecord, FieldDef, ChecklistItem, FieldType } from "@/modules/project/domain/types";
+import type { CardRecord, FieldDef, ChecklistItem, FieldType, DurationValue } from "@/modules/project/domain/types";
 import { cn } from "@/lib/utils";
 
 const FIELD_TYPE_ICONS: Partial<Record<FieldType, LucideIcon>> = {
@@ -29,6 +30,8 @@ const FIELD_TYPE_ICONS: Partial<Record<FieldType, LucideIcon>> = {
   checklist: ListChecks,
   email: Mail,
   color: Palette,
+  location: MapPin,
+  duration: Clock,
 };
 
 export function FieldEditor({
@@ -260,6 +263,59 @@ export function FieldEditor({
           >
             + adicionar item
           </button>
+        </div>
+      );
+    }
+    case "location":
+      return (
+        <div className="flex flex-col gap-2">
+          <div className="relative">
+            <MapPin className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={value ?? ""}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="Ex: Rua das Flores, 123 - São Paulo, SP"
+              className="w-full pl-9 pr-3 py-2 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+            />
+          </div>
+          {value && (
+            <a
+              href={`https://maps.google.com/?q=${encodeURIComponent(String(value))}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MapPin className="h-3 w-3" />
+              Abrir no Maps
+            </a>
+          )}
+        </div>
+      );
+    case "duration": {
+      const dur: DurationValue =
+        value && typeof value === "object" && !Array.isArray(value)
+          ? (value as DurationValue)
+          : { value: 0, unit: "min" };
+      return (
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={0}
+            value={dur.value}
+            onChange={(e) => onChange({ ...dur, value: Number(e.target.value) })}
+            className="w-24 px-3 py-2 bg-surface border border-border rounded-lg text-sm text-center tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/40"
+          />
+          <select
+            value={dur.unit}
+            onChange={(e) => onChange({ ...dur, unit: e.target.value as DurationValue["unit"] })}
+            className="flex-1 px-3 py-2 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+          >
+            <option value="seg">Segundos (seg)</option>
+            <option value="min">Minutos (min)</option>
+            <option value="hr">Horas (hr)</option>
+            <option value="dia">Dias (dia)</option>
+          </select>
         </div>
       );
     }

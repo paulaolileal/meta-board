@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Loader2, Plus, ChevronDown, ChevronUp, X, Columns3, Tag, AlignLeft, Hash,
   ToggleLeft, Calendar, Link, Image, Smile, ListFilter, List, ListChecks, Mail,
-  Palette, Type, CalendarClock, GripVertical, Eye, EyeOff, Trash2,
+  Palette, Type, CalendarClock, GripVertical, Eye, EyeOff, Trash2, MapPin, Clock,
 } from "lucide-react";
 import {
   DndContext,
@@ -40,6 +40,7 @@ const SELECT_TYPES: FieldType[] = ["select", "chip", "multiselect"];
 const FIELD_TYPE_ORDER: FieldType[] = [
   "text", "longtext", "number", "bool", "date", "datetime",
   "url", "image", "icon", "chip", "select", "multiselect", "checklist", "email", "color",
+  "location", "duration",
 ];
 
 function slugify(name: string): string {
@@ -68,6 +69,8 @@ const FIELD_TYPE_ICONS: Record<FieldType, React.ElementType> = {
   checklist: ListChecks,
   email: Mail,
   color: Palette,
+  location: MapPin,
+  duration: Clock,
 };
 
 const FIELD_TYPE_LABELS: Record<FieldType, string> = {
@@ -87,6 +90,8 @@ const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   checklist: "Checklist",
   email: "E-mail",
   color: "Cor",
+  location: "Localização",
+  duration: "Duração",
 };
 
 interface SortableFieldRowProps {

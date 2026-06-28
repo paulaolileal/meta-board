@@ -1,7 +1,7 @@
 import type { GoogleAuthService } from "@/shared/auth/GoogleAuthService";
 import { SheetsApiClient } from "@/shared/api/SheetsApiClient";
 import type { ISheetProvider } from "./ISheetProvider";
-import type { BoardConfig, CardRecord, FieldDef, FieldType, FieldValue, ChecklistItem } from "@/modules/project/domain/types";
+import type { BoardConfig, CardRecord, FieldDef, FieldType, FieldValue, ChecklistItem, DurationValue } from "@/modules/project/domain/types";
 
 // snake_case ↔ camelCase helpers (preserve leading underscores)
 function toCamel(snake: string): string {
@@ -362,12 +362,17 @@ export class GoogleSheetProvider implements ISheetProvider {
         try { return JSON.parse(raw); } catch { return raw.split(",").map((s) => s.trim()); }
       case "checklist":
         try { return JSON.parse(raw) as ChecklistItem[]; } catch { return []; }
+      case "duration":
+        try { return JSON.parse(raw) as DurationValue; } catch { return undefined; }
       default: return raw;
     }
   }
 
   private serializeValue(value: FieldValue, type?: FieldType): string {
     if (value == null) return "";
+    if (type === "duration") {
+      return typeof value === "object" && !Array.isArray(value) ? JSON.stringify(value) : String(value);
+    }
     if (type === "multiselect" || type === "checklist") {
       return Array.isArray(value) ? JSON.stringify(value) : String(value);
     }
