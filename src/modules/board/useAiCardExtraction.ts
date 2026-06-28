@@ -132,11 +132,15 @@ Missing fields:
 ${missingLines}
 
 STRICT RULES:
-- Only include fields you found with high confidence from a reliable source.
+- Only include fields you found with HIGH CONFIDENCE from a reliable source.
 - NEVER use placeholder strings ("Not Available", "N/A", "Não especificado", etc.) — omit the field instead.
 - For select / chip: return exactly ONE string from the listed options. Never return comma-separated values or arrays.
-- For multiselect: include only options explicitly confirmed by the source.
-- When in doubt → omit.
+- For multiselect: include ONLY options that are EXPLICITLY and LITERALLY listed/named on the source page.
+  Do NOT infer, assume, or add options based on the type of establishment.
+  Example: a page about a cafeteria that does NOT list "sushi" or "churrasco" must NOT include those options —
+  even if you think a restaurant of that style might serve them.
+- When in doubt → omit the field entirely.
+- If the source page does not explicitly state a value for a field, omit it.
 
 CRITICAL CONSTRAINTS:
 - The already-extracted fields listed above come directly from the source text and are FINAL.
@@ -152,7 +156,7 @@ Return a JSON code block with this exact structure:
 \`\`\`json
 {
   "values": { "<fieldId>": <value> },
-  "reasons": { "<fieldId>": "Source: [brief description or URL where this was found]" }
+  "reasons": { "<fieldId>": "\"[exact quote or text from the source page that proves this value]\" — [URL]" }
 }
 \`\`\``;
 }
