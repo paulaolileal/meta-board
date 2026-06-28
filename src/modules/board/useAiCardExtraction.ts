@@ -26,14 +26,15 @@ function buildSystemPrompt(
     })
     .join("\n");
 
-  return `You are a data extraction assistant. Extract information from the user's text to fill in a board card.
+  return `You are a data extraction assistant. Extract information from the user's text to fill in board cards.
 
 Board: ${boardName}${boardDescription ? `\nDescription: ${boardDescription}` : ""}
 
 Available fields:
 ${fieldLines}
 
-Respond with a JSON object where keys are field IDs and values match each type:
+Respond with a JSON object with a "cards" key containing an array of card objects.
+Each card object has field IDs as keys and values matching each type:
 - text / longtext / url / email / icon / color: string
 - number / longnumber: number
 - bool: boolean
@@ -43,6 +44,12 @@ Respond with a JSON object where keys are field IDs and values match each type:
 - multiselect: array of listed options (string[])
 - checklist: [{id: "<uuid>", text: "<string>", done: false}]
 - image: omit — cannot extract from text
+
+If the text describes a single item, return an array with one card.
+If the text describes multiple distinct items, return one card per item.
+
+Example for multiple items:
+{ "cards": [ { "fieldId": "value" }, { "fieldId": "value" } ] }
 
 Only include fields where you have reasonable confidence. Omit fields you cannot extract. Never guess.`;
 }
@@ -109,7 +116,7 @@ export function useAiCardExtraction() {
   const board = useBoardStore((s) => s.board);
   const fields = useBoardStore((s) => s.fields);
 
-  async function extractCard(text: string): Promise<ExtractionResult> {
+  async function extractCards(text: string): Promise<ExtractionResult[]> {
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined;
     if (!apiKey) throw new Error("VITE_OPENAI_API_KEY não configurada no .env.local");
     if (!board) throw new Error("Board não carregado");
@@ -126,48 +133,65 @@ export function useAiCardExtraction() {
     ]);
 
     const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const values: Partial<CardRecord> = {};
-    const sources: Record<string, FieldSource> = {};
+    const rawCards = Array.isArray(parsed.cards) ? (parsed.cards as unknown[]) : [parsed];
 
-    for (const field of extractableFields) {
-      if (!(field.id in parsed)) continue;
-      values[field.id] = parsed[field.id] as CardRecord[string];
-      sources[field.id] = "extracted";
-    }
+    const phase1Results: ExtractionResult[] = rawCards.map((rawCard) => {
+      const cardData = rawCard as Record<string, unknown>;
+      const values: Partial<CardRecord> = {};
+      const sources: Record<string, FieldSource> = {};
 
-    const missingFields = extractableFields.filter((f) => !(f.id in values));
-    const hasSearchContext = Object.keys(values).length > 0;
-
-    if (missingFields.length > 0 && hasSearchContext) {
-      try {
-        const instructions = buildSearchInstructions(
-          board.name,
-          board.description,
-          extractableFields,
-          values,
-          missingFields,
-        );
-
-        const searchText = await chatCompleteWithWebSearch(
-          apiKey,
-          instructions,
-          "Find the missing information using web search.",
-        );
-
-        const searchParsed = extractJsonFromText(searchText);
-
-        for (const field of missingFields) {
-          if (!(field.id in searchParsed)) continue;
-          values[field.id] = searchParsed[field.id] as CardRecord[string];
-          sources[field.id] = "searched";
-        }
-      } catch {
-        // Web search failed silently — proceed with Phase 1 results only
+      for (const field of extractableFields) {
+        if (!(field.id in cardData)) continue;
+        values[field.id] = cardData[field.id] as CardRecord[string];
+        sources[field.id] = "extracted";
       }
-    }
 
-    return { values, sources };
+      return { values, sources };
+    });
+
+    const enriched = await Promise.allSettled(
+      phase1Results.map(async (result) => {
+        const missingFields = extractableFields.filter((f) => !(f.id in result.values));
+        const hasSearchContext = Object.keys(result.values).length > 0;
+
+        if (missingFields.length === 0 || !hasSearchContext) return result;
+
+        try {
+          const instructions = buildSearchInstructions(
+            board.name,
+            board.description,
+            extractableFields,
+            result.values,
+            missingFields,
+          );
+
+          const searchText = await chatCompleteWithWebSearch(
+            apiKey,
+            instructions,
+            "Find the missing information using web search.",
+          );
+
+          const searchParsed = extractJsonFromText(searchText);
+          const enrichedValues = { ...result.values };
+          const enrichedSources = { ...result.sources };
+
+          for (const field of missingFields) {
+            if (!(field.id in searchParsed)) continue;
+            enrichedValues[field.id] = searchParsed[field.id] as CardRecord[string];
+            enrichedSources[field.id] = "searched";
+          }
+
+          return { values: enrichedValues, sources: enrichedSources };
+        } catch {
+          return result;
+        }
+      }),
+    );
+
+    return enriched.map((r, i) =>
+      r.status === "fulfilled" ? r.value : phase1Results[i],
+    );
   }
 
-  return { extractCard };
+  return { extractCards };
 }
