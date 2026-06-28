@@ -53,20 +53,11 @@ function SidebarContent({ connectionId }: Props) {
           {isMock ? "Início" : "Todos os boards"}
         </Link>
         <div className="flex items-center gap-2.5 mt-2">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center text-lg shadow-[var(--shadow-glow)]">
-            {board?.icon
-              ? (() => {
-                  const LucideIcon = getIcon(board.icon);
-                  return LucideIcon
-                    ? <LucideIcon size={18} className="text-white" />
-                    : <span>{board.icon}</span>;
-                })()
-              : "✨"
-            }
-          </div>
+          <img src="/logo-mb.png" alt="MetaBoard" className="w-9 h-9 object-contain rounded-xl shrink-0" />
           <div className="min-w-0">
-            <div className="font-semibold truncate">{board?.name ?? "MetaBoard"}</div>
-            <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+            <div className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase leading-none">lealtek</div>
+            <div className="font-semibold truncate leading-tight mt-0.5">{board?.name ?? "MetaBoard"}</div>
+            <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
               <Sparkles className="h-3 w-3" />
               {isMock ? "Modo dev" : "Google Sheets"} · {cards.length} cards
             </div>
@@ -154,8 +145,17 @@ function SidebarContent({ connectionId }: Props) {
             ))}
           </div>
         </div>
-        <div className="text-[10px] text-muted-foreground leading-relaxed">
-          MetaBoard · planilha como banco de dados
+        <div className="flex flex-col items-center gap-2">
+          <div className="text-[10px] text-muted-foreground">MetaBoard · planilha como banco de dados</div>
+          <a
+            href="https://lealtek.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="opacity-40 hover:opacity-70 transition-opacity"
+            title="Desenvolvido por LealTEK"
+          >
+            <img src="/lealtek-full.png" alt="LealTEK" className="h-10 object-contain" />
+          </a>
         </div>
       </div>
     </>

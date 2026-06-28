@@ -70,10 +70,11 @@ export function SpreadsheetPage() {
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center text-base shadow-[var(--shadow-glow)]">
-            📊
+          <img src="/logo-mb.png" alt="MetaBoard" className="h-8 w-8 object-contain rounded-lg shrink-0" />
+          <div>
+            <div className="text-[9px] font-semibold tracking-widest text-muted-foreground uppercase leading-none">lealtek</div>
+            <div className="font-semibold text-sm leading-tight">{title}</div>
           </div>
-          <span className="font-semibold">{title}</span>
         </div>
         {!mock && (
           <button

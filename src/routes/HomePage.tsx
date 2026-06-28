@@ -75,10 +75,11 @@ export function HomePage() {
 
       <header className="px-6 py-5 flex items-center justify-between border-b border-border/50">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center text-lg shadow-[var(--shadow-glow)]">
-            📋
+          <img src="/logo-mb.png" alt="MetaBoard" className="h-9 w-9 object-contain rounded-xl" />
+          <div>
+            <div className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase leading-none">lealtek</div>
+            <div className="font-semibold text-sm leading-tight">MetaBoard</div>
           </div>
-          <span className="font-semibold text-lg">MetaBoard</span>
         </div>
 
         {!mock && (
@@ -150,10 +151,9 @@ function LoginPage({ onSignIn, isSigningIn }: { onSignIn: () => void; isSigningI
         transition={{ duration: 0.5 }}
         className="w-full max-w-sm text-center"
       >
-        <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center text-3xl shadow-[var(--shadow-glow)]">
-            📋
-          </div>
+        <div className="flex flex-col items-center mb-6 gap-2">
+          <img src="/logo-mb.png" alt="MetaBoard" className="h-16 w-16 object-contain rounded-2xl" />
+          <div className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">lealtek</div>
         </div>
 
         <h1 className="text-3xl font-bold tracking-tight mb-2">MetaBoard</h1>
