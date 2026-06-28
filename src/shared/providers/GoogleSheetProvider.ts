@@ -183,18 +183,34 @@ export class GoogleSheetProvider implements ISheetProvider {
     const meta = await this.api.getSpreadsheetMetadata(this.sheetId);
     const existingTitles = meta.sheets.map((s) => s.properties.title);
 
-    const addRequests = (["_boards", "_fields", "_cards"] as const)
-      .filter((title) => !existingTitles.includes(title))
-      .map((title) => ({ addSheet: { properties: { title } } }));
+    const tabsToCreate = (["_boards", "_fields", "_cards"] as const).filter(
+      (title) => !existingTitles.includes(title),
+    );
 
-    if (addRequests.length) {
-      await this.api.batchUpdate(this.sheetId, addRequests);
+    if (tabsToCreate.length) {
+      await this.api.batchUpdate(
+        this.sheetId,
+        tabsToCreate.map((title) => ({ addSheet: { properties: { title } } })),
+      );
     }
 
+    // Only write headers to tabs that have no data yet — never overwrite existing data
+    const [boardsRow, fieldsRow, cardsRow] = await Promise.all([
+      this.api.getValues(this.sheetId, "_boards!A1:A1"),
+      this.api.getValues(this.sheetId, "_fields!A1:A1"),
+      this.api.getValues(this.sheetId, "_cards!A1:A1"),
+    ]);
+
     await Promise.all([
-      this.api.setValues(this.sheetId, `_boards!A1:${colLetter(BOARDS_HEADERS.length)}1`, [BOARDS_HEADERS]),
-      this.api.setValues(this.sheetId, `_fields!A1:${colLetter(FIELDS_HEADERS.length)}1`, [FIELDS_HEADERS]),
-      this.api.setValues(this.sheetId, `_cards!A1:${colLetter(CARDS_FIXED_HEADERS.length)}1`, [CARDS_FIXED_HEADERS]),
+      !boardsRow[0]?.length
+        ? this.api.setValues(this.sheetId, `_boards!A1:${colLetter(BOARDS_HEADERS.length)}1`, [BOARDS_HEADERS])
+        : Promise.resolve(),
+      !fieldsRow[0]?.length
+        ? this.api.setValues(this.sheetId, `_fields!A1:${colLetter(FIELDS_HEADERS.length)}1`, [FIELDS_HEADERS])
+        : Promise.resolve(),
+      !cardsRow[0]?.length
+        ? this.api.setValues(this.sheetId, `_cards!A1:${colLetter(CARDS_FIXED_HEADERS.length)}1`, [CARDS_FIXED_HEADERS])
+        : Promise.resolve(),
     ]);
   }
 
@@ -228,12 +244,13 @@ export class GoogleSheetProvider implements ISheetProvider {
     if (cardValues.length < 1) return { migrated: 0 };
     const [headers, ...rows] = cardValues;
 
-    if (headers.includes("values")) return { migrated: 0 };
+    const fixedSet = new Set(CARDS_FIXED_HEADERS);
+    const dynamicHeaders = headers.filter((h) => h && !fixedSet.has(h));
+
+    // Already fully migrated: no old field columns remain in the header
+    if (dynamicHeaders.length === 0) return { migrated: 0 };
 
     const boardFieldTypes = this.buildAllBoardFieldTypeMap(fieldValues);
-
-    const fixedSet = new Set(["_id", "board_id", "_sort", "_archived", "_created_at", "_updated_at"]);
-    const dynamicHeaders = headers.filter((h) => !fixedSet.has(h));
 
     const newRows = rows
       .filter((row) => row[0])
