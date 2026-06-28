@@ -23,7 +23,7 @@ import { useBoardStore } from "@/modules/board/store";
 import type { CardRecord } from "@/modules/project/domain/types";
 
 const MAX_STACK = 2;
-const STACK_X_OFFSET = 12;
+const STACK_X_OFFSET = 30;
 const STACK_SCALE = 0.03;
 
 interface Props {
@@ -216,22 +216,24 @@ export function AiCardModal({ open, onClose }: Props) {
         )}
       </header>
 
-      {/* Card stack + arrows */}
+      {/* Card stack + arrows + approve/reject */}
       <TooltipProvider delayDuration={400}>
-        <div className="flex-1 flex items-center justify-center px-4 py-6 min-h-0">
-          <div className={`w-full max-w-xl flex items-center gap-3 ${cards.length > 1 ? "" : "justify-center"}`}>
+        <div className="flex-1 flex flex-col min-h-0 px-4 pt-4">
+          <div className={`flex-1 min-h-0 flex items-stretch gap-3 w-full max-w-2xl mx-auto ${cards.length > 1 ? "" : "justify-center"}`}>
             {cards.length > 1 && (
-              <button
-                onClick={() => navigate("prev")}
-                className="shrink-0 p-2 rounded-full border border-border hover:bg-accent transition relative z-20"
-                aria-label="Card anterior"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
+              <div className="flex items-center">
+                <button
+                  onClick={() => navigate("prev")}
+                  className="shrink-0 p-2 rounded-full border border-border hover:bg-accent transition relative z-20"
+                  aria-label="Card anterior"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              </div>
             )}
 
             {/* Stack container */}
-            <div className="relative flex-1" style={{ height: "420px" }}>
+            <div className="relative flex-1 min-h-0">
               {Array.from(
                 { length: Math.min(MAX_STACK + 1, cards.length) },
                 (_, pos) => ({
@@ -314,19 +316,20 @@ export function AiCardModal({ open, onClose }: Props) {
             </div>
 
             {cards.length > 1 && (
-              <button
-                onClick={() => navigate("next")}
-                className="shrink-0 p-2 rounded-full border border-border hover:bg-accent transition relative z-20"
-                aria-label="Próximo card"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
+              <div className="flex items-center">
+                <button
+                  onClick={() => navigate("next")}
+                  className="shrink-0 p-2 rounded-full border border-border hover:bg-accent transition relative z-20"
+                  aria-label="Próximo card"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
             )}
           </div>
-        </div>
 
-        {/* Approve / Reject */}
-        <div className={`flex gap-3 pb-4 max-w-xl mx-auto w-full ${cards.length > 1 ? "px-14" : "px-4"}`}>
+          {/* Approve / Reject — directly below the stack */}
+          <div className={`flex gap-3 pt-3 pb-3 w-full max-w-2xl mx-auto ${cards.length > 1 ? "px-12" : ""}`}>
           <button
             onClick={() => navigate("next", "rejected")}
             className={`flex-1 py-3 text-sm rounded-xl border-2 transition font-medium inline-flex items-center justify-center gap-2 ${
@@ -349,6 +352,7 @@ export function AiCardModal({ open, onClose }: Props) {
             <Check className="h-4 w-4" />
             Aprovar
           </button>
+          </div>
         </div>
 
         {/* Footer: back + dots + create */}
