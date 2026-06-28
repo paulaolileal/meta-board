@@ -43,7 +43,7 @@ Each card object has field IDs as keys and values matching each type:
 - select / chip: one of the listed options (string)
 - multiselect: array of listed options (string[])
 - checklist: [{id: "<uuid>", text: "<string>", done: false}]
-- image: omit — cannot extract from text
+- image: a URL string pointing to an image found in the text (e.g. a direct link to a photo, poster, thumbnail or cover). Omit if no image URL is present.
 
 If the text describes a single item, return an array with one card.
 If the text describes multiple distinct items, return one card per item.
@@ -95,6 +95,7 @@ Return ONLY a JSON code block with the found fields. Keys must be field IDs and 
 - select / chip: one of the listed options (string)
 - multiselect: array of listed options (string[])
 - checklist: [{id: "<uuid>", text: "<string>", done: false}]
+- image: a direct URL to an image (photo, poster, thumbnail or cover) found on the web
 
 Only include fields with reliable information found. Omit fields not found. Format your JSON inside a code block like:
 \`\`\`json
@@ -122,7 +123,7 @@ export function useAiCardExtraction() {
     if (!board) throw new Error("Board não carregado");
 
     const extractableFields = fields.filter(
-      (f) => f.editable !== false && f.visible !== false && f.type !== "image",
+      (f) => f.editable !== false && f.visible !== false,
     );
 
     const systemPrompt = buildSystemPrompt(board.name, board.description, extractableFields);
