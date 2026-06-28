@@ -45,6 +45,8 @@ VALUE FORMAT per field type:
 - multiselect → array of listed options (string[])
 - checklist → [{id: "<uuid>", text: "<string>", done: false}]
 - image → direct URL to an image found in the text. Omit if no image URL is present.
+- location → string with the full address (e.g. "Rua das Flores, 123 - São Paulo, SP, Brasil"). Omit if no address is present.
+- duration → {"value": <number>, "unit": "seg"|"min"|"hr"|"dia"} (e.g. {"value": 45, "unit": "min"}). Omit if no duration is present.
 
 STRICT RULES — violating these produces useless data:
 
