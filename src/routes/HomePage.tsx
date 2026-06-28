@@ -9,6 +9,7 @@ import { ConnectSheetModal } from "@/modules/project/ui/ConnectSheetModal";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useAuthStore } from "@/store/authStore";
 
 const MOCK_CONNECTION_ID = "mock";
 export const ENV_CONNECTION_ID = "env";
@@ -16,10 +17,20 @@ export const ENV_CONNECTION_ID = "env";
 export function HomePage() {
   const navigate = useNavigate();
   const { connections, addConnection } = useSpreadsheetStore();
+  const { user, setUser, clearUser } = useAuthStore();
   const [connectOpen, setConnectOpen] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const mock = isMockMode();
   const isAuthenticated = mock || googleAuthService.isAuthenticated();
+
+  // Silent recovery: token still valid in sessionStorage but user info not in store
+  useEffect(() => {
+    if (!mock && googleAuthService.isAuthenticated() && !user) {
+      googleAuthService.fetchUserInfo().then((info) => {
+        if (info) setUser(info);
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated && envSpreadsheetId) {
@@ -31,6 +42,8 @@ export function HomePage() {
     setIsSigningIn(true);
     try {
       await googleAuthService.signIn();
+      const info = await googleAuthService.fetchUserInfo();
+      if (info) setUser(info);
     } catch (e) {
       toast.error("Falha ao conectar com Google");
       console.error(e);
@@ -41,6 +54,7 @@ export function HomePage() {
 
   function handleSignOut() {
     googleAuthService.signOut();
+    clearUser();
     toast.success("Desconectado do Google");
   }
 
@@ -68,13 +82,28 @@ export function HomePage() {
         </div>
 
         {!mock && (
-          <button
-            onClick={handleSignOut}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg border border-border hover:bg-accent transition"
-          >
-            <LogOut className="h-4 w-4" />
-            Sair
-          </button>
+          <div className="flex items-center gap-3">
+            {user && (
+              <div className="flex items-center gap-2">
+                {user.picture && (
+                  <img
+                    src={user.picture}
+                    alt={user.name}
+                    className="w-7 h-7 rounded-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+                <span className="text-sm text-muted-foreground hidden sm:block">{user.name}</span>
+              </div>
+            )}
+            <button
+              onClick={handleSignOut}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg border border-border hover:bg-accent transition"
+            >
+              <LogOut className="h-4 w-4" />
+              Sair
+            </button>
+          </div>
         )}
       </header>
 

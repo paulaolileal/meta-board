@@ -29,9 +29,16 @@ interface TokenResponse {
   error_description?: string;
 }
 
+export interface UserInfo {
+  name: string;
+  email: string;
+  picture: string;
+}
+
 const STORAGE_KEY_TOKEN = "mb:gis:token";
 const STORAGE_KEY_EXPIRY = "mb:gis:expiry";
-const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
+const SCOPE = "https://www.googleapis.com/auth/spreadsheets openid email profile";
+const EXPIRY_BUFFER_MS = 30_000;
 
 export class GoogleAuthService {
   private clientId: string;
@@ -39,25 +46,42 @@ export class GoogleAuthService {
   private resolveSignIn: (() => void) | null = null;
   private rejectSignIn: ((err: string) => void) | null = null;
 
+  // Primary storage: memory (never persisted, cleared on tab close)
+  private _accessToken: string | null = null;
+  private _expiresAt = 0;
+
   constructor(clientId: string) {
     this.clientId = clientId;
+    this.loadFromSession();
   }
 
   isAuthenticated(): boolean {
-    const token = sessionStorage.getItem(STORAGE_KEY_TOKEN);
-    const expiry = Number(sessionStorage.getItem(STORAGE_KEY_EXPIRY) ?? "0");
-    return !!token && Date.now() < expiry - 60_000;
+    if (this._accessToken && Date.now() < this._expiresAt - EXPIRY_BUFFER_MS) return true;
+    return this.loadFromSession();
   }
 
   getAccessToken(): string | null {
     if (!this.isAuthenticated()) return null;
-    return sessionStorage.getItem(STORAGE_KEY_TOKEN);
+    return this._accessToken;
+  }
+
+  async fetchUserInfo(): Promise<UserInfo | null> {
+    const token = this.getAccessToken();
+    if (!token) return null;
+    try {
+      const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return { name: data.name ?? "", email: data.email ?? "", picture: data.picture ?? "" };
+    } catch {
+      return null;
+    }
   }
 
   async ensureValidToken(): Promise<string> {
-    if (this.isAuthenticated()) {
-      return this.getAccessToken()!;
-    }
+    if (this.isAuthenticated()) return this.getAccessToken()!;
     await this.signIn();
     return this.getAccessToken()!;
   }
@@ -78,9 +102,15 @@ export class GoogleAuthService {
               this.rejectSignIn?.(response.error_description ?? response.error);
               return;
             }
-            const expiry = Date.now() + response.expires_in * 1000;
-            sessionStorage.setItem(STORAGE_KEY_TOKEN, response.access_token);
-            sessionStorage.setItem(STORAGE_KEY_EXPIRY, String(expiry));
+            const expiresAt = Date.now() + response.expires_in * 1000;
+            this._accessToken = response.access_token;
+            this._expiresAt = expiresAt;
+            try {
+              sessionStorage.setItem(STORAGE_KEY_TOKEN, response.access_token);
+              sessionStorage.setItem(STORAGE_KEY_EXPIRY, String(expiresAt));
+            } catch {
+              // sessionStorage unavailable (private mode) — token stays in memory
+            }
             this.resolveSignIn?.();
           },
           error_callback: ({ type }) => {
@@ -94,12 +124,32 @@ export class GoogleAuthService {
   }
 
   signOut(): void {
-    const token = sessionStorage.getItem(STORAGE_KEY_TOKEN);
-    if (token) {
-      window.google?.accounts.oauth2.revoke(token);
+    if (this._accessToken) {
+      window.google?.accounts.oauth2.revoke(this._accessToken);
     }
-    sessionStorage.removeItem(STORAGE_KEY_TOKEN);
-    sessionStorage.removeItem(STORAGE_KEY_EXPIRY);
+    this._accessToken = null;
+    this._expiresAt = 0;
+    try {
+      sessionStorage.removeItem(STORAGE_KEY_TOKEN);
+      sessionStorage.removeItem(STORAGE_KEY_EXPIRY);
+    } catch {
+      // ignore
+    }
+  }
+
+  private loadFromSession(): boolean {
+    try {
+      const token = sessionStorage.getItem(STORAGE_KEY_TOKEN);
+      const expiresAt = Number(sessionStorage.getItem(STORAGE_KEY_EXPIRY) ?? "0");
+      if (token && Date.now() < expiresAt - EXPIRY_BUFFER_MS) {
+        this._accessToken = token;
+        this._expiresAt = expiresAt;
+        return true;
+      }
+    } catch {
+      // sessionStorage unavailable
+    }
+    return false;
   }
 
   private waitForGis(timeout = 10_000): Promise<void> {

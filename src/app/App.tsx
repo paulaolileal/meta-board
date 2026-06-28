@@ -5,9 +5,11 @@ import { SpreadsheetPage } from "@/routes/SpreadsheetPage";
 import { BoardPage } from "@/routes/BoardPage";
 import { Link } from "react-router-dom";
 import { isMockMode, googleAuthService } from "@/shared/providers/providerFactory";
+import { useAuthStore } from "@/store/authStore";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
-  if (!isMockMode() && !googleAuthService.isAuthenticated()) {
+  const user = useAuthStore((s) => s.user);
+  if (!isMockMode() && (!user || !googleAuthService.isAuthenticated())) {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;
