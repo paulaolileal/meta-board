@@ -106,6 +106,7 @@ export function FieldRenderer({ field, value, mode }: RenderProps) {
             alt=""
             className="w-full h-40 object-cover rounded-t-2xl bg-muted/30"
             loading="lazy"
+            referrerPolicy="no-referrer"
           />
         );
       }
@@ -115,6 +116,7 @@ export function FieldRenderer({ field, value, mode }: RenderProps) {
           alt=""
           className="w-full object-contain rounded-2xl max-h-[480px] bg-muted/30"
           loading="lazy"
+          referrerPolicy="no-referrer"
         />
       );
     }

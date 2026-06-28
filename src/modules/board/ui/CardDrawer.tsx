@@ -119,6 +119,7 @@ export function FieldEditor({
               src={value}
               alt="Preview"
               className="w-full max-h-48 object-contain rounded-lg border border-border bg-surface"
+              referrerPolicy="no-referrer"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).style.display = "none";
               }}
@@ -381,7 +382,7 @@ export function CardDrawer() {
 
             <div className="flex-1 overflow-y-auto scrollbar-thin">
               {cover && (
-                <img src={cover} alt="" className="w-full h-32 sm:h-48 object-cover" />
+                <img src={cover} alt="" className="w-full h-32 sm:h-48 object-cover" referrerPolicy="no-referrer" />
               )}
 
               <div className="p-4 sm:p-6 space-y-5">
