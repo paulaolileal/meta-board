@@ -12,7 +12,6 @@ export interface ISheetProvider {
   saveBoard(board: BoardConfig): Promise<BoardConfig>;
   saveField(field: FieldDef): Promise<FieldDef>;
   createField(field: FieldDef): Promise<FieldDef>;
-  migrateToJsonValues(): Promise<{ migrated: number }>;
   sync(): Promise<void>;
   initializeSpreadsheet?(): Promise<void>;
   createBoard?(

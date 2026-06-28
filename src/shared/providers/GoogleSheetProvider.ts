@@ -235,58 +235,6 @@ export class GoogleSheetProvider implements ISheetProvider {
     return newBoard;
   }
 
-  async migrateToJsonValues(): Promise<{ migrated: number }> {
-    const [cardValues, fieldValues] = await Promise.all([
-      this.api.getValues(this.sheetId, "_cards"),
-      this.api.getValues(this.sheetId, "_fields"),
-    ]);
-
-    if (cardValues.length < 1) return { migrated: 0 };
-    const [headers, ...rows] = cardValues;
-
-    const fixedSet = new Set(CARDS_FIXED_HEADERS);
-    const dynamicHeaders = headers.filter((h) => h && !fixedSet.has(h));
-
-    // Already fully migrated: no old field columns remain in the header
-    if (dynamicHeaders.length === 0) return { migrated: 0 };
-
-    const boardFieldTypes = this.buildAllBoardFieldTypeMap(fieldValues);
-
-    const newRows = rows
-      .filter((row) => row[0])
-      .map((row) => {
-        const boardId = row[headers.indexOf("board_id")];
-        const fieldTypes = boardFieldTypes.get(boardId) ?? new Map<string, FieldType>();
-
-        const values: Record<string, unknown> = {};
-        for (const fieldId of dynamicHeaders) {
-          const type = fieldTypes.get(fieldId);
-          if (!type) continue;
-          const raw = row[headers.indexOf(fieldId)] ?? "";
-          if (raw === "") continue;
-          values[fieldId] = this.deserializeValue(raw, type);
-        }
-
-        return [
-          row[headers.indexOf("_id")] ?? "",
-          boardId,
-          row[headers.indexOf("_sort")] ?? "",
-          row[headers.indexOf("_archived")] ?? "",
-          row[headers.indexOf("_created_at")] ?? "",
-          row[headers.indexOf("_updated_at")] ?? "",
-          JSON.stringify(values),
-        ];
-      });
-
-    await this.api.clearValues(this.sheetId, "_cards");
-    await this.api.setValues(this.sheetId, `_cards!A1:${colLetter(CARDS_FIXED_HEADERS.length)}1`, [CARDS_FIXED_HEADERS]);
-    if (newRows.length) {
-      await this.api.appendValues(this.sheetId, "_cards", newRows);
-    }
-
-    return { migrated: newRows.length };
-  }
-
   private buildFieldTypeMap(fieldValues: string[][], boardId: string): Map<string, FieldType> {
     const map = new Map<string, FieldType>();
     if (fieldValues.length < 2) return map;
@@ -298,22 +246,6 @@ export class GoogleSheetProvider implements ISheetProvider {
       .filter((r) => r[boardIdx] === boardId && r[idIdx])
       .forEach((r) => map.set(r[idIdx], r[typeIdx] as FieldType));
     return map;
-  }
-
-  private buildAllBoardFieldTypeMap(fieldValues: string[][]): Map<string, Map<string, FieldType>> {
-    const boardMap = new Map<string, Map<string, FieldType>>();
-    if (fieldValues.length < 2) return boardMap;
-    const [headers, ...rows] = fieldValues;
-    const idIdx = headers.indexOf("id");
-    const boardIdx = headers.indexOf("board_id");
-    const typeIdx = headers.indexOf("type");
-    for (const row of rows) {
-      if (!row[idIdx]) continue;
-      const bid = row[boardIdx];
-      if (!boardMap.has(bid)) boardMap.set(bid, new Map());
-      boardMap.get(bid)!.set(row[idIdx], row[typeIdx] as FieldType);
-    }
-    return boardMap;
   }
 
   private rowToBoardConfig(headers: string[], row: string[]): BoardConfig {
@@ -445,20 +377,4 @@ export class GoogleSheetProvider implements ISheetProvider {
     }
   }
 
-  // Used only during migration from the legacy column-per-field format
-  private deserializeValue(raw: string, type: FieldType): FieldValue {
-    if (!raw) return undefined;
-    switch (type) {
-      case "bool": return raw.toLowerCase() === "true";
-      case "number":
-      case "longnumber": return Number(raw);
-      case "multiselect":
-        try { return JSON.parse(raw); } catch { return raw.split(",").map((s) => s.trim()); }
-      case "checklist":
-        try { return JSON.parse(raw) as ChecklistItem[]; } catch { return []; }
-      case "duration":
-        try { return JSON.parse(raw) as DurationValue; } catch { return undefined; }
-      default: return raw;
-    }
-  }
 }

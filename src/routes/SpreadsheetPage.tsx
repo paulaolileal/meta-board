@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Plus, Loader2, AlertCircle, ArrowUpFromLine } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, AlertCircle } from "lucide-react";
 import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
 import { getSheetProvider, isMockMode, envSpreadsheetId } from "@/shared/providers/providerFactory";
 import { ENV_CONNECTION_ID } from "@/routes/HomePage";
@@ -21,7 +21,6 @@ export function SpreadsheetPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [migrating, setMigrating] = useState(false);
 
   const mock = isMockMode() || connectionId === MOCK_CONNECTION_ID;
   const isEnvConnection = connectionId === ENV_CONNECTION_ID;
@@ -46,23 +45,6 @@ export function SpreadsheetPage() {
       .catch((e) => setError(String(e?.message ?? e)))
       .finally(() => setLoading(false));
   }, [connectionId, sheetId]);
-
-  async function handleMigrate() {
-    setMigrating(true);
-    try {
-      const provider = getSheetProvider(sheetId);
-      const result = await provider.migrateToJsonValues();
-      if (result.migrated === 0) {
-        toast.info("Planilha já está no novo formato.");
-      } else {
-        toast.success(`${result.migrated} cards migrados com sucesso.`);
-      }
-    } catch (e) {
-      toast.error(`Erro na migração: ${(e as Error)?.message ?? "Erro desconhecido"}`);
-    } finally {
-      setMigrating(false);
-    }
-  }
 
   async function handleBoardCreated(board: BoardConfig) {
     setBoards((prev) => [...prev, board]);
@@ -95,23 +77,13 @@ export function SpreadsheetPage() {
           </div>
         </div>
         {!mock && (
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={handleMigrate}
-              disabled={migrating}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm font-medium hover:bg-accent transition disabled:opacity-50"
-            >
-              {migrating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUpFromLine className="h-4 w-4" />}
-              Migrar formato
-            </button>
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium shadow-[var(--shadow-glow)] hover:opacity-90 transition"
-            >
-              <Plus className="h-4 w-4" />
-              Novo board
-            </button>
-          </div>
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium shadow-[var(--shadow-glow)] hover:opacity-90 transition"
+          >
+            <Plus className="h-4 w-4" />
+            Novo board
+          </button>
         )}
       </header>
 
