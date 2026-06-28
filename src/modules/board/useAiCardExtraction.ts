@@ -23,7 +23,8 @@ function buildSystemPrompt(
         OPTION_TYPES.has(f.type) && f.options?.length
           ? `, options: [${f.options.join(", ")}]`
           : "";
-      return `- ${f.label} (id: ${f.id}, type: ${f.type}${opts})`;
+      const req = f.required ? " [REQUIRED]" : "";
+      return `- ${f.label} (id: ${f.id}, type: ${f.type}${opts})${req}`;
     })
     .join("\n");
 
@@ -40,7 +41,7 @@ VALUE FORMAT per field type:
 - bool → boolean
 - date → "YYYY-MM-DD"
 - datetime → "YYYY-MM-DDTHH:mm"
-- select / chip → exactly one of the listed options (string)
+- select / chip → exactly ONE string from the listed options
 - multiselect → array of listed options (string[])
 - checklist → [{id: "<uuid>", text: "<string>", done: false}]
 - image → direct URL to an image found in the text. Omit if no image URL is present.
@@ -55,8 +56,9 @@ STRICT RULES — violating these produces useless data:
    "Não disponível", "Não especificado", "Não informado", "Sem informação", "-", "—", "?".
    If the information is absent → omit the field key entirely.
 
-3. select / chip: only pick an option if that exact option (or a very clear synonym)
-   is explicitly named in the text. When uncertain → omit.
+3. select / chip: value MUST be exactly ONE string from the options list.
+   NEVER return multiple values, comma-separated strings, or arrays for select/chip fields.
+   If multiple options seem applicable, pick the single most specific one. When uncertain → omit.
 
 4. multiselect: include ONLY options that are explicitly mentioned in the text.
    Never add options that are "plausible", "typical", or "might apply" — they are wrong if not stated.
@@ -68,6 +70,20 @@ STRICT RULES — violating these produces useless data:
 
 6. If the text describes multiple distinct items, return one card per item.
    If only one item, return an array with one card.
+
+7. [REQUIRED] fields: if you cannot extract the value for a field marked [REQUIRED] directly
+   from the text, do NOT include that card in the response at all. Do not guess, infer from
+   external knowledge, or leave REQUIRED fields to be filled by web search.
+
+SOCIAL MEDIA EXTRACTION HINTS:
+- @username mentions (e.g. "@anciaculinaria") very often indicate the name of the featured
+  place or business. Normalize to a human-readable name: "@anciaculinaria" → "Anciã Culinária",
+  "@bellocafe" → "Bello Café". Use surrounding words ("Visite a @...", "confira o @...",
+  "aproveite @...") as strong confirmation that the @mention is the subject.
+- The place/business name may appear both as an @mention AND as plain text in the caption
+  (e.g. "sabores da Anciã"). Treat them as the same entity.
+- JSON input fields like "Author Username", "Caption", and "Tagged Users" may all contain
+  clues about the featured entity's name.
 
 RESPONSE FORMAT — return a single JSON object with two parallel arrays:
 {
@@ -118,8 +134,19 @@ ${missingLines}
 STRICT RULES:
 - Only include fields you found with high confidence from a reliable source.
 - NEVER use placeholder strings ("Not Available", "N/A", "Não especificado", etc.) — omit the field instead.
+- For select / chip: return exactly ONE string from the listed options. Never return comma-separated values or arrays.
 - For multiselect: include only options explicitly confirmed by the source.
 - When in doubt → omit.
+
+CRITICAL CONSTRAINTS:
+- The already-extracted fields listed above come directly from the source text and are FINAL.
+  Do NOT suggest alternative or conflicting values for any of them under any circumstances.
+- You are enriching supplementary details about a specific entity already identified from
+  the source text. NEVER substitute or replace that entity with a different one found on the web.
+  Example: if the text is about "Anciã Culinária", do not return data about "Belô Café" or
+  any other establishment — even if they seem similar.
+- If you cannot find reliable information about the specific entity listed above, return an
+  empty values object rather than filling in data from a different entity.
 
 Return a JSON code block with this exact structure:
 \`\`\`json
@@ -128,6 +155,41 @@ Return a JSON code block with this exact structure:
   "reasons": { "<fieldId>": "Source: [brief description or URL where this was found]" }
 }
 \`\`\``;
+}
+
+function sanitizeCard(
+  cardData: Record<string, unknown>,
+  fields: FieldDef[],
+): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...cardData };
+  for (const field of fields) {
+    if (!(field.id in result)) continue;
+    const val = result[field.id];
+    if (field.type === "select" || field.type === "chip") {
+      if (Array.isArray(val)) {
+        result[field.id] = val[0] ?? undefined;
+        if (result[field.id] === undefined) delete result[field.id];
+      } else if (typeof val === "string" && val.includes(",")) {
+        result[field.id] = val.split(",")[0].trim();
+      }
+    } else if (field.type === "multiselect") {
+      if (typeof val === "string") {
+        result[field.id] = val.split(",").map((s) => s.trim()).filter(Boolean);
+      }
+    }
+  }
+  return result;
+}
+
+function dropCardsWithMissingRequired(
+  results: ExtractionResult[],
+  fields: FieldDef[],
+): ExtractionResult[] {
+  const requiredFields = fields.filter((f) => f.required);
+  if (requiredFields.length === 0) return results;
+  return results.filter((r) =>
+    requiredFields.every((f) => f.id in r.values && r.values[f.id] !== undefined),
+  );
 }
 
 function extractJsonFromText(text: string): Record<string, unknown> {
@@ -179,15 +241,15 @@ export function useAiCardExtraction() {
     const rawReasons = Array.isArray(parsed.reasons) ? (parsed.reasons as unknown[]) : [];
 
     const phase1Results: ExtractionResult[] = rawCards.map((rawCard, cardIdx) => {
-      const cardData = rawCard as Record<string, unknown>;
+      const rawCardData = sanitizeCard(rawCard as Record<string, unknown>, extractableFields);
       const cardReasonData = (rawReasons[cardIdx] ?? {}) as Record<string, unknown>;
       const values: Partial<CardRecord> = {};
       const sources: Record<string, FieldSource> = {};
       const reasons: Record<string, string> = {};
 
       for (const field of extractableFields) {
-        if (!(field.id in cardData)) continue;
-        values[field.id] = cardData[field.id] as CardRecord[string];
+        if (!(field.id in rawCardData)) continue;
+        values[field.id] = rawCardData[field.id] as CardRecord[string];
         sources[field.id] = "extracted";
         if (cardReasonData[field.id]) {
           reasons[field.id] = String(cardReasonData[field.id]);
@@ -197,8 +259,11 @@ export function useAiCardExtraction() {
       return { values, sources, reasons };
     });
 
+    const validPhase1Results = dropCardsWithMissingRequired(phase1Results, extractableFields);
+    if (validPhase1Results.length === 0) return [];
+
     const enriched = await Promise.allSettled(
-      phase1Results.map(async (result) => {
+      validPhase1Results.map(async (result) => {
         const missingFields = extractableFields.filter((f) => !(f.id in result.values));
         const hasSearchContext = Object.keys(result.values).length > 0;
 
@@ -241,7 +306,7 @@ export function useAiCardExtraction() {
     );
 
     return enriched.map((r, i) =>
-      r.status === "fulfilled" ? r.value : phase1Results[i],
+      r.status === "fulfilled" ? r.value : validPhase1Results[i],
     );
   }
 
