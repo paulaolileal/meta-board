@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   Search,
@@ -10,13 +10,17 @@ import {
   Monitor,
   X,
   ChevronLeft,
+  Columns3,
 } from "lucide-react";
 import { useBoardStore } from "@/modules/board/store";
 import { useThemeStore, type ThemeMode } from "@/modules/settings/themeStore";
-import { isMockMode } from "@/shared/providers/providerFactory";
-import { getIcon } from "@/shared/icons/iconRegistry";
+import { getSheetProvider, isMockMode } from "@/shared/providers/providerFactory";
+import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import type { FieldType } from "@/modules/project/domain/types";
+
+const SELECT_TYPES: FieldType[] = ["select", "chip", "multiselect"];
 
 interface Props {
   connectionId: string;
@@ -28,19 +32,39 @@ function SidebarContent({ connectionId }: Props) {
   const fields = useBoardStore((s) => s.fields);
   const search = useBoardStore((s) => s.search);
   const setSearch = useBoardStore((s) => s.setSearch);
+  const setBoard = useBoardStore((s) => s.setBoard);
   const filterTags = useBoardStore((s) => s.filterTags);
   const toggleFilterTag = useBoardStore((s) => s.toggleFilterTag);
   const clearFilters = useBoardStore((s) => s.clearFilters);
   const mode = useThemeStore((s) => s.mode);
   const setMode = useThemeStore((s) => s.setMode);
+  const connections = useSpreadsheetStore((s) => s.connections);
+
+  const sheetId = useMemo(
+    () => connections.find((c) => c.id === connectionId)?.sheetId ?? "mock",
+    [connections, connectionId],
+  );
 
   const tagOptions = useMemo(
     () => fields.find((f) => f.id === "tags")?.options ?? [],
     [fields],
   );
 
+  const groupableFields = useMemo(
+    () => fields.filter((f) => SELECT_TYPES.includes(f.type)),
+    [fields],
+  );
+
   const isMock = isMockMode();
   const backTo = isMock ? "/" : `/s/${connectionId}`;
+
+  const handleGroupByChange = useCallback(async (fieldId: string) => {
+    if (!board) return;
+    const updated = { ...board, groupBy: fieldId };
+    setBoard(updated);
+    const provider = getSheetProvider(sheetId);
+    await provider.saveBoard(updated);
+  }, [board, sheetId, setBoard]);
 
   return (
     <>
@@ -66,7 +90,7 @@ function SidebarContent({ connectionId }: Props) {
       </div>
 
       <div className="p-4 space-y-4 flex-1 overflow-auto scrollbar-thin">
-        <div>
+        <div className="space-y-2">
           <div className="relative">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -76,6 +100,23 @@ function SidebarContent({ connectionId }: Props) {
               className="w-full pl-9 pr-3 py-2 text-sm rounded-lg bg-surface border border-border focus:outline-none focus:ring-2 focus:ring-ring/40 transition"
             />
           </div>
+          {groupableFields.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Columns3 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <select
+                value={board?.groupBy ?? ""}
+                onChange={(e) => handleGroupByChange(e.target.value)}
+                className="flex-1 px-2 py-1.5 bg-surface border border-border rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-ring/40 text-foreground"
+              >
+                <option value="">— sem agrupamento —</option>
+                {groupableFields.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {tagOptions.length > 0 && (
