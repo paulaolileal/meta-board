@@ -17,6 +17,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { FieldEditor } from "./CardDrawer";
 import { useCardMutations } from "@/modules/board/useCardMutations";
 import { useAiCardExtraction, type ExtractionResult } from "@/modules/board/useAiCardExtraction";
@@ -137,17 +143,12 @@ export function AiCardModal({ open, onClose }: Props) {
     );
   }
 
-  function runSlideAnimation(
-    exitDir: "left" | "right",
-    onSwap: () => void,
-  ) {
+  function runSlideAnimation(exitDir: "left" | "right", onSwap: () => void) {
     setSlide({ phase: "exit", dir: exitDir });
-
     setTimeout(() => {
       onSwap();
       const enterDir: "left" | "right" = exitDir === "left" ? "right" : "left";
       setSlide({ phase: "enter-start", dir: enterDir });
-
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setSlide({ phase: "enter-end", dir: enterDir });
@@ -160,7 +161,6 @@ export function AiCardModal({ open, onClose }: Props) {
   function animateNavigate(dir: "next" | "prev", status?: CardStatus) {
     if (slide.phase !== null) return;
     if (status !== undefined) updateStatus(currentIndex, status);
-
     if (cards.length <= 1) return;
 
     const exitDir: "left" | "right" =
@@ -183,16 +183,13 @@ export function AiCardModal({ open, onClose }: Props) {
     runSlideAnimation(exitDir, () => setCurrentIndex(targetIndex));
   }
 
-  // Derive inline styles from slide state
   const cardTransform =
     slide.phase === "exit"
       ? slide.dir === "left"
         ? "translateX(-115%) rotate(-5deg)"
         : "translateX(115%) rotate(5deg)"
       : slide.phase === "enter-start"
-        ? slide.dir === "left"
-          ? "translateX(-50px)"
-          : "translateX(50px)"
+        ? slide.dir === "left" ? "translateX(-50px)" : "translateX(50px)"
         : "translateX(0)";
 
   const cardTransition =
@@ -208,6 +205,8 @@ export function AiCardModal({ open, onClose }: Props) {
   const cardRingClass =
     currentStatus === "approved" ? "ring-2 ring-green-500" :
     currentStatus === "rejected" ? "ring-2 ring-red-400" : "";
+
+  const currentCard = cards[currentIndex];
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -270,143 +269,171 @@ export function AiCardModal({ open, onClose }: Props) {
             </div>
           </>
         ) : (
-          <>
-            {/* Card + flanking arrows */}
-            <div className="flex items-center gap-2 mt-2">
-              <button
-                onClick={() => animateNavigate("prev")}
-                disabled={cards.length <= 1 || slide.phase !== null}
-                className="shrink-0 p-2 rounded-full border border-border hover:bg-accent transition disabled:opacity-25"
-                aria-label="Card anterior"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-
-              {/* Overflow-hidden clips the flying card */}
-              <div className="flex-1 overflow-hidden rounded-xl">
-                <div
-                  style={{
-                    transform: cardTransform,
-                    transition: cardTransition,
-                    opacity: cardOpacity,
-                  }}
-                  className={`rounded-xl border bg-card ${cardRingClass}`}
+          <TooltipProvider delayDuration={400}>
+            <>
+              {/* Card + flanking arrows */}
+              <div className="flex items-center gap-2 mt-2">
+                <button
+                  onClick={() => animateNavigate("prev")}
+                  disabled={cards.length <= 1 || slide.phase !== null}
+                  className="shrink-0 p-2 rounded-full border border-border hover:bg-accent transition disabled:opacity-25"
+                  aria-label="Card anterior"
                 >
-                  <div className="h-[300px] overflow-y-auto scrollbar-thin px-4 py-3 space-y-3">
-                    {editableFields.map((f) => {
-                      const val = cardValues[currentIndex]?.[f.id as keyof Partial<CardRecord>];
-                      const source = cards[currentIndex]?.sources[f.id];
-                      return (
-                        <div key={f.id} className="space-y-1">
-                          <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                            {f.label}
-                            {f.required && <span className="text-danger">*</span>}
-                            {val !== undefined && source === "searched" && (
-                              <span className="ml-auto text-[10px] text-blue-500 font-semibold inline-flex items-center gap-0.5">
-                                <Globe className="h-2.5 w-2.5" />
-                                buscado
-                              </span>
-                            )}
-                            {val !== undefined && source === "extracted" && (
-                              <span className="ml-auto text-[10px] text-primary font-semibold">
-                                extraído
-                              </span>
-                            )}
-                          </label>
-                          <FieldEditor
-                            field={f}
-                            value={val as never}
-                            onChange={(v) => setField(currentIndex, f.id, v)}
-                          />
-                        </div>
-                      );
-                    })}
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+
+                {/* overflow-hidden only during animation to allow tooltips to escape */}
+                <div className={`flex-1 rounded-xl ${slide.phase !== null ? "overflow-hidden" : ""}`}>
+                  <div
+                    style={{
+                      transform: cardTransform,
+                      transition: cardTransition,
+                      opacity: cardOpacity,
+                    }}
+                    className={`rounded-xl border bg-card ${cardRingClass}`}
+                  >
+                    <div className="h-[300px] overflow-y-auto scrollbar-thin px-4 py-3 space-y-3">
+                      {editableFields.map((f) => {
+                        const val = cardValues[currentIndex]?.[f.id as keyof Partial<CardRecord>];
+                        const source = currentCard?.sources[f.id];
+                        const reason = currentCard?.reasons[f.id];
+                        return (
+                          <div key={f.id} className="space-y-1">
+                            <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                              {f.label}
+                              {f.required && <span className="text-danger">*</span>}
+
+                              {val !== undefined && source === "searched" && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="ml-auto text-[10px] text-blue-500 font-semibold inline-flex items-center gap-0.5 cursor-help">
+                                      <Globe className="h-2.5 w-2.5" />
+                                      buscado
+                                    </span>
+                                  </TooltipTrigger>
+                                  {reason && (
+                                    <TooltipContent
+                                      side="bottom"
+                                      className="max-w-[240px] text-left whitespace-pre-wrap bg-popover text-foreground border border-border shadow-md font-normal text-[11px] leading-relaxed"
+                                    >
+                                      {reason}
+                                    </TooltipContent>
+                                  )}
+                                </Tooltip>
+                              )}
+
+                              {val !== undefined && source === "extracted" && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="ml-auto text-[10px] text-primary font-semibold cursor-help">
+                                      extraído
+                                    </span>
+                                  </TooltipTrigger>
+                                  {reason && (
+                                    <TooltipContent
+                                      side="bottom"
+                                      className="max-w-[240px] text-left whitespace-pre-wrap bg-popover text-foreground border border-border shadow-md font-normal text-[11px] leading-relaxed"
+                                    >
+                                      {reason}
+                                    </TooltipContent>
+                                  )}
+                                </Tooltip>
+                              )}
+                            </label>
+                            <FieldEditor
+                              field={f}
+                              value={val as never}
+                              onChange={(v) => setField(currentIndex, f.id, v)}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
+
+                <button
+                  onClick={() => animateNavigate("next")}
+                  disabled={cards.length <= 1 || slide.phase !== null}
+                  className="shrink-0 p-2 rounded-full border border-border hover:bg-accent transition disabled:opacity-25"
+                  aria-label="Próximo card"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
               </div>
 
-              <button
-                onClick={() => animateNavigate("next")}
-                disabled={cards.length <= 1 || slide.phase !== null}
-                className="shrink-0 p-2 rounded-full border border-border hover:bg-accent transition disabled:opacity-25"
-                aria-label="Próximo card"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Approve / Reject */}
-            <div className="flex gap-3 mt-3">
-              <button
-                onClick={() => animateNavigate("next", "rejected")}
-                disabled={slide.phase !== null}
-                className={`flex-1 py-3 text-sm rounded-xl border-2 transition font-medium inline-flex items-center justify-center gap-2 ${
-                  currentStatus === "rejected"
-                    ? "bg-red-500/10 border-red-400 text-red-500"
-                    : "border-border hover:border-red-400 hover:text-red-500 hover:bg-red-500/5"
-                }`}
-              >
-                <X className="h-4 w-4" />
-                Rejeitar
-              </button>
-              <button
-                onClick={() => animateNavigate("next", "approved")}
-                disabled={slide.phase !== null}
-                className={`flex-1 py-3 text-sm rounded-xl border-2 transition font-medium inline-flex items-center justify-center gap-2 ${
-                  currentStatus === "approved"
-                    ? "bg-green-500/10 border-green-500 text-green-600"
-                    : "border-border hover:border-green-500 hover:text-green-600 hover:bg-green-500/5"
-                }`}
-              >
-                <Check className="h-4 w-4" />
-                Aprovar
-              </button>
-            </div>
-
-            {/* Footer: back + dots + create */}
-            <div className="flex items-center justify-between pt-3 border-t border-border mt-2 gap-3">
-              <button
-                onClick={() => setStep("input")}
-                className="shrink-0 px-3 py-1.5 text-sm rounded-lg border border-border hover:bg-accent transition inline-flex items-center gap-1.5"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Voltar
-              </button>
-
-              {/* Status dots — clickable to jump */}
-              <div className="flex items-center gap-1.5 flex-1 justify-center">
-                {cardStatuses.map((s, i) => (
-                  <button
-                    key={i}
-                    onClick={() => animateJumpTo(i)}
-                    aria-label={`Ir para card ${i + 1}`}
-                    className="transition-all"
-                  >
-                    {s === "approved" ? (
-                      <span className={`inline-flex items-center justify-center rounded-full bg-green-500 text-white transition-all ${i === currentIndex ? "w-5 h-5" : "w-4 h-4"}`}>
-                        <Check className={i === currentIndex ? "h-3 w-3" : "h-2.5 w-2.5"} />
-                      </span>
-                    ) : s === "rejected" ? (
-                      <span className={`inline-flex items-center justify-center rounded-full bg-red-400 text-white transition-all ${i === currentIndex ? "w-5 h-5" : "w-4 h-4"}`}>
-                        <X className={i === currentIndex ? "h-3 w-3" : "h-2.5 w-2.5"} />
-                      </span>
-                    ) : (
-                      <span className={`rounded-full block transition-all ${i === currentIndex ? "w-3 h-3 bg-muted-foreground/60" : "w-2 h-2 bg-muted-foreground/25"}`} />
-                    )}
-                  </button>
-                ))}
+              {/* Approve / Reject */}
+              <div className="flex gap-3 mt-3">
+                <button
+                  onClick={() => animateNavigate("next", "rejected")}
+                  disabled={slide.phase !== null}
+                  className={`flex-1 py-3 text-sm rounded-xl border-2 transition font-medium inline-flex items-center justify-center gap-2 ${
+                    currentStatus === "rejected"
+                      ? "bg-red-500/10 border-red-400 text-red-500"
+                      : "border-border hover:border-red-400 hover:text-red-500 hover:bg-red-500/5"
+                  }`}
+                >
+                  <X className="h-4 w-4" />
+                  Rejeitar
+                </button>
+                <button
+                  onClick={() => animateNavigate("next", "approved")}
+                  disabled={slide.phase !== null}
+                  className={`flex-1 py-3 text-sm rounded-xl border-2 transition font-medium inline-flex items-center justify-center gap-2 ${
+                    currentStatus === "approved"
+                      ? "bg-green-500/10 border-green-500 text-green-600"
+                      : "border-border hover:border-green-500 hover:text-green-600 hover:bg-green-500/5"
+                  }`}
+                >
+                  <Check className="h-4 w-4" />
+                  Aprovar
+                </button>
               </div>
 
-              <button
-                onClick={handleCreate}
-                disabled={creating || approvedCount === 0}
-                className="shrink-0 px-3 py-1.5 text-sm rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition disabled:opacity-50 inline-flex items-center gap-1.5"
-              >
-                {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                Criar ({approvedCount})
-              </button>
-            </div>
-          </>
+              {/* Footer: back + dots + create */}
+              <div className="flex items-center justify-between pt-3 border-t border-border mt-2 gap-3">
+                <button
+                  onClick={() => setStep("input")}
+                  className="shrink-0 px-3 py-1.5 text-sm rounded-lg border border-border hover:bg-accent transition inline-flex items-center gap-1.5"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Voltar
+                </button>
+
+                <div className="flex items-center gap-1.5 flex-1 justify-center">
+                  {cardStatuses.map((s, i) => (
+                    <button
+                      key={i}
+                      onClick={() => animateJumpTo(i)}
+                      aria-label={`Ir para card ${i + 1}`}
+                      className="transition-all"
+                    >
+                      {s === "approved" ? (
+                        <span className={`inline-flex items-center justify-center rounded-full bg-green-500 text-white transition-all ${i === currentIndex ? "w-5 h-5" : "w-4 h-4"}`}>
+                          <Check className={i === currentIndex ? "h-3 w-3" : "h-2.5 w-2.5"} />
+                        </span>
+                      ) : s === "rejected" ? (
+                        <span className={`inline-flex items-center justify-center rounded-full bg-red-400 text-white transition-all ${i === currentIndex ? "w-5 h-5" : "w-4 h-4"}`}>
+                          <X className={i === currentIndex ? "h-3 w-3" : "h-2.5 w-2.5"} />
+                        </span>
+                      ) : (
+                        <span className={`rounded-full block transition-all ${i === currentIndex ? "w-3 h-3 bg-muted-foreground/60" : "w-2 h-2 bg-muted-foreground/25"}`} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleCreate}
+                  disabled={creating || approvedCount === 0}
+                  className="shrink-0 px-3 py-1.5 text-sm rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition disabled:opacity-50 inline-flex items-center gap-1.5"
+                >
+                  {creating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  Criar ({approvedCount})
+                </button>
+              </div>
+            </>
+          </TooltipProvider>
         )}
       </DialogContent>
     </Dialog>
