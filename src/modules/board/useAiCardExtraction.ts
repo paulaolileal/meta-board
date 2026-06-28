@@ -142,10 +142,19 @@ STRICT RULES:
   "sushi", "massas", or "churrasco" just because the place is a restaurant.
 - Self-check before returning: for every multiselect value, verify it appears in its own reason quote.
   Remove any value that fails this check.
+- For image fields: the value MUST be a direct URL pointing to an image file (e.g. ending in .jpg, .jpeg,
+  .png, .webp, .gif, or a CDN image URL). NEVER use a webpage URL as the value for an image field.
+  If no direct image URL is available, omit the field.
+- For longtext fields: capture ALL relevant information found across the page for that field, not just
+  the first snippet. Combine multiple relevant excerpts into a single coherent text, separated by newlines.
 - When in doubt → omit the field entirely.
 - If the source page does not explicitly state a value for a field, omit it.
 
 CRITICAL CONSTRAINTS:
+- ENTITY VERIFICATION: Before using any web search result, check that the entity name on the source page
+  EXACTLY matches (or is a clear alternate name/abbreviation of) the entity you are searching for.
+  If the names do not match — even slightly (e.g. "A Obra" ≠ "A ONIR") — discard that result entirely
+  and try a different source. NEVER use data from a page about a different entity.
 - The already-extracted fields listed above come directly from the source text and are FINAL.
   Do NOT suggest alternative or conflicting values for any of them under any circumstances.
 - You are enriching supplementary details about a specific entity already identified from
