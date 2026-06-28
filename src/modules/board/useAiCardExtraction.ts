@@ -51,7 +51,10 @@ If the text describes multiple distinct items, return one card per item.
 Example for multiple items:
 { "cards": [ { "fieldId": "value" }, { "fieldId": "value" } ] }
 
-Only include fields where you have reasonable confidence. Omit fields you cannot extract. Never guess.`;
+Rules:
+- Only include fields where you have reasonable confidence. Omit fields you cannot extract. Never guess.
+- Never use placeholder strings like "Not Available", "N/A", "Unknown", or similar — omit the field instead.
+- Map each piece of information to its most specific matching field. Do not aggregate multiple facts into a single text or longtext field.`;
 }
 
 function buildSearchInstructions(
