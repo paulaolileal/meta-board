@@ -135,10 +135,13 @@ STRICT RULES:
 - Only include fields you found with HIGH CONFIDENCE from a reliable source.
 - NEVER use placeholder strings ("Not Available", "N/A", "Não especificado", etc.) — omit the field instead.
 - For select / chip: return exactly ONE string from the listed options. Never return comma-separated values or arrays.
-- For multiselect: include ONLY options that are EXPLICITLY and LITERALLY listed/named on the source page.
-  Do NOT infer, assume, or add options based on the type of establishment.
-  Example: a page about a cafeteria that does NOT list "sushi" or "churrasco" must NOT include those options —
-  even if you think a restaurant of that style might serve them.
+- For multiselect: include ONLY options whose word (or a direct synonym) appears in the quoted reason text.
+  This is a hard constraint: if the option word is not in the quoted text, it MUST NOT be in the values.
+  Do NOT infer, assume, or add options from general knowledge about the establishment type.
+  Example: if the quote says "café da manhã, almoço e porções", include only those three — never add
+  "sushi", "massas", or "churrasco" just because the place is a restaurant.
+- Self-check before returning: for every multiselect value, verify it appears in its own reason quote.
+  Remove any value that fails this check.
 - When in doubt → omit the field entirely.
 - If the source page does not explicitly state a value for a field, omit it.
 
