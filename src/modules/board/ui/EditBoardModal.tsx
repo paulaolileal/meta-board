@@ -388,7 +388,9 @@ export function EditBoardModal({ open, onClose }: Props) {
         icon,
         description: description.trim() || undefined,
         groupBy: groupBy || board.groupBy,
-        cardClosedLayout: closedLayout,
+        cardClosedLayout: orderedFieldIds.filter(
+          (id) => !fieldsToDelete.has(id) && closedLayout.includes(id)
+        ),
       };
       const savedBoard = await provider.saveBoard(updatedBoard);
       setBoard(savedBoard);
