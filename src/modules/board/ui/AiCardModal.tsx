@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Sparkles, ArrowLeft } from "lucide-react";
+import { Loader2, Sparkles, ArrowLeft, Globe } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { FieldEditor } from "./CardDrawer";
 import { useCardMutations } from "@/modules/board/useCardMutations";
-import { useAiCardExtraction } from "@/modules/board/useAiCardExtraction";
+import { useAiCardExtraction, type FieldSource } from "@/modules/board/useAiCardExtraction";
 import { useBoardStore } from "@/modules/board/store";
 import type { CardRecord } from "@/modules/project/domain/types";
 
@@ -29,6 +29,7 @@ export function AiCardModal({ open, onClose }: Props) {
   const [step, setStep] = useState<Step>("input");
   const [text, setText] = useState("");
   const [values, setValues] = useState<Partial<CardRecord>>({});
+  const [sources, setSources] = useState<Record<string, FieldSource>>({});
   const [extracting, setExtracting] = useState(false);
   const [creating, setCreating] = useState(false);
 
@@ -39,6 +40,7 @@ export function AiCardModal({ open, onClose }: Props) {
       setStep("input");
       setText("");
       setValues({});
+      setSources({});
     }
   }, [open]);
 
@@ -56,8 +58,9 @@ export function AiCardModal({ open, onClose }: Props) {
     if (!text.trim()) return;
     setExtracting(true);
     try {
-      const extracted = await extractCard(text);
-      setValues(extracted);
+      const result = await extractCard(text);
+      setValues(result.values);
+      setSources(result.sources);
       setStep("review");
     } catch (err) {
       toast.error((err as Error).message ?? "Erro ao extrair campos");
@@ -136,7 +139,13 @@ export function AiCardModal({ open, onClose }: Props) {
                   <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                     {f.label}
                     {f.required && <span className="text-danger">*</span>}
-                    {values[f.id as keyof typeof values] != null && (
+                    {sources[f.id] === "searched" && (
+                      <span className="ml-auto text-[10px] text-blue-500 font-semibold inline-flex items-center gap-0.5">
+                        <Globe className="h-2.5 w-2.5" />
+                        buscado
+                      </span>
+                    )}
+                    {sources[f.id] === "extracted" && (
                       <span className="ml-auto text-[10px] text-primary font-semibold">
                         extraído
                       </span>
