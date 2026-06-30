@@ -192,6 +192,7 @@ export class GoogleAuthService {
         return;
       }
       const start = Date.now();
+      let retried = false;
       const interval = setInterval(() => {
         if (window.google?.accounts?.oauth2) {
           clearInterval(interval);
@@ -199,6 +200,13 @@ export class GoogleAuthService {
         } else if (Date.now() - start > timeout) {
           clearInterval(interval);
           reject(new Error("Google Identity Services não carregou. Verifique a conexão."));
+        } else if (!retried && Date.now() - start > 5_000) {
+          // After 5 s, inject a fresh script tag in case the original failed silently
+          retried = true;
+          const s = document.createElement("script");
+          s.src = "https://accounts.google.com/gsi/client";
+          s.async = true;
+          document.head.appendChild(s);
         }
       }, 100);
     });
