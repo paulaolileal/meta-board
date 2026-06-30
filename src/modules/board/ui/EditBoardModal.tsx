@@ -464,7 +464,7 @@ export function EditBoardModal({ open, onClose }: Props) {
               <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">
                 Ícone
               </label>
-              <BoardIconPicker value={icon} onChange={setIcon} />
+              <BoardIconPicker value={icon} onChange={setIcon} color={color} />
             </div>
 
             <div>

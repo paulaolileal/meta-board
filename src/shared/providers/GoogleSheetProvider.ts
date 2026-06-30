@@ -149,13 +149,23 @@ export class GoogleSheetProvider implements ISheetProvider {
   async saveBoard(board: BoardConfig): Promise<BoardConfig> {
     const values = await this.api.getValues(this.sheetId, "_boards");
     if (values.length < 2) throw new Error("Aba _boards não encontrada");
-    const [headers, ...rows] = values;
+    let [headers, ...rows] = values;
+
+    if (!headers.includes("color")) {
+      await this.api.setValues(
+        this.sheetId,
+        `_boards!${colLetter(headers.length + 1)}1`,
+        [["color"]],
+      );
+      headers = [...headers, "color"];
+    }
+
     const rowIndex = rows.findIndex((row) => row[0] === board.id);
     if (rowIndex < 0) throw new Error(`Board ${board.id} não encontrado`);
     const updated = { ...board, updatedAt: now() };
     const newRow = this.boardConfigToRow(updated);
     const sheetRow = rowIndex + 2;
-    await this.api.setValues(this.sheetId, `_boards!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`, [newRow]);
+    await this.api.setValues(this.sheetId, `_boards!A${sheetRow}:${colLetter(newRow.length)}${sheetRow}`, [newRow]);
     return updated;
   }
 

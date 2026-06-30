@@ -4,12 +4,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ICON_LIST, getIcon } from "./iconRegistry";
 import { cn } from "@/lib/utils";
 
+
 interface Props {
   value: string;
   onChange: (icon: string) => void;
+  color?: string;
 }
 
-export function BoardIconPicker({ value, onChange }: Props) {
+export function BoardIconPicker({ value, onChange, color }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -30,7 +32,11 @@ export function BoardIconPicker({ value, onChange }: Props) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center text-xl shadow-[var(--shadow-glow)] hover:opacity-90 transition focus:outline-none focus:ring-2 focus:ring-ring/40"
+          className={cn(
+            "w-12 h-12 rounded-xl flex items-center justify-center text-xl shadow-[var(--shadow-glow)] hover:opacity-90 transition focus:outline-none focus:ring-2 focus:ring-ring/40",
+            !color && "bg-gradient-to-br from-primary to-primary-glow",
+          )}
+          style={color ? { backgroundColor: color } : undefined}
         >
           {LucideComponent ? (
             <LucideComponent size={24} className="text-white" />
