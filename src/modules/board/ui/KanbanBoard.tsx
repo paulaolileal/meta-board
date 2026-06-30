@@ -272,14 +272,6 @@ export function KanbanBoard() {
           </DragOverlay>
         </DndContext>
 
-        <button
-          onClick={() => setPendingGroupValue(activeMobileCol)}
-          className="fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-glow)] flex items-center justify-center hover:opacity-90 active:scale-95 transition-all"
-          aria-label="Criar card"
-        >
-          <Plus className="h-6 w-6" />
-        </button>
-
         <CardDrawer />
         <CreateCardModal
           open={pendingGroupValue !== null}
