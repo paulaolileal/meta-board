@@ -25,6 +25,7 @@ const BOARDS_HEADERS = [
   "id", "name", "icon", "description", "group_by", "order_by",
   "card_title_field", "card_description_field", "card_closed_layout",
   "card_open_layout", "archived_column", "created_at", "updated_at",
+  "color",
 ];
 
 const FIELDS_HEADERS = [
@@ -212,6 +213,19 @@ export class GoogleSheetProvider implements ISheetProvider {
         ? this.api.setValues(this.sheetId, `_cards!A1:${colLetter(CARDS_FIXED_HEADERS.length)}1`, [CARDS_FIXED_HEADERS])
         : Promise.resolve(),
     ]);
+
+    // Migrate _boards: append "color" column header if missing
+    if (boardsRow[0]?.length && !boardsRow[0].includes("color")) {
+      const currentHeaders = await this.api.getValues(this.sheetId, "_boards!A1:Z1");
+      const headerRow = currentHeaders[0] ?? [];
+      if (headerRow.length > 0 && !headerRow.includes("color")) {
+        await this.api.setValues(
+          this.sheetId,
+          `_boards!${colLetter(headerRow.length + 1)}1`,
+          [["color"]],
+        );
+      }
+    }
   }
 
   async createBoard(
@@ -254,7 +268,8 @@ export class GoogleSheetProvider implements ISheetProvider {
     return {
       id: obj.id,
       name: obj.name,
-      icon: obj.icon || "📋",
+      icon: obj.icon || "KanbanSquare",
+      color: obj.color || undefined,
       description: obj.description || undefined,
       groupBy: obj.groupBy || "status",
       orderBy: obj.orderBy || "_sort",

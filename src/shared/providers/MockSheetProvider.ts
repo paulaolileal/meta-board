@@ -7,7 +7,8 @@ const BOARDS: BoardConfig[] = [
   {
     id: "board-dev",
     name: "Dev Tracker",
-    icon: "🚀",
+    icon: "KanbanSquare",
+    color: "#7c3aed",
     description: "Rastreamento de tarefas de desenvolvimento",
     groupBy: "status",
     orderBy: "_sort",
@@ -21,7 +22,8 @@ const BOARDS: BoardConfig[] = [
   {
     id: "board-marketing",
     name: "Marketing",
-    icon: "📣",
+    icon: "Megaphone",
+    color: "#db2777",
     description: "Campanhas e conteúdo",
     groupBy: "status",
     orderBy: "_sort",
@@ -35,7 +37,8 @@ const BOARDS: BoardConfig[] = [
   {
     id: "board-produto",
     name: "Produto",
-    icon: "✨",
+    icon: "Layers",
+    color: "#2563eb",
     description: "Roadmap e features",
     groupBy: "status",
     orderBy: "_sort",

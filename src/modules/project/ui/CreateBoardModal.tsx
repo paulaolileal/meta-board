@@ -13,13 +13,13 @@ import {
   CalendarClock,
   Link,
   Image,
-  Smile,
   Tag,
   ListFilter,
   List,
   ListChecks,
   Mail,
   Palette,
+  Smile,
 } from "lucide-react";
 import {
   Dialog,
@@ -30,6 +30,8 @@ import {
 } from "@/components/ui/dialog";
 import { getSheetProvider } from "@/shared/providers/providerFactory";
 import type { BoardConfig, FieldDef, FieldType } from "@/modules/project/domain/types";
+import { BoardIconPicker } from "@/shared/icons/BoardIconPicker";
+import { BoardColorPicker } from "@/shared/colors/BoardColorPicker";
 
 interface Props {
   open: boolean;
@@ -42,8 +44,6 @@ interface CustomField {
   name: string;
   type: FieldType;
 }
-
-const EMOJIS = ["📋", "🚀", "✨", "📣", "🎯", "🛠️", "📊", "🔥", "💡", "🌟"];
 
 const FIELD_TYPE_OPTIONS: { type: FieldType; label: string; Icon: React.ElementType }[] = [
   { type: "text",        label: "Texto",           Icon: Type },
@@ -111,7 +111,8 @@ function buildFields(customFields: CustomField[]): FieldDef[] {
 
 export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
   const [name, setName] = useState("");
-  const [icon, setIcon] = useState("📋");
+  const [icon, setIcon] = useState("KanbanSquare");
+  const [color, setColor] = useState("#7c3aed");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -155,6 +156,7 @@ export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
         {
           name: name.trim(),
           icon,
+          color: color || undefined,
           description: description.trim() || undefined,
           groupBy: "status",
           orderBy: "_sort",
@@ -169,7 +171,8 @@ export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
       onCreated(board);
       setName("");
       setDescription("");
-      setIcon("📋");
+      setIcon("KanbanSquare");
+      setColor("#7c3aed");
       setCustomFields([]);
       setShowFields(false);
     } catch (e) {
@@ -190,21 +193,18 @@ export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
-          <div>
-            <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">
-              Ícone
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {EMOJIS.map((e) => (
-                <button
-                  key={e}
-                  onClick={() => setIcon(e)}
-                  className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition
-                    ${icon === e ? "bg-primary/15 ring-2 ring-primary" : "hover:bg-accent"}`}
-                >
-                  {e}
-                </button>
-              ))}
+          <div className="flex items-end gap-4">
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">
+                Ícone
+              </label>
+              <BoardIconPicker value={icon} onChange={setIcon} />
+            </div>
+            <div className="flex-1">
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">
+                Cor
+              </label>
+              <BoardColorPicker value={color} onChange={setColor} />
             </div>
           </div>
 

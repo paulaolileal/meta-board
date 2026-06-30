@@ -38,6 +38,7 @@ export interface BoardConfig {
   id: string;
   name: string;
   icon: string;
+  color?: string;
   description?: string;
   groupBy: string;
   orderBy: string;

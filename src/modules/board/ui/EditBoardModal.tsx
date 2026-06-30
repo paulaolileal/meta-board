@@ -33,6 +33,7 @@ import { useBoardStore } from "@/modules/board/store";
 import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
 import { ENV_CONNECTION_ID } from "@/routes/HomePage";
 import { BoardIconPicker } from "@/shared/icons/BoardIconPicker";
+import { BoardColorPicker } from "@/shared/colors/BoardColorPicker";
 
 const MOCK_SHEET_ID = "mock";
 const SELECT_TYPES: FieldType[] = ["select", "chip", "multiselect"];
@@ -249,7 +250,8 @@ export function EditBoardModal({ open, onClose }: Props) {
   const connections = useSpreadsheetStore((s) => s.connections);
 
   const [name, setName] = useState("");
-  const [icon, setIcon] = useState("📋");
+  const [icon, setIcon] = useState("KanbanSquare");
+  const [color, setColor] = useState("");
   const [description, setDescription] = useState("");
   const [groupBy, setGroupBy] = useState("");
   const [loading, setLoading] = useState(false);
@@ -282,6 +284,7 @@ export function EditBoardModal({ open, onClose }: Props) {
     if (open && board) {
       setName(board.name);
       setIcon(board.icon);
+      setColor(board.color ?? "");
       setDescription(board.description ?? "");
       setGroupBy(board.groupBy ?? "");
       setExpandedFieldId(null);
@@ -391,6 +394,7 @@ export function EditBoardModal({ open, onClose }: Props) {
         ...board,
         name: name.trim(),
         icon,
+        color: color || undefined,
         description: description.trim() || undefined,
         groupBy: groupBy || board.groupBy,
         cardClosedLayout: orderedFieldIds.filter(
@@ -461,6 +465,13 @@ export function EditBoardModal({ open, onClose }: Props) {
                 Ícone
               </label>
               <BoardIconPicker value={icon} onChange={setIcon} />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">
+                Cor
+              </label>
+              <BoardColorPicker value={color} onChange={setColor} />
             </div>
 
             <div className="space-y-1.5">
