@@ -92,16 +92,16 @@ export function SpreadsheetPage() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="rounded-2xl bg-card border border-border overflow-hidden shadow-[var(--shadow-card)]">
-                  <div className="flex items-center gap-4 px-5 py-5 bg-muted/40">
-                    <div className="shrink-0 w-20 h-20 skeleton rounded-2xl" />
-                    <div className="flex-1 space-y-2">
-                      <div className="skeleton h-5 w-3/5 rounded" />
-                      <div className="skeleton h-4 w-2/5 rounded" />
+                  <div className="flex">
+                    <div className="shrink-0 w-28 skeleton" style={{ minHeight: "100px" }} />
+                    <div className="flex-1 flex flex-col">
+                      <div className="flex items-center px-4 py-5 bg-muted/40 flex-1">
+                        <div className="skeleton h-5 w-3/4 rounded" />
+                      </div>
+                      <div className="flex items-start px-4 py-3 min-h-[52px]">
+                        <div className="skeleton h-3.5 w-4/5 rounded" />
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-4 px-5 py-4">
-                    <div className="shrink-0 w-20" />
-                    <div className="skeleton h-3.5 w-4/5 rounded" />
                   </div>
                 </div>
               ))}
@@ -194,28 +194,37 @@ function BoardGrid({
                 onClick={() => navigate(`/s/${connectionId}/b/${b.id}`)}
                 className="w-full text-left rounded-2xl bg-card border border-border cursor-pointer overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] hover:border-primary/20 transition-all duration-200 group"
               >
-                {/* Colored zone: big icon + board name side by side */}
-                <div className="flex items-center gap-4 px-5 py-5" style={{ backgroundColor: effectiveColor }}>
-                  <div className="shrink-0 w-20 h-20 rounded-2xl bg-white/15 flex items-center justify-center">
-                    {LucideIcon ? (
-                      <LucideIcon size={40} className="text-white" />
-                    ) : (
-                      <span className="text-4xl leading-none">{b.icon}</span>
-                    )}
+                <div className="flex">
+                  {/* Left column: full-height colored strip with centered icon */}
+                  <div
+                    className="shrink-0 w-28 flex items-center justify-center"
+                    style={{ backgroundColor: effectiveColor }}
+                  >
+                    <div className="w-20 h-20 rounded-2xl bg-white/15 flex items-center justify-center">
+                      {LucideIcon ? (
+                        <LucideIcon size={40} className="text-white" />
+                      ) : (
+                        <span className="text-4xl leading-none">{b.icon}</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-lg leading-snug text-white drop-shadow-sm line-clamp-2 group-hover:opacity-90 transition-opacity">
-                      {b.name}
-                    </p>
-                  </div>
-                </div>
 
-                {/* Default zone: description aligned with name */}
-                <div className="flex items-start gap-4 px-5 py-4">
-                  <div className="shrink-0 w-20" />
-                  <p className="text-sm text-muted-foreground line-clamp-2 flex-1 min-h-[2.5rem]">
-                    {b.description ?? ""}
-                  </p>
+                  {/* Right column: colored top (name) + white bottom (description) */}
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <div
+                      className="flex items-center px-4 py-5"
+                      style={{ backgroundColor: effectiveColor }}
+                    >
+                      <p className="font-bold text-lg leading-snug text-white drop-shadow-sm line-clamp-2 group-hover:opacity-90 transition-opacity">
+                        {b.name}
+                      </p>
+                    </div>
+                    <div className="flex-1 flex items-start px-4 py-3 min-h-[52px]">
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {b.description ?? ""}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </button>
             </motion.div>
