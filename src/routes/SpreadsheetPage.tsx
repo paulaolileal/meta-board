@@ -200,13 +200,11 @@ function BoardGrid({
                     className="shrink-0 w-28 flex items-center justify-center"
                     style={{ backgroundColor: effectiveColor }}
                   >
-                    <div className="w-20 h-20 rounded-2xl bg-white/15 flex items-center justify-center">
-                      {LucideIcon ? (
-                        <LucideIcon size={40} className="text-white" />
-                      ) : (
-                        <span className="text-4xl leading-none">{b.icon}</span>
-                      )}
-                    </div>
+                    {LucideIcon ? (
+                      <LucideIcon size={56} className="text-white drop-shadow-sm" />
+                    ) : (
+                      <span className="text-[56px] leading-none">{b.icon}</span>
+                    )}
                   </div>
 
                   {/* Right column: colored top (name) + tinted bottom (description) */}
