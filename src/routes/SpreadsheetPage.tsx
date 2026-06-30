@@ -209,7 +209,7 @@ function BoardGrid({
                     </div>
                   </div>
 
-                  {/* Right column: colored top (name) + white bottom (description) */}
+                  {/* Right column: colored top (name) + tinted bottom (description) */}
                   <div className="flex-1 min-w-0 flex flex-col">
                     <div
                       className="flex items-center px-4 py-5"
@@ -219,8 +219,9 @@ function BoardGrid({
                         {b.name}
                       </p>
                     </div>
-                    <div className="flex-1 flex items-start px-4 py-3 min-h-[52px]">
-                      <p className="text-sm text-muted-foreground line-clamp-2">
+                    <div className="flex-1 flex items-start px-4 py-3 min-h-[52px] relative">
+                      <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundColor: effectiveColor }} />
+                      <p className="relative text-sm text-muted-foreground line-clamp-2">
                         {b.description ?? ""}
                       </p>
                     </div>
