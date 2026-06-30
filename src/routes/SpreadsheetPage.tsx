@@ -92,9 +92,15 @@ export function SpreadsheetPage() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="rounded-2xl bg-card border border-border overflow-hidden shadow-[var(--shadow-card)]">
-                  <div className="h-14 skeleton rounded-none" />
-                  <div className="pt-8 pb-5 px-5">
-                    <div className="skeleton h-5 w-3/5 rounded mb-3" />
+                  <div className="flex items-center gap-4 px-5 py-5 bg-muted/40">
+                    <div className="shrink-0 w-20 h-20 skeleton rounded-2xl" />
+                    <div className="flex-1 space-y-2">
+                      <div className="skeleton h-5 w-3/5 rounded" />
+                      <div className="skeleton h-4 w-2/5 rounded" />
+                    </div>
+                  </div>
+                  <div className="flex gap-4 px-5 py-4">
+                    <div className="shrink-0 w-20" />
                     <div className="skeleton h-3.5 w-4/5 rounded" />
                   </div>
                 </div>
@@ -188,29 +194,28 @@ function BoardGrid({
                 onClick={() => navigate(`/s/${connectionId}/b/${b.id}`)}
                 className="w-full text-left rounded-2xl bg-card border border-border cursor-pointer overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] hover:border-primary/20 transition-all duration-200 group"
               >
-                {/* Colored header zone */}
-                <div className="h-14 relative" style={{ backgroundColor: effectiveColor }}>
-                  <div className="absolute bottom-0 left-5 translate-y-1/2">
-                    <div className="w-12 h-12 rounded-xl bg-card flex items-center justify-center shadow-sm ring-1 ring-black/5">
-                      {LucideIcon ? (
-                        <LucideIcon size={24} style={{ color: effectiveColor }} />
-                      ) : (
-                        <span className="text-2xl leading-none">{b.icon}</span>
-                      )}
-                    </div>
+                {/* Colored zone: big icon + board name side by side */}
+                <div className="flex items-center gap-4 px-5 py-5" style={{ backgroundColor: effectiveColor }}>
+                  <div className="shrink-0 w-20 h-20 rounded-2xl bg-white/15 flex items-center justify-center">
+                    {LucideIcon ? (
+                      <LucideIcon size={40} className="text-white" />
+                    ) : (
+                      <span className="text-4xl leading-none">{b.icon}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-lg leading-snug text-white drop-shadow-sm line-clamp-2 group-hover:opacity-90 transition-opacity">
+                      {b.name}
+                    </p>
                   </div>
                 </div>
 
-                {/* Content */}
-                <div className="pt-8 pb-5 px-5">
-                  <div className="font-semibold text-base leading-tight group-hover:text-primary transition-colors">
-                    {b.name}
-                  </div>
-                  {b.description && (
-                    <p className="text-sm text-muted-foreground mt-1.5 line-clamp-2">
-                      {b.description}
-                    </p>
-                  )}
+                {/* Default zone: description aligned with name */}
+                <div className="flex items-start gap-4 px-5 py-4">
+                  <div className="shrink-0 w-20" />
+                  <p className="text-sm text-muted-foreground line-clamp-2 flex-1 min-h-[2.5rem]">
+                    {b.description ?? ""}
+                  </p>
                 </div>
               </button>
             </motion.div>
