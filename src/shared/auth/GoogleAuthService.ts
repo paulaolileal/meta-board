@@ -57,22 +57,21 @@ function gisReadyPromise(timeout = 30_000): Promise<void> {
       settled = true;
       if (poll) clearInterval(poll);
       if (timer) clearTimeout(timer);
-      ok ? resolve() : reject(err ?? new Error("Google Identity Services não carregou."));
+      if (ok) {
+        resolve();
+      } else {
+        _gisReady = null; // reset so the next attempt can retry
+        reject(err ?? new Error("Google Identity Services não carregou."));
+      }
     };
 
+    // onload resolves immediately when the script finishes fetching
     const script = document.querySelector<HTMLScriptElement>(
       'script[src*="accounts.google.com/gsi"]',
     );
-    if (script) {
-      script.addEventListener("load", () => settle(true), { once: true });
-      script.addEventListener(
-        "error",
-        () => settle(false, new Error("Falha ao carregar Google Identity Services. Verifique sua conexão.")),
-        { once: true },
-      );
-    }
+    script?.addEventListener("load", () => settle(true), { once: true });
 
-    // Polling fallback for the case the script loaded before the listener attached
+    // Polling fallback covers the case the script loaded before the listener attached
     poll = setInterval(() => {
       if (window.google?.accounts?.oauth2) settle(true);
     }, 200);
