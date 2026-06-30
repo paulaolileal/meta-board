@@ -69,7 +69,7 @@ export function BoardTopBar({ connectionId, onOpenSettings }: Props) {
   const isMock = isMockMode();
   const backTo = isMock ? "/" : `/s/${connectionId}`;
   const hasActiveFilters = !!(search || filterTags.length > 0);
-  const showSubRow = tagOptions.length > 0 || groupableFields.length > 0;
+  const showSubRow = tagOptions.length > 0;
 
   const handleGroupByChange = useCallback(
     async (fieldId: string) => {
@@ -128,13 +128,32 @@ export function BoardTopBar({ connectionId, onOpenSettings }: Props) {
               alt="MetaBoard"
               className="w-8 h-8 object-contain rounded-xl shrink-0"
             />
-            <div className="min-w-0 flex-1">
-              <div className="font-semibold text-sm md:text-base truncate leading-tight">
+            <div className="min-w-0 flex-1 flex items-center gap-2">
+              <div className="font-semibold text-sm md:text-base truncate leading-tight min-w-0 flex-1">
                 {board?.name ?? "MetaBoard"}
               </div>
               {board?.description && (
                 <div className="hidden md:block text-xs text-muted-foreground truncate leading-tight">
                   {board.description}
+                </div>
+              )}
+              {/* Group by — inline on mobile, next to board name */}
+              {groupableFields.length > 0 && (
+                <div className="md:hidden shrink-0">
+                  <Select value={board?.groupBy ?? ""} onValueChange={handleGroupByChange}>
+                    <SelectTrigger className="h-7 text-xs bg-surface border-border gap-1 px-2 min-w-[100px]">
+                      <Columns3 className="h-3 w-3 shrink-0" />
+                      <SelectValue placeholder="Agrupar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">— sem agrupamento —</SelectItem>
+                      {groupableFields.map((f) => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {f.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
             </div>
@@ -166,7 +185,7 @@ export function BoardTopBar({ connectionId, onOpenSettings }: Props) {
             </button>
           )}
 
-          {/* Group by — desktop only, shown in sub-row on mobile */}
+          {/* Group by — desktop only, shown inline in main row on mobile */}
           {groupableFields.length > 0 && (
             <div className="hidden md:block">
               <Select value={board?.groupBy ?? ""} onValueChange={handleGroupByChange}>
@@ -216,29 +235,9 @@ export function BoardTopBar({ connectionId, onOpenSettings }: Props) {
         </div>
       </div>
 
-      {/* Sub-row: group by (mobile) + tag filters */}
+      {/* Sub-row: tag filters */}
       {showSubRow && (
         <div className="flex items-center gap-2 px-3 md:px-4 py-2 border-t border-border">
-          {/* Group by — mobile only */}
-          {groupableFields.length > 0 && (
-            <div className="md:hidden shrink-0">
-              <Select value={board?.groupBy ?? ""} onValueChange={handleGroupByChange}>
-                <SelectTrigger className="h-7 text-xs bg-surface border-border gap-1 px-2 min-w-[100px]">
-                  <Columns3 className="h-3 w-3 shrink-0" />
-                  <SelectValue placeholder="Agrupar" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">— sem agrupamento —</SelectItem>
-                  {groupableFields.map((f) => (
-                    <SelectItem key={f.id} value={f.id}>
-                      {f.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           {/* Tag filters */}
           {tagOptions.length > 0 && (
             <>

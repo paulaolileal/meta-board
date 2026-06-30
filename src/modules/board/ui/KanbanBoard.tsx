@@ -40,12 +40,13 @@ function Column({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `col:${title}`, data: { type: "column", status: title } });
   const fields = useBoardStore((s) => s.fields);
+  const isMobile = useIsMobile();
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col w-[260px] sm:w-[280px] lg:w-[300px] xl:w-[340px] 2xl:w-[380px] shrink-0 rounded-2xl bg-surface/60 border border-border p-3 gap-3 h-full",
+        "flex flex-col w-full sm:w-[280px] lg:w-[300px] xl:w-[340px] 2xl:w-[380px] shrink-0 rounded-2xl bg-surface/60 border border-border p-3 gap-3 h-full",
         isOver && "ring-2 ring-primary/40 bg-surface"
       )}
     >
@@ -65,7 +66,7 @@ function Column({
         </button>
       </div>
 
-      <div className="flex flex-col gap-2 overflow-y-auto scrollbar-thin pr-1 flex-1 min-h-0">
+      <div className={cn("flex flex-col gap-2 overflow-y-auto scrollbar-thin pr-1 flex-1 min-h-0", isMobile && "pb-24")}>
         <SortableContext items={cards.map((c) => c._id)} strategy={verticalListSortingStrategy}>
           <AnimatePresence initial={false}>
             {cards.map((card) => (
