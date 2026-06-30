@@ -35,55 +35,6 @@ export interface UserInfo {
   picture: string;
 }
 
-// Singleton promise — resolved once GIS is ready for the page's lifetime.
-// Uses the <script> element's load/error events for immediate settlement,
-// with a polling fallback in case the element loaded before the listener attached.
-let _gisReady: Promise<void> | null = null;
-
-function gisReadyPromise(timeout = 30_000): Promise<void> {
-  if (_gisReady) return _gisReady;
-  _gisReady = new Promise<void>((resolve, reject) => {
-    if (window.google?.accounts?.oauth2) {
-      resolve();
-      return;
-    }
-
-    let settled = false;
-    let poll: ReturnType<typeof setInterval> | null = null;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const settle = (ok: boolean, err?: Error) => {
-      if (settled) return;
-      settled = true;
-      if (poll) clearInterval(poll);
-      if (timer) clearTimeout(timer);
-      if (ok) {
-        resolve();
-      } else {
-        _gisReady = null; // reset so the next attempt can retry
-        reject(err ?? new Error("Google Identity Services não carregou."));
-      }
-    };
-
-    // onload resolves immediately when the script finishes fetching
-    const script = document.querySelector<HTMLScriptElement>(
-      'script[src*="accounts.google.com/gsi"]',
-    );
-    script?.addEventListener("load", () => settle(true), { once: true });
-
-    // Polling fallback covers the case the script loaded before the listener attached
-    poll = setInterval(() => {
-      if (window.google?.accounts?.oauth2) settle(true);
-    }, 200);
-
-    timer = setTimeout(
-      () => settle(false, new Error("Google Identity Services não carregou. Verifique a conexão.")),
-      timeout,
-    );
-  });
-  return _gisReady;
-}
-
 const STORAGE_KEY_TOKEN = "mb:gis:token";
 const STORAGE_KEY_EXPIRY = "mb:gis:expiry";
 const STORAGE_KEY_CONSENTED = "mb:gis:consented";
@@ -234,7 +185,22 @@ export class GoogleAuthService {
     }
   }
 
-  private waitForGis(): Promise<void> {
-    return gisReadyPromise();
+  private waitForGis(timeout = 30_000): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (window.google?.accounts?.oauth2) {
+        resolve();
+        return;
+      }
+      const start = Date.now();
+      const interval = setInterval(() => {
+        if (window.google?.accounts?.oauth2) {
+          clearInterval(interval);
+          resolve();
+        } else if (Date.now() - start > timeout) {
+          clearInterval(interval);
+          reject(new Error("Google Identity Services não carregou. Verifique a conexão."));
+        }
+      }, 100);
+    });
   }
 }
