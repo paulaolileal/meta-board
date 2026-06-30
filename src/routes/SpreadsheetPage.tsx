@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Plus, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Plus, AlertCircle, ChevronRight, LayoutGrid } from "lucide-react";
 import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
 import { getSheetProvider, isMockMode, envSpreadsheetId } from "@/shared/providers/providerFactory";
 import { ENV_CONNECTION_ID } from "@/routes/HomePage";
@@ -65,33 +65,47 @@ export function SpreadsheetPage() {
         <div className="absolute top-0 left-1/4 w-[400px] h-[400px] rounded-full bg-primary/8 blur-[100px]" />
       </div>
 
-      <header className="px-6 py-5 flex items-center gap-4 border-b border-border/50">
-        <Link to="/" className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition">
+      <header className="px-6 py-4 flex items-center gap-3 border-b border-border/50">
+        <Link
+          to="/"
+          className="shrink-0 h-9 w-9 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition flex items-center justify-center"
+          aria-label="Voltar ao início"
+        >
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <div className="flex items-center gap-2.5">
-          <img src="/logo-mb.png" alt="MetaBoard" className="h-8 w-8 object-contain rounded-lg shrink-0" />
-          <div>
-            <div className="text-[9px] font-semibold tracking-widest text-muted-foreground uppercase leading-none">lealtek</div>
-            <div className="font-semibold text-sm leading-tight">{title}</div>
-          </div>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <img src="/logo-mb.png" alt="MetaBoard" className="h-7 w-7 object-contain rounded-lg shrink-0" />
+          <nav className="flex items-center gap-1 text-sm min-w-0" aria-label="Breadcrumb">
+            <Link to="/" className="text-muted-foreground hover:text-foreground transition whitespace-nowrap">MetaBoard</Link>
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+            <span className="font-semibold truncate">{title}</span>
+          </nav>
         </div>
         {!mock && (
           <button
             onClick={() => setCreateOpen(true)}
-            className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium shadow-[var(--shadow-glow)] hover:opacity-90 transition"
+            className="ml-auto shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium shadow-[var(--shadow-glow)] hover:opacity-90 transition"
           >
             <Plus className="h-4 w-4" />
-            Novo board
+            <span className="hidden sm:inline">Novo board</span>
+            <span className="sm:hidden">Novo</span>
           </button>
         )}
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-10">
         {loading ? (
-          <div className="flex items-center gap-2 text-muted-foreground py-16">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Carregando boards…
+          <div>
+            <div className="h-6 w-24 skeleton rounded mb-8" />
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="p-5 rounded-2xl bg-card border border-border shadow-[var(--shadow-card)]">
+                  <div className="skeleton h-10 w-10 rounded-xl mb-4" />
+                  <div className="skeleton h-4 w-3/4 mb-2.5" />
+                  <div className="skeleton h-3 w-1/2" />
+                </div>
+              ))}
+            </div>
           </div>
         ) : error ? (
           <div className="flex items-center gap-2 text-danger py-8">
@@ -100,7 +114,9 @@ export function SpreadsheetPage() {
           </div>
         ) : boards.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="text-4xl mb-4">📋</div>
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+              <LayoutGrid className="h-8 w-8 text-muted-foreground/40" />
+            </div>
             <h2 className="text-xl font-semibold mb-2">Nenhum board ainda</h2>
             <p className="text-muted-foreground mb-6">Crie o primeiro board nesta planilha.</p>
             <button
@@ -157,12 +173,14 @@ function BoardGrid({
             <button
               onClick={() => navigate(`/s/${connectionId}/b/${b.id}`)}
               className={cn(
-                "w-full text-left p-5 rounded-2xl bg-card border border-border",
+                "w-full text-left p-5 rounded-2xl bg-card border border-border cursor-pointer",
                 "shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)]",
-                "transition-all group",
+                "hover:border-primary/20 transition-all duration-200 group",
               )}
             >
-              <div className="text-3xl mb-3">{b.icon}</div>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 to-primary-glow/20 flex items-center justify-center mb-4 text-xl">
+                {b.icon}
+              </div>
               <div className="font-semibold mb-1 group-hover:text-primary transition-colors">{b.name}</div>
               {b.description && <p className="text-sm text-muted-foreground line-clamp-2">{b.description}</p>}
             </button>

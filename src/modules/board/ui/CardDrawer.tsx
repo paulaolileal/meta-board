@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   X, Trash2, Copy, Calendar, Link as LinkIcon,
@@ -12,6 +12,8 @@ import { useCardMutations } from "@/modules/board/useCardMutations";
 import { FieldRenderer } from "@/modules/fields/FieldRenderer";
 import type { CardRecord, FieldDef, ChecklistItem, FieldType, DurationValue } from "@/modules/project/domain/types";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Drawer, DrawerContent } from "@/components/ui/drawer";
 
 const FIELD_TYPE_ICONS: Partial<Record<FieldType, LucideIcon>> = {
   text: Type,
@@ -336,6 +338,99 @@ function readField(record: CardRecord, fieldId: string): unknown {
   return record[camel];
 }
 
+function CardDrawerContent({
+  draft,
+  fields,
+  layout,
+  cover,
+  onDuplicate,
+  onDelete,
+  onClose,
+  patch,
+}: {
+  draft: CardRecord;
+  fields: FieldDef[];
+  layout: string[];
+  cover: string | undefined;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  onClose: () => void;
+  patch: (key: string, v: unknown) => void;
+}): ReactNode {
+  return (
+    <>
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="text-xs text-muted-foreground">
+          Card · atualizado {new Date(draft._updatedAt).toLocaleTimeString("pt-BR")}
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onDuplicate}
+            className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent"
+            aria-label="Duplicar"
+          >
+            <Copy className="h-4 w-4" />
+          </button>
+          <button
+            onClick={onDelete}
+            className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-md flex items-center justify-center text-muted-foreground hover:text-danger hover:bg-danger/10"
+            aria-label="Excluir"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+          <button
+            onClick={onClose}
+            className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent"
+            aria-label="Fechar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
+        {cover && (
+          <img src={cover} alt="" className="w-full h-32 sm:h-48 object-cover" referrerPolicy="no-referrer" />
+        )}
+
+        <div className="p-4 sm:p-6 space-y-5">
+          <input
+            value={(draft["title"] as string) ?? ""}
+            onChange={(e) => patch("title", e.target.value)}
+            placeholder="Sem título"
+            className="w-full text-2xl font-semibold bg-transparent border-0 focus:outline-none placeholder:text-muted-foreground"
+          />
+
+          {layout
+            .filter((id) => id !== "title")
+            .map((id) => {
+              const f = fields.find((x) => x.id === id);
+              if (!f || f.visible === false) return null;
+              const FieldIcon = FIELD_TYPE_ICONS[f.type];
+              return (
+                <div key={id} className="space-y-1.5">
+                  <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    {FieldIcon && <FieldIcon className="h-3 w-3 shrink-0" />}
+                    {f.label}
+                  </label>
+                  {f.editable === false ? (
+                    <FieldRenderer field={f} value={readField(draft, id) as never} mode="open" />
+                  ) : (
+                    <FieldEditor
+                      field={f}
+                      value={readField(draft, id)}
+                      onChange={(v) => patch(id, v)}
+                    />
+                  )}
+                </div>
+              );
+            })}
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function CardDrawer() {
   const openCardId = useBoardStore((s) => s.openCardId);
   const cards = useBoardStore((s) => s.cards);
@@ -343,6 +438,7 @@ export function CardDrawer() {
   const project = useBoardStore((s) => s.board);
   const close = useBoardStore((s) => s.openCard);
   const { updateCard, createCard, deleteCard } = useCardMutations();
+  const isMobile = useIsMobile();
 
   const card = cards.find((c) => c._id === openCardId) ?? null;
   const [draft, setDraft] = useState<CardRecord | null>(card);
@@ -382,6 +478,40 @@ export function CardDrawer() {
     updateCard(next);
   }
 
+  async function handleDuplicate() {
+    if (!draft) return;
+    const { _id, _createdAt, _updatedAt, ...rest } = draft;
+    const copy = await createCard(rest);
+    if (copy) close(copy._id);
+  }
+
+  function handleDelete() {
+    if (!draft) return;
+    deleteCard(draft._id);
+    close(null);
+  }
+
+  if (isMobile) {
+    return (
+      <Drawer open={!!draft} onOpenChange={(open) => { if (!open) close(null); }}>
+        <DrawerContent className="max-h-[92dvh] flex flex-col bg-background">
+          {draft && (
+            <CardDrawerContent
+              draft={draft}
+              fields={fields}
+              layout={layout}
+              cover={cover}
+              onDuplicate={handleDuplicate}
+              onDelete={handleDelete}
+              onClose={() => close(null)}
+              patch={patch}
+            />
+          )}
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
   return (
     <AnimatePresence>
       {draft && (
@@ -400,81 +530,16 @@ export function CardDrawer() {
             transition={{ type: "spring", damping: 28, stiffness: 280 }}
             className="fixed right-0 top-0 h-full w-full sm:w-[480px] bg-background border-l border-border z-50 flex flex-col shadow-2xl"
           >
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <div className="text-xs text-muted-foreground">
-                Card · atualizado {new Date(draft._updatedAt).toLocaleTimeString("pt-BR")}
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={async () => {
-                    const { _id, _createdAt, _updatedAt, ...rest } = draft;
-                    const copy = await createCard(rest);
-                    if (copy) close(copy._id);
-                  }}
-                  className="h-10 w-10 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent"
-                  aria-label="Duplicar"
-                >
-                  <Copy className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => {
-                    deleteCard(draft._id);
-                    close(null);
-                  }}
-                  className="h-10 w-10 rounded-md flex items-center justify-center text-muted-foreground hover:text-danger hover:bg-danger/10"
-                  aria-label="Excluir"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => close(null)}
-                  className="h-10 w-10 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent"
-                  aria-label="Fechar"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto scrollbar-thin">
-              {cover && (
-                <img src={cover} alt="" className="w-full h-32 sm:h-48 object-cover" referrerPolicy="no-referrer" />
-              )}
-
-              <div className="p-4 sm:p-6 space-y-5">
-                <input
-                  value={(draft["title"] as string) ?? ""}
-                  onChange={(e) => patch("title", e.target.value)}
-                  placeholder="Sem título"
-                  className="w-full text-2xl font-semibold bg-transparent border-0 focus:outline-none placeholder:text-muted-foreground"
-                />
-
-                {layout
-                  .filter((id) => id !== "title")
-                  .map((id) => {
-                    const f = fields.find((x) => x.id === id);
-                    if (!f || f.visible === false) return null;
-                    const FieldIcon = FIELD_TYPE_ICONS[f.type];
-                    return (
-                      <div key={id} className="space-y-1.5">
-                        <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                          {FieldIcon && <FieldIcon className="h-3 w-3 shrink-0" />}
-                          {f.label}
-                        </label>
-                        {f.editable === false ? (
-                          <FieldRenderer field={f} value={readField(draft, id) as never} mode="open" />
-                        ) : (
-                          <FieldEditor
-                            field={f}
-                            value={readField(draft, id)}
-                            onChange={(v) => patch(id, v)}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
+            <CardDrawerContent
+              draft={draft}
+              fields={fields}
+              layout={layout}
+              cover={cover}
+              onDuplicate={handleDuplicate}
+              onDelete={handleDelete}
+              onClose={() => close(null)}
+              patch={patch}
+            />
           </motion.aside>
         </>
       )}

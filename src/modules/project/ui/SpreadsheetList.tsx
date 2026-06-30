@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { MoreHorizontal, Trash2, ExternalLink } from "lucide-react";
+import { MoreHorizontal, Trash2, ExternalLink, FileSpreadsheet } from "lucide-react";
 import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
 import type { SpreadsheetConnection } from "@/modules/project/domain/types";
 import { formatDistanceToNow } from "date-fns";
@@ -64,15 +64,16 @@ function SpreadsheetCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
       className={cn(
-        "group relative p-5 rounded-2xl bg-card border border-border",
-        "shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-shadow",
+        "group relative p-5 rounded-2xl bg-card border border-border cursor-pointer",
+        "shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)]",
+        "hover:border-primary/25 transition-all duration-200",
       )}
     >
       <button className="absolute inset-0 rounded-2xl" onClick={onOpen} aria-label={`Abrir ${connection.name}`} />
 
       <div className="flex items-start justify-between mb-4">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary-glow/20 flex items-center justify-center text-xl">
-          📊
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 to-primary-glow/20 flex items-center justify-center">
+          <FileSpreadsheet className="h-5 w-5 text-primary/70" />
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

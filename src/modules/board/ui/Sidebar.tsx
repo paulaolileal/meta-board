@@ -12,6 +12,13 @@ import {
   ChevronLeft,
   Columns3,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useBoardStore } from "@/modules/board/store";
 import { useThemeStore, type ThemeMode } from "@/modules/settings/themeStore";
 import { getSheetProvider, isMockMode } from "@/shared/providers/providerFactory";
@@ -101,20 +108,24 @@ function SidebarContent({ connectionId }: Props) {
             />
           </div>
           {groupableFields.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Columns3 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <select
-                value={board?.groupBy ?? ""}
-                onChange={(e) => handleGroupByChange(e.target.value)}
-                className="flex-1 px-2 py-1.5 bg-surface border border-border rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-ring/40 text-foreground"
-              >
-                <option value="">— sem agrupamento —</option>
-                {groupableFields.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <Columns3 className="h-3.5 w-3.5" />
+                Agrupar por
+              </div>
+              <Select value={board?.groupBy ?? ""} onValueChange={handleGroupByChange}>
+                <SelectTrigger className="h-8 text-xs bg-surface border-border">
+                  <SelectValue placeholder="— sem agrupamento —" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">— sem agrupamento —</SelectItem>
+                  {groupableFields.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
         </div>

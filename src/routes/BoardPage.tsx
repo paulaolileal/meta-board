@@ -30,7 +30,7 @@ export function BoardPage() {
         <header className="h-14 shrink-0 border-b border-border flex items-center px-4 lg:px-6 gap-3 glass">
           <button
             onClick={() => setMobileSidebarOpen(true)}
-            className="lg:hidden h-10 w-10 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition"
+            className="lg:hidden h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition"
             aria-label="Abrir menu"
           >
             <Menu className="h-5 w-5" />
@@ -52,7 +52,7 @@ export function BoardPage() {
             <div className="ml-auto flex items-center gap-1">
               <button
                 onClick={() => setAiOpen(true)}
-                className="h-10 w-10 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition"
+                className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition"
                 aria-label="Criar card com IA"
                 title="Criar card com IA"
               >
@@ -60,7 +60,7 @@ export function BoardPage() {
               </button>
               <button
                 onClick={() => setEditOpen(true)}
-                className="h-10 w-10 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition"
+                className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition"
                 aria-label="Editar board"
                 title="Editar board"
               >

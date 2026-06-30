@@ -29,6 +29,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-cta: var(--cta);
+  --color-cta-foreground: var(--cta-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
@@ -73,8 +75,10 @@
   --secondary-foreground: oklch(0.22 0.03 265);
   --muted: oklch(0.95 0.008 255);
   --muted-foreground: oklch(0.5 0.02 260);
-  --accent: oklch(0.94 0.02 280);
-  --accent-foreground: oklch(0.25 0.04 280);
+  --accent: oklch(0.88 0.08 75);
+  --accent-foreground: oklch(0.35 0.12 65);
+  --cta: oklch(0.72 0.16 65);
+  --cta-foreground: oklch(0.99 0 0);
 
   --success: oklch(0.68 0.16 155);
   --success-foreground: oklch(0.99 0 0);
@@ -113,8 +117,10 @@
   --secondary-foreground: oklch(0.97 0.005 250);
   --muted: oklch(0.24 0.02 265);
   --muted-foreground: oklch(0.68 0.02 260);
-  --accent: oklch(0.3 0.04 285);
-  --accent-foreground: oklch(0.97 0.005 250);
+  --accent: oklch(0.32 0.07 75);
+  --accent-foreground: oklch(0.92 0.05 75);
+  --cta: oklch(0.78 0.18 70);
+  --cta-foreground: oklch(0.12 0.02 65);
 
   --success: oklch(0.72 0.17 155);
   --success-foreground: oklch(0.14 0.02 155);
@@ -141,6 +147,7 @@
   html, body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
   }
@@ -188,4 +195,15 @@
   &::-webkit-scrollbar-thumb:hover {
     background: color-mix(in oklab, var(--muted-foreground) 50%, transparent);
   }
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@utility skeleton {
+  background: var(--color-muted);
+  border-radius: var(--radius-md);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
 }

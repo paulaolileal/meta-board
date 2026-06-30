@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -15,6 +15,7 @@ import {
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
 import { Plus, LayoutList } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBoardStore } from "@/modules/board/store";
 import { useCardMutations } from "@/modules/board/useCardMutations";
@@ -103,6 +104,8 @@ export function KanbanBoard() {
   const { persistReorder } = useCardMutations();
   const [active, setActive] = useState<CardRecord | null>(null);
   const [pendingGroupValue, setPendingGroupValue] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const [activeMobileCol, setActiveMobileCol] = useState<string>("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -155,6 +158,12 @@ export function KanbanBoard() {
       .filter((id) => closedSet.has(id));
   }, [project, fields]);
   const hasConfiguredGroups = groups.length > 0;
+
+  useEffect(() => {
+    if (isMobile && groups.length > 0 && (!activeMobileCol || !groups.includes(activeMobileCol))) {
+      setActiveMobileCol(groups[0]);
+    }
+  }, [groups, isMobile, activeMobileCol]);
 
   function handleDragStart(e: DragStartEvent) {
     const card = cards.find((c) => c._id === e.active.id);
@@ -210,6 +219,72 @@ export function KanbanBoard() {
           open={pendingGroupValue !== null}
           onClose={() => setPendingGroupValue(null)}
           initialValues={{}}
+        />
+      </>
+    );
+  }
+
+  if (isMobile && hasConfiguredGroups) {
+    const mobileCards = byGroup.get(activeMobileCol) ?? [];
+    return (
+      <>
+        <div className="flex overflow-x-auto gap-2 px-4 py-2.5 border-b border-border shrink-0 scrollbar-thin">
+          {groups.map((g) => (
+            <button
+              key={g}
+              onClick={() => setActiveMobileCol(g)}
+              className={cn(
+                "shrink-0 min-h-[36px] px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition",
+                activeMobileCol === g
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {g}
+              <span className="ml-1.5 text-xs opacity-70">{byGroup.get(g)?.length ?? 0}</span>
+            </button>
+          ))}
+        </div>
+
+        <DndContext
+          sensors={sensors}
+          collisionDetection={kanbanCollision}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex-1 min-h-0 overflow-hidden p-4">
+            <Column
+              title={activeMobileCol}
+              cards={mobileCards}
+              layout={layout}
+              onOpen={openCard}
+              onAdd={() => setPendingGroupValue(activeMobileCol)}
+            />
+          </div>
+          <DragOverlay>
+            {active ? (
+              <motion.div initial={{ scale: 1 }} animate={{ scale: 1.04 }}>
+                <div className="w-full rounded-2xl bg-card border border-border shadow-[var(--shadow-glow)] p-3 pointer-events-none">
+                  <div className="font-semibold text-sm">{String(active["title"])}</div>
+                </div>
+              </motion.div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+
+        <button
+          onClick={() => setPendingGroupValue(activeMobileCol)}
+          className="fixed bottom-6 right-6 z-30 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-glow)] flex items-center justify-center hover:opacity-90 active:scale-95 transition-all"
+          aria-label="Criar card"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+
+        <CardDrawer />
+        <CreateCardModal
+          open={pendingGroupValue !== null}
+          onClose={() => setPendingGroupValue(null)}
+          initialValues={pendingGroupValue !== null ? { [groupField]: pendingGroupValue } : {}}
         />
       </>
     );
