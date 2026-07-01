@@ -107,7 +107,7 @@ export function SpreadsheetPage() {
 
       {/* Content area + FAB together in a relative container, same pattern as BoardPage */}
       <div className="flex-1 min-h-0 relative">
-        <div className="h-full overflow-y-auto scrollbar-thin">
+        <div className="absolute inset-0 overflow-y-auto overflow-x-hidden scrollbar-thin">
           <main className="max-w-6xl mx-auto px-6 py-10">
             {loading ? (
               <div>
