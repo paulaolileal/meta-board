@@ -122,14 +122,17 @@ export function BoardTopBar({ onOpenSettings }: Props) {
               className="w-8 h-8 object-contain rounded-xl shrink-0"
             />
             <div className="min-w-0 flex-1 flex items-center gap-2">
-              <div className="font-semibold text-sm md:text-base truncate leading-tight min-w-0 flex-1">
-                {board?.name ?? "MetaBoard"}
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <p className="text-sm md:text-base font-semibold truncate leading-tight">
+                  {board?.name ?? "MetaBoard"}
+                  {board?.description && (
+                    <span className="font-normal text-muted-foreground text-xs md:text-sm">
+                      {" • "}
+                      {board.description}
+                    </span>
+                  )}
+                </p>
               </div>
-              {board?.description && (
-                <div className="hidden md:block text-xs text-muted-foreground truncate leading-tight">
-                  {board.description}
-                </div>
-              )}
               {/* Group by — inline on mobile, next to board name */}
               {groupableFields.length > 0 && (
                 <div className="md:hidden shrink-0">
