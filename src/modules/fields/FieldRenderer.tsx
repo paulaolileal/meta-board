@@ -13,7 +13,7 @@ interface RenderProps {
 // Default color palettes (fallback when option has no explicit color)
 const CHIP_PALETTE = [
   "bg-danger/15 text-danger ring-1 ring-danger/30",
-  "bg-warning/20 text-warning-foreground ring-1 ring-warning/40",
+  "bg-warning/20 text-warning-foreground dark:text-warning ring-1 ring-warning/40",
   "bg-primary/15 text-primary ring-1 ring-primary/30",
   "bg-muted text-muted-foreground ring-1 ring-border",
   "bg-success/15 text-success ring-1 ring-success/30",
@@ -22,7 +22,7 @@ const CHIP_PALETTE = [
 const SELECT_PALETTE = [
   "bg-muted text-muted-foreground",
   "bg-primary/15 text-primary",
-  "bg-warning/20 text-warning-foreground",
+  "bg-warning/20 text-warning-foreground dark:text-warning",
   "bg-success/20 text-success",
   "bg-danger/15 text-danger",
 ];
