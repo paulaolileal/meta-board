@@ -116,22 +116,30 @@ export function BoardTopBar({ onOpenSettings }: Props) {
             >
               <ChevronLeft className="h-5 w-5" />
             </Link>
-            <img
-              src="/logo-mb.png"
-              alt="MetaBoard"
-              className="w-8 h-8 object-contain rounded-xl shrink-0"
-            />
+            <Link
+              to={backTo}
+              className="shrink-0"
+              aria-label="Voltar para boards"
+            >
+              <img
+                src="/logo-mb.png"
+                alt="MetaBoard"
+                className="w-8 h-8 object-contain rounded-xl hover:opacity-80 transition"
+              />
+            </Link>
             <div className="min-w-0 flex-1 flex items-center gap-2">
               <div className="min-w-0 flex-1 overflow-hidden">
-                <p className="text-sm md:text-base font-semibold truncate leading-tight">
-                  {board?.name ?? "MetaBoard"}
-                  {board?.description && (
-                    <span className="font-normal text-muted-foreground text-xs md:text-sm">
-                      {" • "}
-                      {board.description}
-                    </span>
-                  )}
-                </p>
+                <Link to={backTo} className="hover:opacity-70 transition">
+                  <p className="text-sm md:text-base font-semibold truncate leading-tight">
+                    {board?.name ?? "MetaBoard"}
+                    {board?.description && (
+                      <span className="font-normal text-muted-foreground text-xs md:text-sm">
+                        {" • "}
+                        {board.description}
+                      </span>
+                    )}
+                  </p>
+                </Link>
               </div>
               {/* Group by — inline on mobile, next to board name */}
               {groupableFields.length > 0 && (

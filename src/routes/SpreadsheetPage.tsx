@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Plus, AlertCircle, ChevronRight, LayoutGrid, Settings } from "lucide-react";
+import { Plus, AlertCircle, ChevronRight, LayoutGrid, Settings } from "lucide-react";
 import { getSheetProvider } from "@/shared/providers/providerFactory";
 import type { BoardConfig } from "@/modules/project/domain/types";
 import { CreateBoardModal } from "@/modules/project/ui/CreateBoardModal";
@@ -48,7 +48,7 @@ export function SpreadsheetPage() {
     setBoards((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
   }
 
-  const title = "Minha Planilha";
+  const title = "Meus boards";
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -57,13 +57,6 @@ export function SpreadsheetPage() {
       </div>
 
       <header className="shrink-0 px-6 py-4 flex items-center gap-3 border-b border-border/50">
-        <Link
-          to="/"
-          className="shrink-0 h-9 w-9 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition flex items-center justify-center"
-          aria-label="Voltar ao início"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
         <div className="flex items-center gap-2.5 min-w-0">
           <img src="/logo-mb.png" alt="MetaBoard" className="h-7 w-7 object-contain rounded-lg shrink-0" />
           <nav className="flex items-center gap-1 text-sm min-w-0" aria-label="Breadcrumb">
