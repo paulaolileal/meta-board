@@ -82,7 +82,7 @@ export function SpreadsheetPage() {
       : (connection?.name ?? "Planilha");
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div className="h-screen flex flex-col bg-background">
       <div className="absolute inset-0 -z-10 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[400px] h-[400px] rounded-full bg-primary/8 blur-[100px]" />
       </div>
@@ -105,72 +105,75 @@ export function SpreadsheetPage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto scrollbar-thin">
-        <div className="max-w-6xl mx-auto px-6 py-10">
-        {loading ? (
-          <div>
-            <div className="h-8 w-32 skeleton rounded mb-1" />
-            <div className="h-4 w-16 skeleton rounded mb-8" />
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="rounded-2xl bg-card border border-border overflow-hidden shadow-[var(--shadow-card)]">
-                  <div className="flex">
-                    <div className="shrink-0 w-28 skeleton" style={{ minHeight: "100px" }} />
-                    <div className="flex-1 flex flex-col">
-                      <div className="flex items-center px-4 py-5 bg-muted/40 flex-1">
-                        <div className="skeleton h-5 w-3/4 rounded" />
-                      </div>
-                      <div className="flex items-start px-4 py-3 min-h-[52px]">
-                        <div className="skeleton h-3.5 w-4/5 rounded" />
+      {/* Content area + FAB together in a relative container, same pattern as BoardPage */}
+      <div className="flex-1 min-h-0 relative">
+        <div className="h-full overflow-y-auto scrollbar-thin">
+          <main className="max-w-6xl mx-auto px-6 py-10">
+            {loading ? (
+              <div>
+                <div className="h-8 w-32 skeleton rounded mb-1" />
+                <div className="h-4 w-16 skeleton rounded mb-8" />
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="rounded-2xl bg-card border border-border overflow-hidden shadow-[var(--shadow-card)]">
+                      <div className="flex">
+                        <div className="shrink-0 w-28 skeleton" style={{ minHeight: "100px" }} />
+                        <div className="flex-1 flex flex-col">
+                          <div className="flex items-center px-4 py-5 bg-muted/40 flex-1">
+                            <div className="skeleton h-5 w-3/4 rounded" />
+                          </div>
+                          <div className="flex items-start px-4 py-3 min-h-[52px]">
+                            <div className="skeleton h-3.5 w-4/5 rounded" />
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        ) : error ? (
-          <div className="flex items-center gap-2 text-danger py-8">
-            <AlertCircle className="h-5 w-5" />
-            {error}
-          </div>
-        ) : boards.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-              <LayoutGrid className="h-8 w-8 text-muted-foreground/40" />
-            </div>
-            <h2 className="text-xl font-semibold mb-2">Nenhum board ainda</h2>
-            <p className="text-muted-foreground mb-6">Crie o primeiro board nesta planilha.</p>
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium shadow-[var(--shadow-glow)] hover:opacity-90 transition"
-            >
-              <Plus className="h-4 w-4" />
-              Criar board
-            </button>
-          </div>
-        ) : (
-          <BoardGrid
-            boards={boards}
-            connectionId={connectionId!}
-            onEditBoard={setEditingBoard}
-          />
-        )}
+              </div>
+            ) : error ? (
+              <div className="flex items-center gap-2 text-danger py-8">
+                <AlertCircle className="h-5 w-5" />
+                {error}
+              </div>
+            ) : boards.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                  <LayoutGrid className="h-8 w-8 text-muted-foreground/40" />
+                </div>
+                <h2 className="text-xl font-semibold mb-2">Nenhum board ainda</h2>
+                <p className="text-muted-foreground mb-6">Crie o primeiro board nesta planilha.</p>
+                <button
+                  onClick={() => setCreateOpen(true)}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium shadow-[var(--shadow-glow)] hover:opacity-90 transition"
+                >
+                  <Plus className="h-4 w-4" />
+                  Criar board
+                </button>
+              </div>
+            ) : (
+              <BoardGrid
+                boards={boards}
+                connectionId={connectionId!}
+                onEditBoard={setEditingBoard}
+              />
+            )}
+          </main>
         </div>
-      </main>
 
-      {!mock && (
-        <motion.button
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          onClick={() => setCreateOpen(true)}
-          className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-glow)] flex items-center justify-center hover:opacity-90 active:scale-95 transition-all"
-          aria-label="Novo board"
-        >
-          <Plus className="h-6 w-6" />
-        </motion.button>
-      )}
+        {!mock && (
+          <motion.button
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            onClick={() => setCreateOpen(true)}
+            className="absolute bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-glow)] flex items-center justify-center hover:opacity-90 active:scale-95 transition-all"
+            aria-label="Novo board"
+          >
+            <Plus className="h-6 w-6" />
+          </motion.button>
+        )}
+      </div>
 
       {!mock && (
         <CreateBoardModal
