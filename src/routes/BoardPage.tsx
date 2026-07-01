@@ -28,6 +28,7 @@ export function BoardPage() {
       setEditOpen(true);
       setSearchParams({}, { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, hydrated]);
 
   return (
@@ -53,13 +54,13 @@ export function BoardPage() {
         />
       </div>
 
-      <EditBoardModal open={editOpen} onClose={() => setEditOpen(false)} onDeleted={() => navigate("/boards")} />
-      <AiCardModal open={aiOpen} onClose={() => setAiOpen(false)} />
-      <CreateCardModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        initialValues={{}}
+      <EditBoardModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        onDeleted={() => navigate("/boards")}
       />
+      <AiCardModal open={aiOpen} onClose={() => setAiOpen(false)} />
+      <CreateCardModal open={createOpen} onClose={() => setCreateOpen(false)} initialValues={{}} />
     </div>
   );
 }
@@ -68,7 +69,10 @@ function BoardSkeleton() {
   return (
     <div className="flex gap-4 p-4 sm:p-6 h-full">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="w-[260px] sm:w-[300px] shrink-0 rounded-2xl bg-surface/60 border border-border p-3">
+        <div
+          key={i}
+          className="w-[260px] sm:w-[300px] shrink-0 rounded-2xl bg-surface/60 border border-border p-3"
+        >
           <div className="h-4 w-24 rounded bg-muted animate-pulse mb-3" />
           <div className="space-y-2">
             {Array.from({ length: 3 }).map((_, j) => (

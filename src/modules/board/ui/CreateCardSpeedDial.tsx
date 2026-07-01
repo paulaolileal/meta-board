@@ -33,8 +33,7 @@ export function CreateCardSpeedDial({ onCreateCard, onCreateAi }: Props) {
     onCreateAi();
   };
 
-  const dialItem =
-    "flex items-center gap-2 whitespace-nowrap cursor-pointer select-none";
+  const dialItem = "flex items-center gap-2 whitespace-nowrap cursor-pointer select-none";
 
   return (
     <div ref={containerRef} className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
@@ -100,12 +99,7 @@ export function CreateCardSpeedDial({ onCreateCard, onCreateAi }: Props) {
         aria-label={open ? "Fechar" : "Criar card"}
         aria-expanded={open}
       >
-        <Plus
-          className={cn(
-            "h-6 w-6 transition-transform duration-200",
-            open && "rotate-45",
-          )}
-        />
+        <Plus className={cn("h-6 w-6 transition-transform duration-200", open && "rotate-45")} />
       </button>
     </div>
   );

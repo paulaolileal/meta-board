@@ -1,17 +1,17 @@
 import { cn } from "@/lib/utils";
 
 const PRESET_COLORS = [
-  { label: "Roxo",     hex: "#7c3aed" },
-  { label: "Índigo",   hex: "#4f46e5" },
-  { label: "Azul",     hex: "#2563eb" },
-  { label: "Ciano",    hex: "#0891b2" },
-  { label: "Verde",    hex: "#16a34a" },
-  { label: "Lima",     hex: "#65a30d" },
-  { label: "Âmbar",   hex: "#d97706" },
-  { label: "Laranja",  hex: "#ea580c" },
+  { label: "Roxo", hex: "#7c3aed" },
+  { label: "Índigo", hex: "#4f46e5" },
+  { label: "Azul", hex: "#2563eb" },
+  { label: "Ciano", hex: "#0891b2" },
+  { label: "Verde", hex: "#16a34a" },
+  { label: "Lima", hex: "#65a30d" },
+  { label: "Âmbar", hex: "#d97706" },
+  { label: "Laranja", hex: "#ea580c" },
   { label: "Vermelho", hex: "#dc2626" },
-  { label: "Rosa",     hex: "#db2777" },
-  { label: "Cinza",    hex: "#4b5563" },
+  { label: "Rosa", hex: "#db2777" },
+  { label: "Cinza", hex: "#4b5563" },
 ];
 
 const PRESET_HEXES = new Set(PRESET_COLORS.map((p) => p.hex));
@@ -57,7 +57,9 @@ export function BoardColorPicker({ value, onChange }: Props) {
         aria-label="Cor personalizada"
       >
         {!isCustom && (
-          <span className="text-muted-foreground text-xs font-bold leading-none select-none">+</span>
+          <span className="text-muted-foreground text-xs font-bold leading-none select-none">
+            +
+          </span>
         )}
         <input
           type="color"

@@ -47,7 +47,9 @@
   --color-sidebar-border: var(--sidebar-border);
 
   --shadow-elegant: 0 1px 2px 0 oklch(0 0 0 / 0.04), 0 8px 24px -8px oklch(0 0 0 / 0.12);
-  --shadow-glow: 0 0 0 1px oklch(from var(--primary) l c h / 0.15), 0 12px 40px -12px oklch(from var(--primary) l c h / 0.35);
+  --shadow-glow:
+    0 0 0 1px oklch(from var(--primary) l c h / 0.15),
+    0 12px 40px -12px oklch(from var(--primary) l c h / 0.35);
   --shadow-card: 0 1px 2px 0 oklch(0 0 0 / 0.04), 0 2px 8px -2px oklch(0 0 0 / 0.06);
 
   --gradient-primary: linear-gradient(135deg, var(--primary), var(--primary-glow));
@@ -144,21 +146,28 @@
   * {
     border-color: var(--color-border);
   }
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
     font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
     user-select: none;
     -webkit-user-select: none;
   }
-  input, textarea, [contenteditable="true"] {
+  input,
+  textarea,
+  [contenteditable="true"] {
     user-select: text;
     -webkit-user-select: text;
     cursor: text;
   }
-  button, [role="button"], a, label, select {
+  button,
+  [role="button"],
+  a,
+  label,
+  select {
     cursor: pointer;
   }
   ::selection {
@@ -196,8 +205,13 @@
 }
 
 @utility scrollbar-thin {
-  &::-webkit-scrollbar { width: 8px; height: 8px; }
-  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
   &::-webkit-scrollbar-thumb {
     background: color-mix(in oklab, var(--muted-foreground) 30%, transparent);
     border-radius: 999px;
@@ -208,8 +222,13 @@
 }
 
 @keyframes skeleton-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 @utility skeleton {

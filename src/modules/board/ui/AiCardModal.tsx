@@ -10,12 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FieldEditor } from "./CardDrawer";
 import { useCardMutations } from "@/modules/board/useCardMutations";
 import { useAiCardExtraction, type ExtractionResult } from "@/modules/board/useAiCardExtraction";
@@ -68,9 +63,7 @@ export function AiCardModal({ open, onClose }: Props) {
     }
   }, [open, step]);
 
-  const editableFields = fields.filter(
-    (f) => f.editable !== false && f.visible !== false,
-  );
+  const editableFields = fields.filter((f) => f.editable !== false && f.visible !== false);
 
   async function handleExtract() {
     if (!text.trim()) return;
@@ -109,9 +102,13 @@ export function AiCardModal({ open, onClose }: Props) {
       const failed = results.filter((r) => r.status === "rejected").length;
 
       if (succeeded > 0)
-        toast.success(`${succeeded} card${succeeded > 1 ? "s" : ""} criado${succeeded > 1 ? "s" : ""} com IA`);
+        toast.success(
+          `${succeeded} card${succeeded > 1 ? "s" : ""} criado${succeeded > 1 ? "s" : ""} com IA`,
+        );
       if (failed > 0)
-        toast.error(`${failed} card${failed > 1 ? "s" : ""} não ${failed > 1 ? "puderam" : "pôde"} ser criado${failed > 1 ? "s" : ""}`);
+        toast.error(
+          `${failed} card${failed > 1 ? "s" : ""} não ${failed > 1 ? "puderam" : "pôde"} ser criado${failed > 1 ? "s" : ""}`,
+        );
 
       onClose();
     } catch {
@@ -127,9 +124,7 @@ export function AiCardModal({ open, onClose }: Props) {
 
   function setField(cardIndex: number, fieldId: string, value: unknown) {
     setCardValues((prev) =>
-      prev.map((cv, i) =>
-        i === cardIndex ? { ...cv, [fieldId]: value as never } : cv,
-      ),
+      prev.map((cv, i) => (i === cardIndex ? { ...cv, [fieldId]: value as never } : cv)),
     );
   }
 
@@ -137,9 +132,7 @@ export function AiCardModal({ open, onClose }: Props) {
     if (status !== undefined) updateStatus(currentIndex, status);
     if (cards.length <= 1) return;
     setCurrentIndex((prev) =>
-      dir === "next"
-        ? (prev + 1) % cards.length
-        : (prev - 1 + cards.length) % cards.length,
+      dir === "next" ? (prev + 1) % cards.length : (prev - 1 + cards.length) % cards.length,
     );
   }
 
@@ -151,8 +144,11 @@ export function AiCardModal({ open, onClose }: Props) {
   const currentStatus = cardStatuses[currentIndex] ?? "pending";
 
   const cardRingClass =
-    currentStatus === "approved" ? "ring-2 ring-green-500" :
-    currentStatus === "rejected" ? "ring-2 ring-red-400" : "";
+    currentStatus === "approved"
+      ? "ring-2 ring-green-500"
+      : currentStatus === "rejected"
+        ? "ring-2 ring-red-400"
+        : "";
 
   const currentCard = cards[currentIndex];
 
@@ -219,7 +215,9 @@ export function AiCardModal({ open, onClose }: Props) {
       {/* Card stack + arrows + approve/reject */}
       <TooltipProvider delayDuration={400}>
         <div className="flex-1 flex flex-col items-center justify-center px-4 py-4">
-          <div className={`flex items-center gap-3 w-full max-w-2xl ${cards.length > 1 ? "" : "justify-center"}`}>
+          <div
+            className={`flex items-center gap-3 w-full max-w-2xl ${cards.length > 1 ? "" : "justify-center"}`}
+          >
             {cards.length > 1 && (
               <button
                 onClick={() => navigate("prev")}
@@ -232,13 +230,10 @@ export function AiCardModal({ open, onClose }: Props) {
 
             {/* Stack container — sizes to front card's natural height */}
             <div className="relative flex-1">
-              {Array.from(
-                { length: Math.min(MAX_STACK + 1, cards.length) },
-                (_, pos) => ({
-                  cardIndex: (currentIndex + pos) % cards.length,
-                  relIdx: pos,
-                }),
-              )
+              {Array.from({ length: Math.min(MAX_STACK + 1, cards.length) }, (_, pos) => ({
+                cardIndex: (currentIndex + pos) % cards.length,
+                relIdx: pos,
+              }))
                 .reverse()
                 .map(({ cardIndex, relIdx }) => {
                   const transform = `translateX(${relIdx * STACK_X_OFFSET}px) scale(${1 - relIdx * STACK_SCALE})`;
@@ -335,29 +330,31 @@ export function AiCardModal({ open, onClose }: Props) {
           </div>
 
           {/* Approve / Reject — directly below the stack */}
-          <div className={`flex gap-3 pt-3 pb-3 w-full max-w-2xl mx-auto ${cards.length > 1 ? "px-12" : ""}`}>
-          <button
-            onClick={() => navigate("next", "rejected")}
-            className={`flex-1 py-3 text-sm rounded-xl border-2 transition font-medium inline-flex items-center justify-center gap-2 ${
-              currentStatus === "rejected"
-                ? "bg-red-500/10 border-red-400 text-red-500"
-                : "border-border hover:border-red-400 hover:text-red-500 hover:bg-red-500/5"
-            }`}
+          <div
+            className={`flex gap-3 pt-3 pb-3 w-full max-w-2xl mx-auto ${cards.length > 1 ? "px-12" : ""}`}
           >
-            <X className="h-4 w-4" />
-            Rejeitar
-          </button>
-          <button
-            onClick={() => navigate("next", "approved")}
-            className={`flex-1 py-3 text-sm rounded-xl border-2 transition font-medium inline-flex items-center justify-center gap-2 ${
-              currentStatus === "approved"
-                ? "bg-green-500/10 border-green-500 text-green-600"
-                : "border-border hover:border-green-500 hover:text-green-600 hover:bg-green-500/5"
-            }`}
-          >
-            <Check className="h-4 w-4" />
-            Aprovar
-          </button>
+            <button
+              onClick={() => navigate("next", "rejected")}
+              className={`flex-1 py-3 text-sm rounded-xl border-2 transition font-medium inline-flex items-center justify-center gap-2 ${
+                currentStatus === "rejected"
+                  ? "bg-red-500/10 border-red-400 text-red-500"
+                  : "border-border hover:border-red-400 hover:text-red-500 hover:bg-red-500/5"
+              }`}
+            >
+              <X className="h-4 w-4" />
+              Rejeitar
+            </button>
+            <button
+              onClick={() => navigate("next", "approved")}
+              className={`flex-1 py-3 text-sm rounded-xl border-2 transition font-medium inline-flex items-center justify-center gap-2 ${
+                currentStatus === "approved"
+                  ? "bg-green-500/10 border-green-500 text-green-600"
+                  : "border-border hover:border-green-500 hover:text-green-600 hover:bg-green-500/5"
+              }`}
+            >
+              <Check className="h-4 w-4" />
+              Aprovar
+            </button>
           </div>
         </div>
 
@@ -380,15 +377,21 @@ export function AiCardModal({ open, onClose }: Props) {
                 className="transition-all"
               >
                 {s === "approved" ? (
-                  <span className={`inline-flex items-center justify-center rounded-full bg-green-500 text-white transition-all ${i === currentIndex ? "w-5 h-5" : "w-4 h-4"}`}>
+                  <span
+                    className={`inline-flex items-center justify-center rounded-full bg-green-500 text-white transition-all ${i === currentIndex ? "w-5 h-5" : "w-4 h-4"}`}
+                  >
                     <Check className={i === currentIndex ? "h-3 w-3" : "h-2.5 w-2.5"} />
                   </span>
                 ) : s === "rejected" ? (
-                  <span className={`inline-flex items-center justify-center rounded-full bg-red-400 text-white transition-all ${i === currentIndex ? "w-5 h-5" : "w-4 h-4"}`}>
+                  <span
+                    className={`inline-flex items-center justify-center rounded-full bg-red-400 text-white transition-all ${i === currentIndex ? "w-5 h-5" : "w-4 h-4"}`}
+                  >
                     <X className={i === currentIndex ? "h-3 w-3" : "h-2.5 w-2.5"} />
                   </span>
                 ) : (
-                  <span className={`rounded-full block transition-all ${i === currentIndex ? "w-3 h-3 bg-muted-foreground/60" : "w-2 h-2 bg-muted-foreground/25"}`} />
+                  <span
+                    className={`rounded-full block transition-all ${i === currentIndex ? "w-3 h-3 bg-muted-foreground/60" : "w-2 h-2 bg-muted-foreground/25"}`}
+                  />
                 )}
               </button>
             ))}

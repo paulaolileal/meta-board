@@ -23,7 +23,10 @@ export class SheetsApiClient {
   constructor(private readonly auth: GoogleAuthService) {}
 
   async getValues(spreadsheetId: string, range: string): Promise<string[][]> {
-    const res = await this.request("GET", `${SHEETS_BASE}/${spreadsheetId}/values/${encodeURIComponent(range)}`);
+    const res = await this.request(
+      "GET",
+      `${SHEETS_BASE}/${spreadsheetId}/values/${encodeURIComponent(range)}`,
+    );
     return (res.values as string[][] | undefined) ?? [];
   }
 
@@ -44,7 +47,10 @@ export class SheetsApiClient {
   }
 
   async clearValues(spreadsheetId: string, range: string): Promise<void> {
-    await this.request("POST", `${SHEETS_BASE}/${spreadsheetId}/values/${encodeURIComponent(range)}:clear`);
+    await this.request(
+      "POST",
+      `${SHEETS_BASE}/${spreadsheetId}/values/${encodeURIComponent(range)}:clear`,
+    );
   }
 
   async batchUpdate(spreadsheetId: string, requests: unknown[]): Promise<void> {
@@ -52,10 +58,15 @@ export class SheetsApiClient {
   }
 
   async getSpreadsheetMetadata(spreadsheetId: string): Promise<SpreadsheetMetadata> {
-    return this.request("GET", `${SHEETS_BASE}/${spreadsheetId}?fields=spreadsheetId,properties.title,sheets.properties`);
+    return this.request(
+      "GET",
+      `${SHEETS_BASE}/${spreadsheetId}?fields=spreadsheetId,properties.title,sheets.properties`,
+    );
   }
 
-  async createSpreadsheet(title: string): Promise<{ spreadsheetId: string; spreadsheetUrl: string }> {
+  async createSpreadsheet(
+    title: string,
+  ): Promise<{ spreadsheetId: string; spreadsheetUrl: string }> {
     return this.request("POST", SHEETS_BASE, {
       properties: { title },
       sheets: [
@@ -66,6 +77,7 @@ export class SheetsApiClient {
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async request(method: string, url: string, body?: unknown): Promise<any> {
     const token = await this.auth.ensureValidToken();
     const res = await fetch(url, {
@@ -80,7 +92,8 @@ export class SheetsApiClient {
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      const msg = (data as any)?.error?.message ?? `HTTP ${res.status}`;
+      const msg =
+        (data as { error?: { message?: string } })?.error?.message ?? `HTTP ${res.status}`;
       throw new SheetsApiError(msg, res.status, data);
     }
 

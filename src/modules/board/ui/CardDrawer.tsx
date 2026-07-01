@@ -1,16 +1,38 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  X, Trash2, Copy, Calendar, Link as LinkIcon,
-  Type, AlignLeft, Hash, ToggleLeft, CalendarClock,
-  Image, Smile, Tag, ChevronDown, List, ListChecks, Mail, Palette,
-  MapPin, Clock,
+  X,
+  Trash2,
+  Copy,
+  Calendar,
+  Link as LinkIcon,
+  Type,
+  AlignLeft,
+  Hash,
+  ToggleLeft,
+  CalendarClock,
+  Image,
+  Smile,
+  Tag,
+  ChevronDown,
+  List,
+  ListChecks,
+  Mail,
+  Palette,
+  MapPin,
+  Clock,
   type LucideIcon,
 } from "lucide-react";
 import { useBoardStore } from "@/modules/board/store";
 import { useCardMutations } from "@/modules/board/useCardMutations";
 import { FieldRenderer } from "@/modules/fields/FieldRenderer";
-import type { CardRecord, FieldDef, ChecklistItem, FieldType, DurationValue } from "@/modules/project/domain/types";
+import type {
+  CardRecord,
+  FieldDef,
+  ChecklistItem,
+  FieldType,
+  DurationValue,
+} from "@/modules/project/domain/types";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
@@ -42,7 +64,9 @@ export function FieldEditor({
   onChange,
 }: {
   field: FieldDef;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   value: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onChange: (v: any) => void;
 }) {
   switch (field.type) {
@@ -79,7 +103,7 @@ export function FieldEditor({
           onClick={() => onChange(!value)}
           className={cn(
             "px-3 py-1.5 rounded-lg text-xs font-medium",
-            value ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"
+            value ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground",
           )}
         >
           {value ? "Sim" : "Não"}
@@ -150,11 +174,11 @@ export function FieldEditor({
             className="w-full px-3 py-2 pr-8 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 cursor-pointer appearance-none"
           >
             <option value="">— Selecione —</option>
-            {isOrphan && (
-              <option value={selectValue}>{selectValue}</option>
-            )}
+            {isOrphan && <option value={selectValue}>{selectValue}</option>}
             {field.options.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
             ))}
           </select>
           <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -179,7 +203,7 @@ export function FieldEditor({
                 "px-2.5 py-1 rounded-lg text-xs font-medium border transition",
                 value === opt
                   ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-surface border-border hover:border-primary/40"
+                  : "bg-surface border-border hover:border-primary/40",
               )}
             >
               {opt}
@@ -208,7 +232,7 @@ export function FieldEditor({
                   "px-2 py-0.5 rounded-md text-[11px] font-medium border transition",
                   on
                     ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-surface border-border hover:border-primary/40"
+                    : "bg-surface border-border hover:border-primary/40",
                 )}
               >
                 #{opt}
@@ -243,7 +267,7 @@ export function FieldEditor({
                 }}
                 className={cn(
                   "flex-1 bg-transparent text-sm border-b border-transparent focus:border-border focus:outline-none py-0.5",
-                  it.done && "line-through text-muted-foreground"
+                  it.done && "line-through text-muted-foreground",
                 )}
               />
               <button
@@ -256,10 +280,7 @@ export function FieldEditor({
           ))}
           <button
             onClick={() =>
-              onChange([
-                ...items,
-                { id: crypto.randomUUID(), text: "Novo item", done: false },
-              ])
+              onChange([...items, { id: crypto.randomUUID(), text: "Novo item", done: false }])
             }
             className="text-xs text-primary hover:underline"
           >
@@ -390,7 +411,12 @@ function CardDrawerContent({
 
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {cover && (
-          <img src={cover} alt="" className="w-full h-32 sm:h-48 object-cover" referrerPolicy="no-referrer" />
+          <img
+            src={cover}
+            alt=""
+            className="w-full h-32 sm:h-48 object-cover"
+            referrerPolicy="no-referrer"
+          />
         )}
 
         <div className="p-4 sm:p-6 space-y-5">
@@ -447,6 +473,7 @@ export function CardDrawer() {
   useEffect(() => {
     isDirtyRef.current = false;
     setDraft(card);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card?._id]);
 
   useEffect(() => {
@@ -464,7 +491,8 @@ export function CardDrawer() {
   }, [openCardId, close]);
 
   const coverField = fields.find((f) => f.type === "image" && f.visible !== false);
-  const cover = coverField && draft ? (readField(draft, coverField.id) as string | undefined) : undefined;
+  const cover =
+    coverField && draft ? (readField(draft, coverField.id) as string | undefined) : undefined;
   const layoutAll = project?.cardOpenLayout === "*" || !project?.cardOpenLayout;
   const layout = layoutAll
     ? [...fields].sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99)).map((f) => f.id)
@@ -493,7 +521,12 @@ export function CardDrawer() {
 
   if (isMobile) {
     return (
-      <Drawer open={!!draft} onOpenChange={(open) => { if (!open) close(null); }}>
+      <Drawer
+        open={!!draft}
+        onOpenChange={(open) => {
+          if (!open) close(null);
+        }}
+      >
         <DrawerContent className="max-h-[92dvh] flex flex-col bg-background">
           {draft && (
             <CardDrawerContent

@@ -4,7 +4,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ICON_LIST, getIcon } from "./iconRegistry";
 import { cn } from "@/lib/utils";
 
-
 interface Props {
   value: string;
   onChange: (icon: string) => void;

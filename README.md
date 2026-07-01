@@ -11,16 +11,16 @@ Você usa Google Sheets para organizar tarefas, projetos ou qualquer lista? A pl
 <details>
 <summary>Ver mais telas</summary>
 
-| Board de treinos | Board de rolês |
-|---|---|
+| Board de treinos                                                          | Board de rolês                                                       |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | ![Board de treinos — kanban com colunas](docs/images/mb-board-treino.png) | ![Board de rolês — kanban com cards](docs/images/mb-board-rolés.png) |
 
-| Criar card padrão | Criar card com IA |
-|---|---|
+| Criar card padrão                                                 | Criar card com IA                                          |
+| ----------------------------------------------------------------- | ---------------------------------------------------------- |
 | ![Modal de criação de card](docs/images/mb-criar-card-padrao.png) | ![Criação de card com IA](docs/images/mb-criar-com-ia.png) |
 
-| Edição de board — geral | Edição de board — campos | Edição de board — agrupamento |
-|---|---|---|
+| Edição de board — geral                                              | Edição de board — campos                                       | Edição de board — agrupamento                                      |
+| -------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------ |
 | ![Configurações gerais do board](docs/images/mb-edicao-board-01.png) | ![Gerenciamento de campos](docs/images/mb-edicao-board-02.png) | ![Configuração de agrupamento](docs/images/mb-edicao-board-03.png) |
 
 </details>
@@ -84,8 +84,8 @@ O coração do app: visualização das colunas e cards.
 - **Filtro por tags** — filtra por valores de campos chip/multiselect
 - **Modo lista** — quando nenhum campo de agrupamento está configurado, exibe todos os cards em lista plana
 
-| Board de treinos | Board de rolês |
-|---|---|
+| Board de treinos                                     | Board de rolês                                    |
+| ---------------------------------------------------- | ------------------------------------------------- |
 | ![Board de treinos](docs/images/mb-board-treino.png) | ![Board de rolês](docs/images/mb-board-rolés.png) |
 
 **Mobile:** tabs horizontais rolizáveis por coluna substituem o scroll horizontal; drag & drop adaptado para touch com delay de 250ms.
@@ -131,31 +131,31 @@ Modal de edição completa acessível pelo botão ⚙ de cada board:
 - **Campos do board** — lista com drag & drop para reordenar; toggle por campo para aparecer no card fechado (Eye/EyeOff); edição inline das opções de campos select/chip; botão para adicionar novos campos com tipo
 - **Exclusão** — com confirmação de segurança
 
-| Geral | Campos | Agrupamento |
-|---|---|---|
+| Geral                                                       | Campos                                                         | Agrupamento                                                        |
+| ----------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------ |
 | ![Configurações gerais](docs/images/mb-edicao-board-01.png) | ![Gerenciamento de campos](docs/images/mb-edicao-board-02.png) | ![Configuração de agrupamento](docs/images/mb-edicao-board-03.png) |
 
 ### Tipos de Campo
 
-| Tipo | Label | Descrição |
-|---|---|---|
-| `text` | Texto | Texto curto de linha única |
-| `longtext` | Texto longo | Parágrafo com quebras de linha |
-| `number` | Número | Valor numérico |
-| `bool` | Booleano | Checkbox sim/não |
-| `date` | Data | Seletor de data (YYYY-MM-DD) |
-| `datetime` | Data e hora | Data com horário |
-| `url` | URL | Link clicável |
-| `image` | Imagem | URL de imagem com preview |
-| `icon` | Ícone | Ícone Lucide selecionável |
-| `chip` | Chip | Badge colorido de seleção única |
-| `select` | Seleção | Dropdown de opção única |
-| `multiselect` | Multi-seleção | Múltiplas opções selecionáveis |
-| `checklist` | Checklist | Lista de itens com checkbox |
-| `email` | E-mail | Endereço de e-mail |
-| `color` | Cor | Seletor de cor hex |
-| `location` | Localização | Texto de endereço/local |
-| `duration` | Duração | Valor com unidade (seg/min/hr/dia) |
+| Tipo          | Label         | Descrição                          |
+| ------------- | ------------- | ---------------------------------- |
+| `text`        | Texto         | Texto curto de linha única         |
+| `longtext`    | Texto longo   | Parágrafo com quebras de linha     |
+| `number`      | Número        | Valor numérico                     |
+| `bool`        | Booleano      | Checkbox sim/não                   |
+| `date`        | Data          | Seletor de data (YYYY-MM-DD)       |
+| `datetime`    | Data e hora   | Data com horário                   |
+| `url`         | URL           | Link clicável                      |
+| `image`       | Imagem        | URL de imagem com preview          |
+| `icon`        | Ícone         | Ícone Lucide selecionável          |
+| `chip`        | Chip          | Badge colorido de seleção única    |
+| `select`      | Seleção       | Dropdown de opção única            |
+| `multiselect` | Multi-seleção | Múltiplas opções selecionáveis     |
+| `checklist`   | Checklist     | Lista de itens com checkbox        |
+| `email`       | E-mail        | Endereço de e-mail                 |
+| `color`       | Cor           | Seletor de cor hex                 |
+| `location`    | Localização   | Texto de endereço/local            |
+| `duration`    | Duração       | Valor com unidade (seg/min/hr/dia) |
 
 ### UX transversal
 
@@ -167,12 +167,12 @@ Modal de edição completa acessível pelo botão ⚙ de cada board:
 
 ## Rotas da aplicação
 
-| Rota | Página |
-|---|---|
-| `/` | Login com Google OAuth |
-| `/boards` | Lista de boards da planilha conectada |
-| `/boards/:boardId` | Kanban board específico |
-| `*` | Página não encontrada |
+| Rota               | Página                                |
+| ------------------ | ------------------------------------- |
+| `/`                | Login com Google OAuth                |
+| `/boards`          | Lista de boards da planilha conectada |
+| `/boards/:boardId` | Kanban board específico               |
+| `*`                | Página não encontrada                 |
 
 ---
 
@@ -253,25 +253,25 @@ src/
 
 ### Arquivos-chave
 
-| Arquivo | Papel |
-|---|---|
-| `src/modules/project/domain/types.ts` | Todos os tipos: BoardConfig, FieldDef, CardRecord, FieldType, FieldValue |
-| `src/shared/providers/ISheetProvider.ts` | Interface `ISheetProvider` — contrato único |
-| `src/shared/providers/GoogleSheetProvider.ts` | CRUD contra a Sheets API v4 |
-| `src/shared/providers/providerFactory.ts` | Singleton — instancia provider + auth com env vars |
-| `src/shared/auth/GoogleAuthService.ts` | OAuth implícito Google; token vive apenas em closure |
-| `src/modules/board/store.ts` | Zustand: board ativo, fields, cards, busca e filtros |
-| `src/modules/board/useBoardData.ts` | TanStack Query — carrega e sincroniza dados do board |
-| `src/modules/board/useCardMutations.ts` | Mutações de card com reordenação otimista |
-| `src/modules/board/useAiCardExtraction.ts` | Extração de campos via OpenAI com schema estruturado |
+| Arquivo                                       | Papel                                                                    |
+| --------------------------------------------- | ------------------------------------------------------------------------ |
+| `src/modules/project/domain/types.ts`         | Todos os tipos: BoardConfig, FieldDef, CardRecord, FieldType, FieldValue |
+| `src/shared/providers/ISheetProvider.ts`      | Interface `ISheetProvider` — contrato único                              |
+| `src/shared/providers/GoogleSheetProvider.ts` | CRUD contra a Sheets API v4                                              |
+| `src/shared/providers/providerFactory.ts`     | Singleton — instancia provider + auth com env vars                       |
+| `src/shared/auth/GoogleAuthService.ts`        | OAuth implícito Google; token vive apenas em closure                     |
+| `src/modules/board/store.ts`                  | Zustand: board ativo, fields, cards, busca e filtros                     |
+| `src/modules/board/useBoardData.ts`           | TanStack Query — carrega e sincroniza dados do board                     |
+| `src/modules/board/useCardMutations.ts`       | Mutações de card com reordenação otimista                                |
+| `src/modules/board/useAiCardExtraction.ts`    | Extração de campos via OpenAI com schema estruturado                     |
 
 ### Entidades e convenções de dados
 
-| Entidade | Campos principais |
-|---|---|
+| Entidade        | Campos principais                                                                                                                               |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | **BoardConfig** | `id`, `name`, `icon`, `color?`, `description?`, `groupBy`, `orderBy`, `cardTitleField`, `cardClosedLayout`, `cardOpenLayout`, `archivedColumn?` |
-| **FieldDef** | `id`, `boardId`, `label`, `type`, `required?`, `options?`, `visible?`, `editable?`, `searchable?`, `sortable?`, `displayOrder?` |
-| **CardRecord** | `_id`, `boardId`, `_sort`, `_archived`, `_createdAt`, `_updatedAt` + campos dinâmicos por board |
+| **FieldDef**    | `id`, `boardId`, `label`, `type`, `required?`, `options?`, `visible?`, `editable?`, `searchable?`, `sortable?`, `displayOrder?`                 |
+| **CardRecord**  | `_id`, `boardId`, `_sort`, `_archived`, `_createdAt`, `_updatedAt` + campos dinâmicos por board                                                 |
 
 **Regras de negócio:**
 
@@ -383,11 +383,11 @@ Na tela inicial, clique **Continuar com Google** — uma popup abre pedindo cons
 
 Em **Settings → Environment Variables**, adicione:
 
-| Variável | Valor |
-|---|---|
+| Variável                | Valor                              |
+| ----------------------- | ---------------------------------- |
 | `VITE_GOOGLE_CLIENT_ID` | `xxxxx.apps.googleusercontent.com` |
-| `VITE_SPREADSHEET_ID` | `1AbC...XyZ` |
-| `VITE_OPENAI_API_KEY` | `sk-...` (opcional) |
+| `VITE_SPREADSHEET_ID`   | `1AbC...XyZ`                       |
+| `VITE_OPENAI_API_KEY`   | `sk-...` (opcional)                |
 
 **Passo 3 — Configurar roteamento SPA**
 

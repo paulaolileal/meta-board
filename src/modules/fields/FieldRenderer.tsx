@@ -1,7 +1,12 @@
 import { format, isValid, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CheckCircle2, Circle, Link as LinkIcon, Calendar, MapPin, Clock } from "lucide-react";
-import type { ChecklistItem, DurationValue, FieldDef, FieldValue } from "@/modules/project/domain/types";
+import type {
+  ChecklistItem,
+  DurationValue,
+  FieldDef,
+  FieldValue,
+} from "@/modules/project/domain/types";
 import { cn } from "@/lib/utils";
 
 interface RenderProps {
@@ -47,7 +52,9 @@ export function FieldRenderer({ field, value, mode }: RenderProps) {
   switch (field.type) {
     case "text":
       return (
-        <span className={cn(mode === "closed" ? "font-semibold text-foreground" : "text-foreground")}>
+        <span
+          className={cn(mode === "closed" ? "font-semibold text-foreground" : "text-foreground")}
+        >
           {asString(value) || <span className="text-muted-foreground">—</span>}
         </span>
       );
@@ -125,7 +132,12 @@ export function FieldRenderer({ field, value, mode }: RenderProps) {
       if (!s) return null;
       const color = chipColor(s, field.options ?? []);
       return (
-        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium", color)}>
+        <span
+          className={cn(
+            "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium",
+            color,
+          )}
+        >
           {s}
         </span>
       );
@@ -135,7 +147,12 @@ export function FieldRenderer({ field, value, mode }: RenderProps) {
       if (!s) return null;
       const color = selectColor(s, field.options ?? []);
       return (
-        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium", color)}>
+        <span
+          className={cn(
+            "inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium",
+            color,
+          )}
+        >
           {s}
         </span>
       );
@@ -194,7 +211,9 @@ export function FieldRenderer({ field, value, mode }: RenderProps) {
     case "color": {
       const s = asString(value);
       if (!s) return null;
-      return <span className="inline-block w-4 h-4 rounded-full border" style={{ background: s }} />;
+      return (
+        <span className="inline-block w-4 h-4 rounded-full border" style={{ background: s }} />
+      );
     }
     case "location": {
       const s = asString(value);
@@ -219,7 +238,11 @@ export function FieldRenderer({ field, value, mode }: RenderProps) {
       if (typeof value === "object" && !Array.isArray(value)) {
         dur = value as DurationValue;
       } else if (typeof value === "string") {
-        try { dur = JSON.parse(value) as DurationValue; } catch { return <span>{asString(value)}</span>; }
+        try {
+          dur = JSON.parse(value) as DurationValue;
+        } catch {
+          return <span>{asString(value)}</span>;
+        }
       }
       if (!dur) return <span className="text-muted-foreground">—</span>;
       return (

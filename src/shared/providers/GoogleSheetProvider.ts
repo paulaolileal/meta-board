@@ -1,7 +1,15 @@
 import type { GoogleAuthService } from "@/shared/auth/GoogleAuthService";
 import { SheetsApiClient } from "@/shared/api/SheetsApiClient";
 import type { ISheetProvider } from "./ISheetProvider";
-import type { BoardConfig, CardRecord, FieldDef, FieldType, FieldValue, ChecklistItem, DurationValue } from "@/modules/project/domain/types";
+import type {
+  BoardConfig,
+  CardRecord,
+  FieldDef,
+  FieldType,
+  FieldValue,
+  ChecklistItem,
+  DurationValue,
+} from "@/modules/project/domain/types";
 
 // snake_case ↔ camelCase helpers (preserve leading underscores)
 function toCamel(snake: string): string {
@@ -22,28 +30,120 @@ function colLetter(n: number): string {
 }
 
 const BOARDS_HEADERS = [
-  "id", "name", "icon", "description", "group_by", "order_by",
-  "card_title_field", "card_description_field", "card_closed_layout",
-  "card_open_layout", "archived_column", "created_at", "updated_at",
+  "id",
+  "name",
+  "icon",
+  "description",
+  "group_by",
+  "order_by",
+  "card_title_field",
+  "card_description_field",
+  "card_closed_layout",
+  "card_open_layout",
+  "archived_column",
+  "created_at",
+  "updated_at",
   "color",
 ];
 
 const FIELDS_HEADERS = [
-  "id", "board_id", "label", "type", "required", "default_value",
-  "visible", "editable", "searchable", "sortable", "options", "width", "display_order",
+  "id",
+  "board_id",
+  "label",
+  "type",
+  "required",
+  "default_value",
+  "visible",
+  "editable",
+  "searchable",
+  "sortable",
+  "options",
+  "width",
+  "display_order",
 ];
 
-const CARDS_FIXED_HEADERS = ["_id", "board_id", "_sort", "_archived", "_created_at", "_updated_at", "values"];
+const CARDS_FIXED_HEADERS = [
+  "_id",
+  "board_id",
+  "_sort",
+  "_archived",
+  "_created_at",
+  "_updated_at",
+  "values",
+];
 
 export const DEFAULT_BOARD_FIELDS: Array<Omit<FieldDef, "boardId">> = [
-  { id: "title", label: "Título", type: "text", required: true, visible: true, editable: true, searchable: true, displayOrder: 1 },
-  { id: "description", label: "Descrição", type: "longtext", visible: true, editable: true, displayOrder: 2 },
-  { id: "status", label: "Status", type: "select", visible: true, editable: true, sortable: true, options: ["Backlog", "Em progresso", "Revisão", "Concluído"], displayOrder: 3 },
-  { id: "priority", label: "Prioridade", type: "chip", visible: true, editable: true, options: ["Baixa", "Média", "Alta", "Urgente"], displayOrder: 4 },
-  { id: "due_date", label: "Vencimento", type: "date", visible: true, editable: true, sortable: true, displayOrder: 5 },
-  { id: "cover_image", label: "Capa", type: "image", visible: true, editable: true, displayOrder: 6 },
-  { id: "tags", label: "Tags", type: "multiselect", visible: true, editable: true, options: ["design", "frontend", "backend", "infra", "docs", "bug"], displayOrder: 7 },
-  { id: "checklist", label: "Checklist", type: "checklist", visible: true, editable: true, displayOrder: 8 },
+  {
+    id: "title",
+    label: "Título",
+    type: "text",
+    required: true,
+    visible: true,
+    editable: true,
+    searchable: true,
+    displayOrder: 1,
+  },
+  {
+    id: "description",
+    label: "Descrição",
+    type: "longtext",
+    visible: true,
+    editable: true,
+    displayOrder: 2,
+  },
+  {
+    id: "status",
+    label: "Status",
+    type: "select",
+    visible: true,
+    editable: true,
+    sortable: true,
+    options: ["Backlog", "Em progresso", "Revisão", "Concluído"],
+    displayOrder: 3,
+  },
+  {
+    id: "priority",
+    label: "Prioridade",
+    type: "chip",
+    visible: true,
+    editable: true,
+    options: ["Baixa", "Média", "Alta", "Urgente"],
+    displayOrder: 4,
+  },
+  {
+    id: "due_date",
+    label: "Vencimento",
+    type: "date",
+    visible: true,
+    editable: true,
+    sortable: true,
+    displayOrder: 5,
+  },
+  {
+    id: "cover_image",
+    label: "Capa",
+    type: "image",
+    visible: true,
+    editable: true,
+    displayOrder: 6,
+  },
+  {
+    id: "tags",
+    label: "Tags",
+    type: "multiselect",
+    visible: true,
+    editable: true,
+    options: ["design", "frontend", "backend", "infra", "docs", "bug"],
+    displayOrder: 7,
+  },
+  {
+    id: "checklist",
+    label: "Checklist",
+    type: "checklist",
+    visible: true,
+    editable: true,
+    displayOrder: 8,
+  },
   { id: "link", label: "Link", type: "url", visible: true, editable: true, displayOrder: 9 },
 ];
 
@@ -80,7 +180,9 @@ export class GoogleSheetProvider implements ISheetProvider {
     const values = await this.api.getValues(this.sheetId, "_fields");
     if (values.length < 2) return [];
     const [headers, ...rows] = values;
-    return rows.filter((row) => row[0] && row[1] === boardId).map((row) => this.rowToFieldDef(headers, row));
+    return rows
+      .filter((row) => row[0] && row[1] === boardId)
+      .map((row) => this.rowToFieldDef(headers, row));
   }
 
   async loadCards(boardId: string): Promise<CardRecord[]> {
@@ -109,7 +211,11 @@ export class GoogleSheetProvider implements ISheetProvider {
     const updated = { ...card, _updatedAt: now() };
     const newRow = this.cardToRow(headers, updated);
     const sheetRow = rowIndex + 2;
-    await this.api.setValues(this.sheetId, `_cards!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`, [newRow]);
+    await this.api.setValues(
+      this.sheetId,
+      `_cards!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`,
+      [newRow],
+    );
     return updated;
   }
 
@@ -143,7 +249,9 @@ export class GoogleSheetProvider implements ISheetProvider {
     if (archivedIndex < 0) return;
 
     const sheetRow = rowIndex + 2;
-    await this.api.setValues(this.sheetId, `_cards!${colLetter(archivedIndex + 1)}${sheetRow}`, [["true"]]);
+    await this.api.setValues(this.sheetId, `_cards!${colLetter(archivedIndex + 1)}${sheetRow}`, [
+      ["true"],
+    ]);
   }
 
   async deleteBoard(boardId: string): Promise<void> {
@@ -154,20 +262,23 @@ export class GoogleSheetProvider implements ISheetProvider {
     if (rowIndex < 0) return;
     const sheetRow = rowIndex + 2;
     const emptyRow = Array(headers.length).fill("");
-    await this.api.setValues(this.sheetId, `_boards!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`, [emptyRow]);
+    await this.api.setValues(
+      this.sheetId,
+      `_boards!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`,
+      [emptyRow],
+    );
   }
 
   async saveBoard(board: BoardConfig): Promise<BoardConfig> {
     const values = await this.api.getValues(this.sheetId, "_boards");
     if (values.length < 2) throw new Error("Aba _boards não encontrada");
-    let [headers, ...rows] = values;
+    const [initialHeaders, ...rows] = values;
+    let headers = initialHeaders;
 
     if (!headers.includes("color")) {
-      await this.api.setValues(
-        this.sheetId,
-        `_boards!${colLetter(headers.length + 1)}1`,
-        [["color"]],
-      );
+      await this.api.setValues(this.sheetId, `_boards!${colLetter(headers.length + 1)}1`, [
+        ["color"],
+      ]);
       headers = [...headers, "color"];
     }
 
@@ -176,7 +287,11 @@ export class GoogleSheetProvider implements ISheetProvider {
     const updated = { ...board, updatedAt: now() };
     const newRow = this.boardConfigToRow(updated);
     const sheetRow = rowIndex + 2;
-    await this.api.setValues(this.sheetId, `_boards!A${sheetRow}:${colLetter(newRow.length)}${sheetRow}`, [newRow]);
+    await this.api.setValues(
+      this.sheetId,
+      `_boards!A${sheetRow}:${colLetter(newRow.length)}${sheetRow}`,
+      [newRow],
+    );
     return updated;
   }
 
@@ -188,7 +303,11 @@ export class GoogleSheetProvider implements ISheetProvider {
     if (rowIndex < 0) throw new Error(`Campo ${field.id} não encontrado`);
     const newRow = this.fieldDefToRow(field);
     const sheetRow = rowIndex + 2;
-    await this.api.setValues(this.sheetId, `_fields!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`, [newRow]);
+    await this.api.setValues(
+      this.sheetId,
+      `_fields!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`,
+      [newRow],
+    );
     return field;
   }
 
@@ -225,13 +344,19 @@ export class GoogleSheetProvider implements ISheetProvider {
 
     await Promise.all([
       !boardsRow[0]?.length
-        ? this.api.setValues(this.sheetId, `_boards!A1:${colLetter(BOARDS_HEADERS.length)}1`, [BOARDS_HEADERS])
+        ? this.api.setValues(this.sheetId, `_boards!A1:${colLetter(BOARDS_HEADERS.length)}1`, [
+            BOARDS_HEADERS,
+          ])
         : Promise.resolve(),
       !fieldsRow[0]?.length
-        ? this.api.setValues(this.sheetId, `_fields!A1:${colLetter(FIELDS_HEADERS.length)}1`, [FIELDS_HEADERS])
+        ? this.api.setValues(this.sheetId, `_fields!A1:${colLetter(FIELDS_HEADERS.length)}1`, [
+            FIELDS_HEADERS,
+          ])
         : Promise.resolve(),
       !cardsRow[0]?.length
-        ? this.api.setValues(this.sheetId, `_cards!A1:${colLetter(CARDS_FIXED_HEADERS.length)}1`, [CARDS_FIXED_HEADERS])
+        ? this.api.setValues(this.sheetId, `_cards!A1:${colLetter(CARDS_FIXED_HEADERS.length)}1`, [
+            CARDS_FIXED_HEADERS,
+          ])
         : Promise.resolve(),
     ]);
 
@@ -240,11 +365,9 @@ export class GoogleSheetProvider implements ISheetProvider {
       const currentHeaders = await this.api.getValues(this.sheetId, "_boards!A1:Z1");
       const headerRow = currentHeaders[0] ?? [];
       if (headerRow.length > 0 && !headerRow.includes("color")) {
-        await this.api.setValues(
-          this.sheetId,
-          `_boards!${colLetter(headerRow.length + 1)}1`,
-          [["color"]],
-        );
+        await this.api.setValues(this.sheetId, `_boards!${colLetter(headerRow.length + 1)}1`, [
+          ["color"],
+        ]);
       }
     }
   }
@@ -285,7 +408,9 @@ export class GoogleSheetProvider implements ISheetProvider {
 
   private rowToBoardConfig(headers: string[], row: string[]): BoardConfig {
     const obj: Record<string, string> = {};
-    headers.forEach((h, i) => { obj[toCamel(h)] = row[i] ?? ""; });
+    headers.forEach((h, i) => {
+      obj[toCamel(h)] = row[i] ?? "";
+    });
     return {
       id: obj.id,
       name: obj.name,
@@ -296,8 +421,13 @@ export class GoogleSheetProvider implements ISheetProvider {
       orderBy: obj.orderBy || "_sort",
       cardTitleField: obj.cardTitleField || "title",
       cardDescriptionField: obj.cardDescriptionField || undefined,
-      cardClosedLayout: obj.cardClosedLayout ? obj.cardClosedLayout.split(",").map((s) => s.trim()) : ["title"],
-      cardOpenLayout: obj.cardOpenLayout === "*" || !obj.cardOpenLayout ? "*" : obj.cardOpenLayout.split(",").map((s) => s.trim()),
+      cardClosedLayout: obj.cardClosedLayout
+        ? obj.cardClosedLayout.split(",").map((s) => s.trim())
+        : ["title"],
+      cardOpenLayout:
+        obj.cardOpenLayout === "*" || !obj.cardOpenLayout
+          ? "*"
+          : obj.cardOpenLayout.split(",").map((s) => s.trim()),
       archivedColumn: obj.archivedColumn || undefined,
       createdAt: obj.createdAt || now(),
       updatedAt: obj.updatedAt || now(),
@@ -315,7 +445,9 @@ export class GoogleSheetProvider implements ISheetProvider {
 
   private rowToFieldDef(headers: string[], row: string[]): FieldDef {
     const obj: Record<string, string> = {};
-    headers.forEach((h, i) => { obj[toCamel(h)] = row[i] ?? ""; });
+    headers.forEach((h, i) => {
+      obj[toCamel(h)] = row[i] ?? "";
+    });
     return {
       id: obj.id,
       boardId: obj.boardId,
@@ -343,7 +475,11 @@ export class GoogleSheetProvider implements ISheetProvider {
     });
   }
 
-  private rowToCardRecord(headers: string[], row: string[], fieldTypes: Map<string, FieldType>): CardRecord {
+  private rowToCardRecord(
+    headers: string[],
+    row: string[],
+    fieldTypes: Map<string, FieldType>,
+  ): CardRecord {
     const record: CardRecord = {
       _id: "",
       boardId: "",
@@ -355,12 +491,30 @@ export class GoogleSheetProvider implements ISheetProvider {
 
     headers.forEach((h, i) => {
       const raw = (row[i] ?? "").trim();
-      if (h === "_id") { record._id = raw; return; }
-      if (h === "board_id") { record.boardId = raw; return; }
-      if (h === "_sort") { record._sort = Number(raw) || 0; return; }
-      if (h === "_archived") { record._archived = raw === "true" || raw === "TRUE"; return; }
-      if (h === "_created_at") { record._createdAt = raw; return; }
-      if (h === "_updated_at") { record._updatedAt = raw; return; }
+      if (h === "_id") {
+        record._id = raw;
+        return;
+      }
+      if (h === "board_id") {
+        record.boardId = raw;
+        return;
+      }
+      if (h === "_sort") {
+        record._sort = Number(raw) || 0;
+        return;
+      }
+      if (h === "_archived") {
+        record._archived = raw === "true" || raw === "TRUE";
+        return;
+      }
+      if (h === "_created_at") {
+        record._createdAt = raw;
+        return;
+      }
+      if (h === "_updated_at") {
+        record._updatedAt = raw;
+        return;
+      }
       if (h === "values") {
         const parsed: Record<string, unknown> = raw ? JSON.parse(raw) : {};
         for (const [fieldId, val] of Object.entries(parsed)) {
@@ -412,5 +566,4 @@ export class GoogleSheetProvider implements ISheetProvider {
         return String(val ?? "");
     }
   }
-
 }

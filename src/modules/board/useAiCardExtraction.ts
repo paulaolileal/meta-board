@@ -20,9 +20,7 @@ function buildSystemPrompt(
   const fieldLines = fields
     .map((f) => {
       const opts =
-        OPTION_TYPES.has(f.type) && f.options?.length
-          ? `, options: [${f.options.join(", ")}]`
-          : "";
+        OPTION_TYPES.has(f.type) && f.options?.length ? `, options: [${f.options.join(", ")}]` : "";
       const req = f.required ? " [REQUIRED]" : "";
       return `- ${f.label} (id: ${f.id}, type: ${f.type}${opts})${req}`;
     })
@@ -116,9 +114,7 @@ function buildSearchInstructions(
   const missingLines = missingFields
     .map((f) => {
       const opts =
-        OPTION_TYPES.has(f.type) && f.options?.length
-          ? `, options: [${f.options.join(", ")}]`
-          : "";
+        OPTION_TYPES.has(f.type) && f.options?.length ? `, options: [${f.options.join(", ")}]` : "";
       return `- ${f.label} (id: ${f.id}, type: ${f.type}${opts})`;
     })
     .join("\n");
@@ -170,7 +166,7 @@ Return a JSON code block with this exact structure:
 \`\`\`json
 {
   "values": { "<fieldId>": <value> },
-  "reasons": { "<fieldId>": "\"[exact quote or text from the source page that proves this value]\" — [URL]" }
+  "reasons": { "<fieldId>": "\\"[exact quote or text from the source page that proves this value]\\" — [URL]" }
 }
 \`\`\``;
 }
@@ -192,7 +188,10 @@ function sanitizeCard(
       }
     } else if (field.type === "multiselect") {
       if (typeof val === "string") {
-        result[field.id] = val.split(",").map((s) => s.trim()).filter(Boolean);
+        result[field.id] = val
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
       }
     }
   }
@@ -228,7 +227,7 @@ function extractSearchResult(text: string): {
   if (raw.values && typeof raw.values === "object" && !Array.isArray(raw.values)) {
     return {
       values: raw.values as Record<string, unknown>,
-      reasons: ((raw.reasons ?? {}) as Record<string, unknown>),
+      reasons: (raw.reasons ?? {}) as Record<string, unknown>,
     };
   }
   return { values: raw, reasons: {} };
@@ -243,9 +242,7 @@ export function useAiCardExtraction() {
     if (!apiKey) throw new Error("VITE_OPENAI_API_KEY não configurada no .env.local");
     if (!board) throw new Error("Board não carregado");
 
-    const extractableFields = fields.filter(
-      (f) => f.editable !== false && f.visible !== false,
-    );
+    const extractableFields = fields.filter((f) => f.editable !== false && f.visible !== false);
 
     const systemPrompt = buildSystemPrompt(board.name, board.description, extractableFields);
 
@@ -323,9 +320,7 @@ export function useAiCardExtraction() {
       }),
     );
 
-    return enriched.map((r, i) =>
-      r.status === "fulfilled" ? r.value : validPhase1Results[i],
-    );
+    return enriched.map((r, i) => (r.status === "fulfilled" ? r.value : validPhase1Results[i]));
   }
 
   return { extractCards };

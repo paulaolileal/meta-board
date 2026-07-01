@@ -58,9 +58,18 @@ export function SpreadsheetPage() {
 
       <header className="shrink-0 px-6 py-4 flex items-center gap-3 border-b border-border/50">
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <img src="/logo-mb.png" alt="MetaBoard" className="h-7 w-7 object-contain rounded-lg shrink-0" />
+          <img
+            src="/logo-mb.png"
+            alt="MetaBoard"
+            className="h-7 w-7 object-contain rounded-lg shrink-0"
+          />
           <nav className="flex items-center gap-1 text-sm min-w-0" aria-label="Breadcrumb">
-            <Link to="/" className="text-muted-foreground hover:text-foreground transition whitespace-nowrap">MetaBoard</Link>
+            <Link
+              to="/"
+              className="text-muted-foreground hover:text-foreground transition whitespace-nowrap"
+            >
+              MetaBoard
+            </Link>
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
             <span className="font-semibold truncate">{title}</span>
           </nav>
@@ -86,7 +95,10 @@ export function SpreadsheetPage() {
                 <div className="h-4 w-16 skeleton rounded mb-8" />
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="rounded-2xl bg-card border border-border overflow-hidden shadow-[var(--shadow-card)]">
+                    <div
+                      key={i}
+                      className="rounded-2xl bg-card border border-border overflow-hidden shadow-[var(--shadow-card)]"
+                    >
                       <div className="flex">
                         <div className="shrink-0 w-28 skeleton" style={{ minHeight: "100px" }} />
                         <div className="flex-1 flex flex-col">
@@ -123,10 +135,7 @@ export function SpreadsheetPage() {
                 </button>
               </div>
             ) : (
-              <BoardGrid
-                boards={boards}
-                onEditBoard={setEditingBoard}
-              />
+              <BoardGrid boards={boards} onEditBoard={setEditingBoard} />
             )}
           </main>
         </div>
@@ -232,12 +241,20 @@ function BoardGrid({
                     className="flex items-center px-4 py-5"
                     style={{ backgroundColor: effectiveColor }}
                   >
-                    <p className={cn("font-bold leading-snug text-white drop-shadow-sm line-clamp-2 group-hover:opacity-90 transition-opacity", nameFontClass(b.name))}>
+                    <p
+                      className={cn(
+                        "font-bold leading-snug text-white drop-shadow-sm line-clamp-2 group-hover:opacity-90 transition-opacity",
+                        nameFontClass(b.name),
+                      )}
+                    >
                       {b.name}
                     </p>
                   </div>
                   <div className="flex-1 flex items-start px-4 py-3 min-h-[52px] relative">
-                    <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundColor: effectiveColor }} />
+                    <div
+                      className="absolute inset-0 opacity-[0.07]"
+                      style={{ backgroundColor: effectiveColor }}
+                    />
                     <p className="relative text-sm text-muted-foreground line-clamp-2">
                       {b.description ?? ""}
                     </p>
@@ -251,4 +268,3 @@ function BoardGrid({
     </div>
   );
 }
-

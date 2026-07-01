@@ -33,8 +33,7 @@ export const useBoardStore = create<BoardState>((set) => ({
   openCardId: null,
   hydrated: false,
 
-  setAll: (board, fields, cards, boardId) =>
-    set({ board, fields, cards, boardId, hydrated: true }),
+  setAll: (board, fields, cards, boardId) => set({ board, fields, cards, boardId, hydrated: true }),
 
   setBoard: (board) => set({ board }),
 

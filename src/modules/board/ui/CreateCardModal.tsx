@@ -31,6 +31,7 @@ export function CreateCardModal({ open, onClose, initialValues }: Props) {
       setValues(initialValues);
       setErrors({});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const editableFields = fields.filter((f) => f.editable !== false && f.visible !== false);
@@ -89,9 +90,7 @@ export function CreateCardModal({ open, onClose, initialValues }: Props) {
                 value={values[f.id as keyof typeof values] as never}
                 onChange={(v) => setField(f.id, v)}
               />
-              {errors[f.id] && (
-                <p className="text-xs text-danger">{errors[f.id]}</p>
-              )}
+              {errors[f.id] && <p className="text-xs text-danger">{errors[f.id]}</p>}
             </div>
           ))}
         </div>

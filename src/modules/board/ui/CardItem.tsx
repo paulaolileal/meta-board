@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { CardRecord, FieldDef, FieldType } from "@/modules/project/domain/types";
+import type { CardRecord, FieldDef, FieldType, FieldValue } from "@/modules/project/domain/types";
 import { FieldRenderer } from "@/modules/fields/FieldRenderer";
 import { cn } from "@/lib/utils";
 
@@ -20,8 +20,10 @@ const WIDE_FIELD_TYPES = new Set<FieldType>(["longtext", "longnumber", "checklis
 export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
   const [collapsed, setCollapsed] = useState(false);
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: card._id, data: { type: "card", card } });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: card._id,
+    data: { type: "card", card },
+  });
 
   const fieldMap = new Map(fields.map((f) => [f.id, f]));
 
@@ -32,7 +34,7 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
   const nonImageLayout = layout.filter((id) => fieldMap.get(id)?.type !== "image");
   const [titleId, ...bodyIds] = nonImageLayout;
   const titleField = titleId ? fieldMap.get(titleId) : undefined;
-  const titleValue = titleId != null ? (card[titleId] as any) : undefined;
+  const titleValue = titleId != null ? (card[titleId] as FieldValue) : undefined;
 
   const hasCollapsible =
     (imageField && imageValue) ||
@@ -59,7 +61,7 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
       className={cn(
         "group cursor-pointer rounded-2xl bg-card border border-border",
         "shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] transition-shadow",
-        (isDragging || dragging) && "opacity-50 ring-2 ring-primary/50"
+        (isDragging || dragging) && "opacity-50 ring-2 ring-primary/50",
       )}
     >
       <AnimatePresence initial={false}>
@@ -109,7 +111,7 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
                 {bodyIds.map((id) => {
                   const f = fieldMap.get(id);
                   if (!f) return null;
-                  const v = card[id] as any;
+                  const v = card[id] as FieldValue;
                   if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) return null;
                   const isWide = WIDE_FIELD_TYPES.has(f.type);
                   return (

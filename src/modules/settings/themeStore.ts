@@ -10,8 +10,7 @@ interface ThemeState {
 function applyTheme(mode: ThemeMode) {
   if (typeof document === "undefined") return;
   const prefersDark =
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches;
+    typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
   const dark = mode === "dark" || (mode === "auto" && prefersDark);
   document.documentElement.classList.toggle("dark", dark);
 }
@@ -19,7 +18,9 @@ function applyTheme(mode: ThemeMode) {
 const STORAGE_KEY = "metaboard:theme";
 
 export const useThemeStore = create<ThemeState>((set) => ({
-  mode: ((typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_KEY)) as ThemeMode) || "auto",
+  mode:
+    ((typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_KEY)) as ThemeMode) ||
+    "auto",
   setMode: (mode) => {
     if (typeof localStorage !== "undefined") localStorage.setItem(STORAGE_KEY, mode);
     applyTheme(mode);

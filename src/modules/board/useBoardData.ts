@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getSheetProvider } from "@/shared/providers/providerFactory";
 import { useBoardStore } from "@/modules/board/store";
 import { cacheGet, cacheSet } from "@/shared/cache/localCache";
+import type { BoardConfig, CardRecord, FieldDef } from "@/modules/project/domain/types";
 
 export function useBoardData(boardId: string) {
   const setAll = useBoardStore((s) => s.setAll);
@@ -13,10 +14,17 @@ export function useBoardData(boardId: string) {
     (async () => {
       const cached = await cacheGet<{ board: unknown; fields: unknown; cards: unknown }>(cacheKey);
       if (cached && !cancelled) {
-        setAll(cached.board as any, cached.fields as any, cached.cards as any, boardId);
+        setAll(
+          cached.board as BoardConfig,
+          cached.fields as FieldDef[],
+          cached.cards as CardRecord[],
+          boardId,
+        );
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [cacheKey, boardId, setAll]);
 
   return useQuery({

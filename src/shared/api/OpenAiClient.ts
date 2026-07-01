@@ -24,8 +24,7 @@ export async function chatComplete(
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     throw new Error(
-      (err as { error?: { message?: string } }).error?.message ??
-        `OpenAI error ${response.status}`,
+      (err as { error?: { message?: string } }).error?.message ?? `OpenAI error ${response.status}`,
     );
   }
 
@@ -59,8 +58,7 @@ export async function chatCompleteWithWebSearch(
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     throw new Error(
-      (err as { error?: { message?: string } }).error?.message ??
-        `OpenAI error ${response.status}`,
+      (err as { error?: { message?: string } }).error?.message ?? `OpenAI error ${response.status}`,
     );
   }
 

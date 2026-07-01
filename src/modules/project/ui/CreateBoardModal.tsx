@@ -45,21 +45,21 @@ interface CustomField {
 }
 
 const FIELD_TYPE_OPTIONS: { type: FieldType; label: string; Icon: React.ElementType }[] = [
-  { type: "text",        label: "Texto",           Icon: Type },
-  { type: "longtext",    label: "Texto longo",      Icon: AlignLeft },
-  { type: "number",      label: "Número",           Icon: Hash },
-  { type: "bool",        label: "Booleano",         Icon: ToggleLeft },
-  { type: "date",        label: "Data",             Icon: Calendar },
-  { type: "datetime",    label: "Data e hora",      Icon: CalendarClock },
-  { type: "url",         label: "URL",              Icon: Link },
-  { type: "image",       label: "Imagem",           Icon: Image },
-  { type: "icon",        label: "Ícone",            Icon: Smile },
-  { type: "chip",        label: "Chip",             Icon: Tag },
-  { type: "select",      label: "Seleção",          Icon: ListFilter },
-  { type: "multiselect", label: "Multi-seleção",    Icon: List },
-  { type: "checklist",   label: "Checklist",        Icon: ListChecks },
-  { type: "email",       label: "E-mail",           Icon: Mail },
-  { type: "color",       label: "Cor",              Icon: Palette },
+  { type: "text", label: "Texto", Icon: Type },
+  { type: "longtext", label: "Texto longo", Icon: AlignLeft },
+  { type: "number", label: "Número", Icon: Hash },
+  { type: "bool", label: "Booleano", Icon: ToggleLeft },
+  { type: "date", label: "Data", Icon: Calendar },
+  { type: "datetime", label: "Data e hora", Icon: CalendarClock },
+  { type: "url", label: "URL", Icon: Link },
+  { type: "image", label: "Imagem", Icon: Image },
+  { type: "icon", label: "Ícone", Icon: Smile },
+  { type: "chip", label: "Chip", Icon: Tag },
+  { type: "select", label: "Seleção", Icon: ListFilter },
+  { type: "multiselect", label: "Multi-seleção", Icon: List },
+  { type: "checklist", label: "Checklist", Icon: ListChecks },
+  { type: "email", label: "E-mail", Icon: Mail },
+  { type: "color", label: "Cor", Icon: Palette },
 ];
 
 function slugify(name: string): string {
@@ -127,13 +127,14 @@ export function CreateBoardModal({ open, onClose, onCreated }: Props) {
   }
 
   function updateField(index: number, patch: Partial<CustomField>) {
-    setCustomFields((prev) =>
-      prev.map((f, i) => (i === index ? { ...f, ...patch } : f)),
-    );
+    setCustomFields((prev) => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
   }
 
   async function handleCreate() {
-    if (!name.trim()) { setError("Nome é obrigatório"); return; }
+    if (!name.trim()) {
+      setError("Nome é obrigatório");
+      return;
+    }
     setError("");
     setLoading(true);
 
@@ -186,9 +187,7 @@ export function CreateBoardModal({ open, onClose, onCreated }: Props) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Novo board</DialogTitle>
-          <DialogDescription>
-            Cria um novo board nesta planilha.
-          </DialogDescription>
+          <DialogDescription>Cria um novo board nesta planilha.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
@@ -211,7 +210,10 @@ export function CreateBoardModal({ open, onClose, onCreated }: Props) {
             <label className="text-sm font-medium">Nome *</label>
             <input
               value={name}
-              onChange={(e) => { setName(e.target.value); setError(""); }}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError("");
+              }}
               onKeyDown={(e) => e.key === "Enter" && handleCreate()}
               placeholder="Ex: Dev Tracker"
               className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
@@ -235,7 +237,11 @@ export function CreateBoardModal({ open, onClose, onCreated }: Props) {
               onClick={() => setShowFields((v) => !v)}
               className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition"
             >
-              {showFields ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              {showFields ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
               Personalizar campos
             </button>
 

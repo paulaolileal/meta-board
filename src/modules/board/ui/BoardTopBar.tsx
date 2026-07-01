@@ -47,11 +47,7 @@ export function BoardTopBar({ onOpenSettings }: Props) {
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-
-  const tagOptions = useMemo(
-    () => fields.find((f) => f.id === "tags")?.options ?? [],
-    [fields],
-  );
+  const tagOptions = useMemo(() => fields.find((f) => f.id === "tags")?.options ?? [], [fields]);
 
   const groupableFields = useMemo(
     () => fields.filter((f) => SELECT_TYPES.includes(f.type)),
@@ -116,11 +112,7 @@ export function BoardTopBar({ onOpenSettings }: Props) {
             >
               <ChevronLeft className="h-5 w-5" />
             </Link>
-            <Link
-              to={backTo}
-              className="shrink-0"
-              aria-label="Voltar para boards"
-            >
+            <Link to={backTo} className="shrink-0" aria-label="Voltar para boards">
               <img
                 src="/logo-mb.png"
                 alt="MetaBoard"
@@ -179,9 +171,7 @@ export function BoardTopBar({ onOpenSettings }: Props) {
               onClick={openSearch}
               className={cn(
                 "h-9 w-9 rounded-lg flex items-center justify-center transition",
-                search
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-accent",
+                search ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-accent",
               )}
               aria-label="Buscar cards"
             >

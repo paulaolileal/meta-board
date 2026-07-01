@@ -1,8 +1,32 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import {
-  Loader2, Plus, ChevronDown, ChevronUp, X, Columns3, Tag, AlignLeft, Hash,
-  ToggleLeft, Calendar, Link, Image, Smile, ListFilter, List, ListChecks, Mail,
-  Palette, Type, CalendarClock, GripVertical, Eye, EyeOff, Trash2, MapPin, Clock,
+  Loader2,
+  Plus,
+  ChevronDown,
+  ChevronUp,
+  X,
+  Columns3,
+  Tag,
+  AlignLeft,
+  Hash,
+  ToggleLeft,
+  Calendar,
+  Link,
+  Image,
+  Smile,
+  ListFilter,
+  List,
+  ListChecks,
+  Mail,
+  Palette,
+  Type,
+  CalendarClock,
+  GripVertical,
+  Eye,
+  EyeOff,
+  Trash2,
+  MapPin,
+  Clock,
   AlertTriangle,
 } from "lucide-react";
 import {
@@ -37,9 +61,23 @@ import { BoardColorPicker } from "@/shared/colors/BoardColorPicker";
 const SELECT_TYPES: FieldType[] = ["select", "chip", "multiselect"];
 
 const FIELD_TYPE_ORDER: FieldType[] = [
-  "text", "longtext", "number", "bool", "date", "datetime",
-  "url", "image", "icon", "chip", "select", "multiselect", "checklist", "email", "color",
-  "location", "duration",
+  "text",
+  "longtext",
+  "number",
+  "bool",
+  "date",
+  "datetime",
+  "url",
+  "image",
+  "icon",
+  "chip",
+  "select",
+  "multiselect",
+  "checklist",
+  "email",
+  "color",
+  "location",
+  "duration",
 ];
 
 function slugify(name: string): string {
@@ -120,8 +158,9 @@ function SortableFieldRow({
   onOptionRemove,
   onNewOptionChange,
 }: SortableFieldRowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: field.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: field.id,
+  });
 
   const Icon = FIELD_TYPE_ICONS[field.type] ?? Type;
   const isSelectable = SELECT_TYPES.includes(field.type);
@@ -133,7 +172,11 @@ function SortableFieldRow({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="rounded-lg bg-surface border border-border overflow-hidden">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="rounded-lg bg-surface border border-border overflow-hidden"
+    >
       <div className="flex items-center gap-2 px-2 py-2">
         <button
           {...attributes}
@@ -172,7 +215,11 @@ function SortableFieldRow({
             className="h-5 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition shrink-0"
             aria-label={isExpanded ? "Ocultar opções" : "Editar opções"}
           >
-            {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {isExpanded ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" />
+            )}
           </button>
         )}
 
@@ -198,7 +245,10 @@ function SortableFieldRow({
           ) : (
             <div className="space-y-1">
               {options.map((opt) => (
-                <div key={opt} className="flex items-center justify-between px-2 py-1 rounded bg-muted/40">
+                <div
+                  key={opt}
+                  className="flex items-center justify-between px-2 py-1 rounded bg-muted/40"
+                >
                   <span className="text-xs">{opt}</span>
                   <button
                     onClick={() => onOptionRemove(opt)}
@@ -304,7 +354,10 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
     if (open && isStandalone) {
       const p = getSheetProvider();
       Promise.all([p.loadBoard(boardId!), p.loadFields(boardId!)])
-        .then(([b, f]) => { setLocalBoard(b); setLocalFields(f); })
+        .then(([b, f]) => {
+          setLocalBoard(b);
+          setLocalFields(f);
+        })
         .catch((e) => toast.error((e as Error)?.message ?? "Erro ao carregar board"));
     }
   }, [open, boardId, isStandalone]);
@@ -338,7 +391,7 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
 
   function toggleClosedLayout(fieldId: string) {
     setClosedLayout((prev) =>
-      prev.includes(fieldId) ? prev.filter((id) => id !== fieldId) : [...prev, fieldId]
+      prev.includes(fieldId) ? prev.filter((id) => id !== fieldId) : [...prev, fieldId],
     );
   }
 
@@ -368,7 +421,9 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
       const existingIds = new Set(fields.map((f) => f.id));
       let id = base;
       let n = 2;
-      while (existingIds.has(id)) { id = `${base}_${n++}`; }
+      while (existingIds.has(id)) {
+        id = `${base}_${n++}`;
+      }
       const maxOrder = orderedFieldIds.length;
       const newField: FieldDef = {
         id,
@@ -377,7 +432,8 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
         type: newFieldType,
         visible: true,
         editable: true,
-        searchable: newFieldType === "text" || newFieldType === "longtext" || newFieldType === "email",
+        searchable:
+          newFieldType === "text" || newFieldType === "longtext" || newFieldType === "email",
         sortable: true,
         displayOrder: maxOrder + 1,
       };
@@ -411,7 +467,7 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
         description: description.trim() || undefined,
         groupBy: groupBy || board.groupBy,
         cardClosedLayout: orderedFieldIds.filter(
-          (id) => !fieldsToDelete.has(id) && closedLayout.includes(id)
+          (id) => !fieldsToDelete.has(id) && closedLayout.includes(id),
         ),
       };
       const savedBoard = await provider.saveBoard(updatedBoard);
@@ -489,9 +545,7 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
       <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Editar board</DialogTitle>
-          <DialogDescription>
-            Atualize as configurações do board.
-          </DialogDescription>
+          <DialogDescription>Atualize as configurações do board.</DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto scrollbar-thin space-y-6 mt-2 pr-1">
@@ -545,7 +599,8 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
 
             {groupableFields.length === 0 ? (
               <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
-                Nenhum campo de seleção criado. Adicione um campo do tipo Seleção, Chip ou Multi-seleção para habilitar o modo kanban.
+                Nenhum campo de seleção criado. Adicione um campo do tipo Seleção, Chip ou
+                Multi-seleção para habilitar o modo kanban.
               </p>
             ) : (
               <div className="space-y-1.5">
@@ -563,7 +618,8 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
                   ))}
                 </select>
                 <p className="text-[11px] text-muted-foreground">
-                  As opções do campo selecionado viram colunas do kanban. Edite as opções na lista de campos abaixo.
+                  As opções do campo selecionado viram colunas do kanban. Edite as opções na lista
+                  de campos abaixo.
                 </p>
               </div>
             )}
@@ -575,14 +631,22 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
               Campos do board
             </h3>
             <p className="text-[11px] text-muted-foreground">
-              Arraste para reordenar. Use <Eye className="inline h-3 w-3" /> para controlar quais campos aparecem no card fechado.
+              Arraste para reordenar. Use <Eye className="inline h-3 w-3" /> para controlar quais
+              campos aparecem no card fechado.
             </p>
 
             {visibleFields.length === 0 ? (
               <p className="text-xs text-muted-foreground">Nenhum campo configurado.</p>
             ) : (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={visibleFields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={visibleFields.map((f) => f.id)}
+                  strategy={verticalListSortingStrategy}
+                >
                   <div className="space-y-1.5">
                     {visibleFields.map((f) => (
                       <SortableFieldRow
@@ -592,7 +656,9 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
                         isInClosedLayout={closedLayout.includes(f.id)}
                         options={SELECT_TYPES.includes(f.type) ? getFieldOptions(f.id) : []}
                         newOption={newOptionByField[f.id] ?? ""}
-                        onToggleExpand={() => setExpandedFieldId(expandedFieldId === f.id ? null : f.id)}
+                        onToggleExpand={() =>
+                          setExpandedFieldId(expandedFieldId === f.id ? null : f.id)
+                        }
                         onToggleClosedLayout={() => toggleClosedLayout(f.id)}
                         onRemove={() => markFieldForDeletion(f.id)}
                         onOptionAdd={() => addFieldOption(f.id)}
@@ -624,7 +690,9 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
                   className="appearance-none pl-7 pr-6 py-1.5 bg-surface border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 cursor-pointer"
                 >
                   {FIELD_TYPE_ORDER.map((type) => (
-                    <option key={type} value={type}>{FIELD_TYPE_LABELS[type]}</option>
+                    <option key={type} value={type}>
+                      {FIELD_TYPE_LABELS[type]}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -634,7 +702,11 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
                 disabled={!newFieldName.trim() || addingField}
                 className="shrink-0 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm hover:opacity-90 transition disabled:opacity-40 inline-flex items-center gap-1.5"
               >
-                {addingField ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                {addingField ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Plus className="h-3.5 w-3.5" />
+                )}
                 Adicionar
               </button>
             </div>

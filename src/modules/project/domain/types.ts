@@ -71,14 +71,7 @@ export interface DurationValue {
 }
 
 export type FieldValue =
-  | string
-  | number
-  | boolean
-  | string[]
-  | ChecklistItem[]
-  | DurationValue
-  | null
-  | undefined;
+  string | number | boolean | string[] | ChecklistItem[] | DurationValue | null | undefined;
 
 export interface CardRecord {
   _id: string;

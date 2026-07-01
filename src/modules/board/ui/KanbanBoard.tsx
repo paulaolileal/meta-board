@@ -38,7 +38,10 @@ function Column({
   onOpen: (id: string) => void;
   layout: string[];
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `col:${title}`, data: { type: "column", status: title } });
+  const { setNodeRef, isOver } = useDroppable({
+    id: `col:${title}`,
+    data: { type: "column", status: title },
+  });
   const fields = useBoardStore((s) => s.fields);
   const isMobile = useIsMobile();
 
@@ -47,7 +50,7 @@ function Column({
       ref={setNodeRef}
       className={cn(
         "flex flex-col w-full sm:w-[280px] lg:w-[300px] xl:w-[340px] 2xl:w-[380px] shrink-0 rounded-2xl bg-surface/60 border border-border p-3 gap-3 h-full",
-        isOver && "ring-2 ring-primary/40 bg-surface"
+        isOver && "ring-2 ring-primary/40 bg-surface",
       )}
     >
       <div className="flex items-center justify-between px-1">
@@ -116,7 +119,9 @@ export function KanbanBoard() {
   const groupField = project?.groupBy ?? "status";
   const groups: string[] = useMemo(() => {
     const f = fields.find((x) => x.id === groupField);
-    return f?.options?.length ? f.options : Array.from(new Set(cards.map((c) => String(c[groupField] ?? ""))));
+    return f?.options?.length
+      ? f.options
+      : Array.from(new Set(cards.map((c) => String(c[groupField] ?? ""))));
   }, [fields, cards, groupField]);
 
   const filtered = useMemo(() => {
@@ -127,8 +132,10 @@ export function KanbanBoard() {
         fields.some(
           (f) =>
             f.searchable !== false &&
-            String(c[f.id] ?? "").toLowerCase().includes(q)
-        )
+            String(c[f.id] ?? "")
+              .toLowerCase()
+              .includes(q),
+        ),
       );
     }
     if (filterTags.length) {
@@ -317,9 +324,7 @@ export function KanbanBoard() {
       <CreateCardModal
         open={pendingGroupValue !== null}
         onClose={() => setPendingGroupValue(null)}
-        initialValues={
-          pendingGroupValue !== null ? { [groupField]: pendingGroupValue } : {}
-        }
+        initialValues={pendingGroupValue !== null ? { [groupField]: pendingGroupValue } : {}}
       />
     </>
   );
