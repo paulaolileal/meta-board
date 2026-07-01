@@ -1,15 +1,11 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getSheetProvider, isMockMode, envSpreadsheetId } from "@/shared/providers/providerFactory";
+import { getSheetProvider } from "@/shared/providers/providerFactory";
 import { useBoardStore } from "@/modules/board/store";
 import { cacheGet, cacheSet } from "@/shared/cache/localCache";
 
-const MOCK_SHEET_ID = "mock";
-
 export function useBoardData(boardId: string) {
   const setAll = useBoardStore((s) => s.setAll);
-
-  const sheetId = isMockMode() ? MOCK_SHEET_ID : (envSpreadsheetId ?? "");
   const cacheKey = `board:${boardId}`;
 
   useEffect(() => {
@@ -26,7 +22,7 @@ export function useBoardData(boardId: string) {
   return useQuery({
     queryKey: ["board", boardId],
     queryFn: async () => {
-      const provider = getSheetProvider(sheetId);
+      const provider = getSheetProvider();
       const [board, fields, cards] = await Promise.all([
         provider.loadBoard(boardId),
         provider.loadFields(boardId),
@@ -36,7 +32,7 @@ export function useBoardData(boardId: string) {
       await cacheSet(cacheKey, { board, fields, cards });
       return { board, fields, cards };
     },
-    enabled: !!boardId && (isMockMode() || !!sheetId),
+    enabled: !!boardId,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });

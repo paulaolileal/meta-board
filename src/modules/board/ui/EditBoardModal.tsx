@@ -29,12 +29,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { getSheetProvider, isMockMode, envSpreadsheetId } from "@/shared/providers/providerFactory";
+import { getSheetProvider } from "@/shared/providers/providerFactory";
 import { useBoardStore } from "@/modules/board/store";
 import { BoardIconPicker } from "@/shared/icons/BoardIconPicker";
 import { BoardColorPicker } from "@/shared/colors/BoardColorPicker";
 
-const MOCK_SHEET_ID = "mock";
 const SELECT_TYPES: FieldType[] = ["select", "chip", "multiselect"];
 
 const FIELD_TYPE_ORDER: FieldType[] = [
@@ -272,8 +271,7 @@ export function EditBoardModal({ open, onClose, onDeleted }: Props) {
     [fields],
   );
 
-  const sheetId = isMockMode() ? MOCK_SHEET_ID : (envSpreadsheetId ?? "");
-  const provider = useMemo(() => getSheetProvider(sheetId), [sheetId]);
+  const provider = getSheetProvider();
 
   useEffect(() => {
     if (open && board) {

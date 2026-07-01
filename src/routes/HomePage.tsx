@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { LogOut, Loader2, Table2, Kanban, Brain } from "lucide-react";
-import { isMockMode, googleAuthService } from "@/shared/providers/providerFactory";
+import { googleAuthService } from "@/shared/providers/providerFactory";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -11,11 +11,10 @@ export function HomePage() {
   const navigate = useNavigate();
   const { user, setUser, clearUser } = useAuthStore();
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const mock = isMockMode();
-  const isAuthenticated = mock || googleAuthService.isAuthenticated();
+  const isAuthenticated = googleAuthService.isAuthenticated();
 
   useEffect(() => {
-    if (!mock && googleAuthService.isAuthenticated() && !user) {
+    if (googleAuthService.isAuthenticated() && !user) {
       googleAuthService.fetchUserInfo().then((info) => {
         if (info) setUser(info);
       });

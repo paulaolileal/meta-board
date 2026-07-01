@@ -1,7 +1,7 @@
 import type { BoardConfig, CardRecord, FieldDef } from "@/modules/project/domain/types";
 
 export interface ISheetProvider {
-  readonly mode: "mock" | "google";
+  readonly mode: "google";
   loadBoards(): Promise<BoardConfig[]>;
   loadBoard(boardId: string): Promise<BoardConfig>;
   loadFields(boardId: string): Promise<FieldDef[]>;

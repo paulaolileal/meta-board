@@ -36,7 +36,6 @@ import { BoardColorPicker } from "@/shared/colors/BoardColorPicker";
 interface Props {
   open: boolean;
   onClose: () => void;
-  sheetId: string;
   onCreated: (board: BoardConfig) => void;
 }
 
@@ -109,7 +108,7 @@ function buildFields(customFields: CustomField[]): FieldDef[] {
   return [titleField, ...additionalFields];
 }
 
-export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
+export function CreateBoardModal({ open, onClose, onCreated }: Props) {
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("KanbanSquare");
   const [color, setColor] = useState("#7c3aed");
@@ -139,7 +138,7 @@ export function CreateBoardModal({ open, onClose, sheetId, onCreated }: Props) {
     setLoading(true);
 
     try {
-      const provider = getSheetProvider(sheetId);
+      const provider = getSheetProvider();
 
       if (!provider.createBoard) {
         throw new Error("Este provider não suporta criação de boards");

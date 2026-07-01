@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Plus, AlertCircle, ChevronRight, LayoutGrid, Settings, Loader2 } from "lucide-react";
-import { getSheetProvider, isMockMode, envSpreadsheetId } from "@/shared/providers/providerFactory";
+import { getSheetProvider } from "@/shared/providers/providerFactory";
 import type { BoardConfig } from "@/modules/project/domain/types";
 import { CreateBoardModal } from "@/modules/project/ui/CreateBoardModal";
 import { BoardIconPicker } from "@/shared/icons/BoardIconPicker";
@@ -18,7 +18,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-const MOCK_SHEET_ID = "mock";
 const DEFAULT_BOARD_COLOR = "var(--primary)";
 
 function nameFontClass(name: string): string {
@@ -35,11 +34,8 @@ export function SpreadsheetPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingBoard, setEditingBoard] = useState<BoardConfig | null>(null);
 
-  const mock = isMockMode();
-  const sheetId = mock ? MOCK_SHEET_ID : (envSpreadsheetId ?? "");
-
   useEffect(() => {
-    const provider = getSheetProvider(sheetId);
+    const provider = getSheetProvider();
     setLoading(true);
     setError(null);
     provider
@@ -47,7 +43,7 @@ export function SpreadsheetPage() {
       .then(setBoards)
       .catch((e) => setError(String(e?.message ?? e)))
       .finally(() => setLoading(false));
-  }, [sheetId]);
+  }, []);
 
   async function handleBoardCreated(board: BoardConfig) {
     setBoards((prev) => [...prev, board]);
@@ -60,7 +56,7 @@ export function SpreadsheetPage() {
     setBoards((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
   }
 
-  const title = mock ? "Boards de exemplo" : "Minha Planilha";
+  const title = "Minha Planilha";
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -141,33 +137,27 @@ export function SpreadsheetPage() {
           </main>
         </div>
 
-        {!mock && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            onClick={() => setCreateOpen(true)}
-            className="absolute bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-glow)] flex items-center justify-center hover:opacity-90 active:scale-95 transition-all"
-            aria-label="Novo board"
-          >
-            <Plus className="h-6 w-6" />
-          </motion.button>
-        )}
+        <motion.button
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          onClick={() => setCreateOpen(true)}
+          className="absolute bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-glow)] flex items-center justify-center hover:opacity-90 active:scale-95 transition-all"
+          aria-label="Novo board"
+        >
+          <Plus className="h-6 w-6" />
+        </motion.button>
       </div>
 
-      {!mock && (
-        <CreateBoardModal
-          open={createOpen}
-          onClose={() => setCreateOpen(false)}
-          sheetId={sheetId}
-          onCreated={handleBoardCreated}
-        />
-      )}
+      <CreateBoardModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={handleBoardCreated}
+      />
 
       {editingBoard && (
         <QuickEditBoardModal
           board={editingBoard}
-          sheetId={sheetId}
           onClose={() => setEditingBoard(null)}
           onSaved={handleBoardSaved}
         />
@@ -268,12 +258,11 @@ function BoardGrid({
 
 interface QuickEditProps {
   board: BoardConfig;
-  sheetId: string;
   onClose: () => void;
   onSaved: (board: BoardConfig) => void;
 }
 
-function QuickEditBoardModal({ board, sheetId, onClose, onSaved }: QuickEditProps) {
+function QuickEditBoardModal({ board, onClose, onSaved }: QuickEditProps) {
   const [name, setName] = useState(board.name);
   const [icon, setIcon] = useState(board.icon);
   const [color, setColor] = useState(board.color ?? "");
@@ -283,7 +272,7 @@ function QuickEditBoardModal({ board, sheetId, onClose, onSaved }: QuickEditProp
     if (!name.trim()) return;
     setLoading(true);
     try {
-      const provider = getSheetProvider(sheetId);
+      const provider = getSheetProvider();
       const updated = await provider.saveBoard({ ...board, name: name.trim(), icon, color: color || undefined });
       onSaved(updated);
       toast.success("Board atualizado");

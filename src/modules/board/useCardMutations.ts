@@ -1,12 +1,11 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { toast } from "sonner";
-import { getSheetProvider, isMockMode, envSpreadsheetId } from "@/shared/providers/providerFactory";
+import { getSheetProvider } from "@/shared/providers/providerFactory";
 import { useBoardStore } from "@/modules/board/store";
 import type { CardRecord } from "@/modules/project/domain/types";
 import { cacheSet } from "@/shared/cache/localCache";
 
 const WRITE_DEBOUNCE_MS = 2000;
-const MOCK_SHEET_ID = "mock";
 
 export function useCardMutations() {
   const upsertCard = useBoardStore((s) => s.upsertCard);
@@ -15,8 +14,7 @@ export function useCardMutations() {
   const boardId = useBoardStore((s) => s.boardId);
   const pending = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  const sheetId = isMockMode() ? MOCK_SHEET_ID : (envSpreadsheetId ?? "");
-  const provider = useMemo(() => getSheetProvider(sheetId), [sheetId]);
+  const provider = getSheetProvider();
 
   const cacheKey = `board:${boardId}`;
 

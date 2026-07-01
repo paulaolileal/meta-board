@@ -1,27 +1,17 @@
 import type { ISheetProvider } from "./ISheetProvider";
-import { MockSheetProvider } from "./MockSheetProvider";
 import { GoogleSheetProvider } from "./GoogleSheetProvider";
 import { GoogleAuthService } from "@/shared/auth/GoogleAuthService";
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 export const envSpreadsheetId = import.meta.env.VITE_SPREADSHEET_ID as string | undefined;
 
-export const googleAuthService = new GoogleAuthService(clientId ?? "");
+if (!clientId) throw new Error("VITE_GOOGLE_CLIENT_ID is required");
+if (!envSpreadsheetId) throw new Error("VITE_SPREADSHEET_ID is required");
 
-const providers = new Map<string, ISheetProvider>();
-let mockInstance: MockSheetProvider | null = null;
+export const googleAuthService = new GoogleAuthService(clientId);
 
-export function getSheetProvider(sheetId: string): ISheetProvider {
-  if (!clientId) {
-    if (!mockInstance) mockInstance = new MockSheetProvider();
-    return mockInstance;
-  }
-  if (!providers.has(sheetId)) {
-    providers.set(sheetId, new GoogleSheetProvider(sheetId, googleAuthService));
-  }
-  return providers.get(sheetId)!;
-}
+const provider = new GoogleSheetProvider(envSpreadsheetId, googleAuthService);
 
-export function isMockMode(): boolean {
-  return !clientId;
+export function getSheetProvider(): ISheetProvider {
+  return provider;
 }

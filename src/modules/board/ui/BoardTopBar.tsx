@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useBoardStore } from "@/modules/board/store";
 import { useThemeStore, type ThemeMode } from "@/modules/settings/themeStore";
-import { getSheetProvider, isMockMode, envSpreadsheetId } from "@/shared/providers/providerFactory";
+import { getSheetProvider } from "@/shared/providers/providerFactory";
 import { cn } from "@/lib/utils";
 import type { FieldType } from "@/modules/project/domain/types";
 
@@ -47,7 +47,6 @@ export function BoardTopBar({ onOpenSettings }: Props) {
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const sheetId = isMockMode() ? "mock" : (envSpreadsheetId ?? "");
 
   const tagOptions = useMemo(
     () => fields.find((f) => f.id === "tags")?.options ?? [],
@@ -59,7 +58,6 @@ export function BoardTopBar({ onOpenSettings }: Props) {
     [fields],
   );
 
-  const isMock = isMockMode();
   const backTo = "/boards";
   const hasActiveFilters = !!(search || filterTags.length > 0);
   const showSubRow = tagOptions.length > 0;
@@ -69,10 +67,10 @@ export function BoardTopBar({ onOpenSettings }: Props) {
       if (!board) return;
       const updated = { ...board, groupBy: fieldId };
       setBoard(updated);
-      const provider = getSheetProvider(sheetId);
+      const provider = getSheetProvider();
       await provider.saveBoard(updated);
     },
-    [board, sheetId, setBoard],
+    [board, setBoard],
   );
 
   const cycleTheme = useCallback(() => {
