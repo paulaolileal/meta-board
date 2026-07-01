@@ -21,7 +21,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
-import type { FieldDef, FieldType } from "@/modules/project/domain/types";
+import type { BoardConfig, FieldDef, FieldType } from "@/modules/project/domain/types";
 import {
   Dialog,
   DialogContent,
@@ -238,13 +238,22 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onDeleted?: () => void;
+  boardId?: string;
+  onSaved?: (board: BoardConfig) => void;
 }
 
-export function EditBoardModal({ open, onClose, onDeleted }: Props) {
-  const board = useBoardStore((s) => s.board);
-  const fields = useBoardStore((s) => s.fields);
+export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: Props) {
+  const storeBoard = useBoardStore((s) => s.board);
+  const storeFields = useBoardStore((s) => s.fields);
   const setBoard = useBoardStore((s) => s.setBoard);
   const setFields = useBoardStore((s) => s.setFields);
+
+  const [localBoard, setLocalBoard] = useState<BoardConfig | null>(null);
+  const [localFields, setLocalFields] = useState<FieldDef[]>([]);
+
+  const isStandalone = !!boardId;
+  const board = isStandalone ? localBoard : storeBoard;
+  const fields = isStandalone ? localFields : storeFields;
 
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("KanbanSquare");
@@ -290,6 +299,15 @@ export function EditBoardModal({ open, onClose, onDeleted }: Props) {
       setClosedLayout(board.cardClosedLayout ?? []);
     }
   }, [open, board, fields]);
+
+  useEffect(() => {
+    if (open && isStandalone) {
+      const p = getSheetProvider();
+      Promise.all([p.loadBoard(boardId!), p.loadFields(boardId!)])
+        .then(([b, f]) => { setLocalBoard(b); setLocalFields(f); })
+        .catch((e) => toast.error((e as Error)?.message ?? "Erro ao carregar board"));
+    }
+  }, [open, boardId, isStandalone]);
 
   const visibleFields = useMemo(() => {
     const fieldMap = new Map(fields.map((f) => [f.id, f]));
@@ -364,7 +382,8 @@ export function EditBoardModal({ open, onClose, onDeleted }: Props) {
         displayOrder: maxOrder + 1,
       };
       const saved = await provider.createField(newField);
-      setFields([...fields, saved]);
+      if (isStandalone) setLocalFields((prev) => [...prev, saved]);
+      else setFields([...fields, saved]);
       setOrderedFieldIds((prev) => [...prev, saved.id]);
       setNewFieldName("");
       setNewFieldType("text");
@@ -396,7 +415,8 @@ export function EditBoardModal({ open, onClose, onDeleted }: Props) {
         ),
       };
       const savedBoard = await provider.saveBoard(updatedBoard);
-      setBoard(savedBoard);
+      if (isStandalone) setLocalBoard(savedBoard);
+      else setBoard(savedBoard);
 
       const updatedFields = [...fields];
 
@@ -423,7 +443,9 @@ export function EditBoardModal({ open, onClose, onDeleted }: Props) {
         }
       }
 
-      setFields(updatedFields);
+      if (isStandalone) setLocalFields(updatedFields);
+      else setFields(updatedFields);
+      onSaved?.(savedBoard);
       toast.success("Board atualizado");
       onClose();
     } catch (e) {
@@ -449,7 +471,16 @@ export function EditBoardModal({ open, onClose, onDeleted }: Props) {
     }
   }
 
-  if (!board) return null;
+  if (!board) {
+    if (!isStandalone || !open) return null;
+    return (
+      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <DialogContent className="sm:max-w-lg flex items-center justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   const NewFieldIcon = FIELD_TYPE_ICONS[newFieldType] ?? Type;
 

@@ -1,22 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Plus, AlertCircle, ChevronRight, LayoutGrid, Settings, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, AlertCircle, ChevronRight, LayoutGrid, Settings } from "lucide-react";
 import { getSheetProvider } from "@/shared/providers/providerFactory";
 import type { BoardConfig } from "@/modules/project/domain/types";
 import { CreateBoardModal } from "@/modules/project/ui/CreateBoardModal";
-import { BoardIconPicker } from "@/shared/icons/BoardIconPicker";
-import { BoardColorPicker } from "@/shared/colors/BoardColorPicker";
+import { EditBoardModal } from "@/modules/board/ui/EditBoardModal";
 import { getIcon } from "@/shared/icons/iconRegistry";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 
 const DEFAULT_BOARD_COLOR = "var(--primary)";
 
@@ -156,10 +148,12 @@ export function SpreadsheetPage() {
       />
 
       {editingBoard && (
-        <QuickEditBoardModal
-          board={editingBoard}
+        <EditBoardModal
+          open={true}
+          boardId={editingBoard.id}
           onClose={() => setEditingBoard(null)}
           onSaved={handleBoardSaved}
+          onDeleted={() => setBoards((prev) => prev.filter((b) => b.id !== editingBoard.id))}
         />
       )}
     </div>
@@ -217,7 +211,7 @@ function BoardGrid({
                 <Settings className="h-4 w-4" />
               </button>
 
-              <div className="flex">
+              <div className="flex pointer-events-none">
                 {/* Left strip: full-height colored with centered icon */}
                 <div
                   className="shrink-0 w-28 flex items-center justify-center"
@@ -256,86 +250,3 @@ function BoardGrid({
   );
 }
 
-interface QuickEditProps {
-  board: BoardConfig;
-  onClose: () => void;
-  onSaved: (board: BoardConfig) => void;
-}
-
-function QuickEditBoardModal({ board, onClose, onSaved }: QuickEditProps) {
-  const [name, setName] = useState(board.name);
-  const [icon, setIcon] = useState(board.icon);
-  const [color, setColor] = useState(board.color ?? "");
-  const [loading, setLoading] = useState(false);
-
-  async function handleSave() {
-    if (!name.trim()) return;
-    setLoading(true);
-    try {
-      const provider = getSheetProvider();
-      const updated = await provider.saveBoard({ ...board, name: name.trim(), icon, color: color || undefined });
-      onSaved(updated);
-      toast.success("Board atualizado");
-      onClose();
-    } catch (e) {
-      toast.error((e as Error)?.message ?? "Erro ao salvar board");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Configurar board</DialogTitle>
-          <DialogDescription>Edite o nome, ícone e cor do board.</DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 mt-2">
-          <div className="flex items-end gap-4">
-            <div>
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">
-                Ícone
-              </label>
-              <BoardIconPicker value={icon} onChange={setIcon} color={color} />
-            </div>
-            <div className="flex-1">
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">
-                Cor
-              </label>
-              <BoardColorPicker value={color} onChange={setColor} />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Nome *</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSave()}
-              className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-            />
-          </div>
-
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-accent transition"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!name.trim() || loading}
-              className="px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition disabled:opacity-50 inline-flex items-center gap-2"
-            >
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              Salvar
-            </button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
