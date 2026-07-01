@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useBoardData } from "@/modules/board/useBoardData";
 import { useBoardStore } from "@/modules/board/store";
 import { BoardTopBar } from "@/modules/board/ui/BoardTopBar";
@@ -8,9 +8,12 @@ import { EditBoardModal } from "@/modules/board/ui/EditBoardModal";
 import { AiCardModal } from "@/modules/board/ui/AiCardModal";
 import { CreateCardModal } from "@/modules/board/ui/CreateCardModal";
 import { CreateCardSpeedDial } from "@/modules/board/ui/CreateCardSpeedDial";
+import { isMockMode } from "@/shared/providers/providerFactory";
 
 export function BoardPage() {
   const { connectionId, boardId } = useParams<{ connectionId: string; boardId: string }>();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { isLoading, isError, error } = useBoardData(connectionId!, boardId!);
   const hydrated = useBoardStore((s) => s.hydrated);
@@ -18,6 +21,16 @@ export function BoardPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+
+  const mock = isMockMode() || connectionId === "mock";
+  const backTo = mock ? "/" : `/s/${connectionId}`;
+
+  useEffect(() => {
+    if (searchParams.get("edit") === "1" && hydrated) {
+      setEditOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, hydrated]);
 
   return (
     <div className="h-screen w-full flex flex-col bg-background overflow-hidden">
@@ -40,7 +53,7 @@ export function BoardPage() {
         />
       </div>
 
-      <EditBoardModal open={editOpen} onClose={() => setEditOpen(false)} />
+      <EditBoardModal open={editOpen} onClose={() => setEditOpen(false)} onDeleted={() => navigate(backTo)} />
       <AiCardModal open={aiOpen} onClose={() => setAiOpen(false)} />
       <CreateCardModal
         open={createOpen}

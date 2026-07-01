@@ -14,6 +14,7 @@ export interface ISheetProvider {
   createField(field: FieldDef): Promise<FieldDef>;
   sync(): Promise<void>;
   initializeSpreadsheet?(): Promise<void>;
+  deleteBoard?(boardId: string): Promise<void>;
   createBoard?(
     config: Omit<BoardConfig, "id" | "createdAt" | "updatedAt">,
     fields: FieldDef[],

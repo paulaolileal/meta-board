@@ -198,6 +198,13 @@ export class MockSheetProvider implements ISheetProvider {
     if (idx >= 0) this.cards[idx] = { ...this.cards[idx], _archived: true };
   }
 
+  async deleteBoard(boardId: string): Promise<void> {
+    await this.delay(80);
+    this.boards = this.boards.filter((b) => b.id !== boardId);
+    this.fields = this.fields.filter((f) => f.boardId !== boardId);
+    this.cards = this.cards.filter((c) => c.boardId !== boardId);
+  }
+
   async saveBoard(board: BoardConfig): Promise<BoardConfig> {
     await this.delay(80);
     const idx = this.boards.findIndex((b) => b.id === board.id);

@@ -3,6 +3,7 @@ import {
   Loader2, Plus, ChevronDown, ChevronUp, X, Columns3, Tag, AlignLeft, Hash,
   ToggleLeft, Calendar, Link, Image, Smile, ListFilter, List, ListChecks, Mail,
   Palette, Type, CalendarClock, GripVertical, Eye, EyeOff, Trash2, MapPin, Clock,
+  AlertTriangle,
 } from "lucide-react";
 import {
   DndContext,
@@ -239,9 +240,10 @@ function SortableFieldRow({
 interface Props {
   open: boolean;
   onClose: () => void;
+  onDeleted?: () => void;
 }
 
-export function EditBoardModal({ open, onClose }: Props) {
+export function EditBoardModal({ open, onClose, onDeleted }: Props) {
   const board = useBoardStore((s) => s.board);
   const fields = useBoardStore((s) => s.fields);
   const setBoard = useBoardStore((s) => s.setBoard);
@@ -255,6 +257,8 @@ export function EditBoardModal({ open, onClose }: Props) {
   const [description, setDescription] = useState("");
   const [groupBy, setGroupBy] = useState("");
   const [loading, setLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [newFieldName, setNewFieldName] = useState("");
   const [newFieldType, setNewFieldType] = useState<FieldType>("text");
   const [addingField, setAddingField] = useState(false);
@@ -291,6 +295,7 @@ export function EditBoardModal({ open, onClose }: Props) {
       setFieldOptionsMap({});
       setNewOptionByField({});
       setFieldsToDelete(new Set());
+      setDeleteConfirm(false);
       const sorted = [...fields].sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99));
       setOrderedFieldIds(sorted.map((f) => f.id));
       setClosedLayout(board.cardClosedLayout ?? []);
@@ -439,6 +444,22 @@ export function EditBoardModal({ open, onClose }: Props) {
     }
   }
 
+  async function handleDelete() {
+    if (!board) return;
+    setDeleting(true);
+    try {
+      await provider.deleteBoard?.(board.id);
+      toast.success(`Board "${board.name}" excluído`);
+      onClose();
+      onDeleted?.();
+    } catch (e) {
+      toast.error((e as Error)?.message ?? "Erro ao excluir board");
+    } finally {
+      setDeleting(false);
+      setDeleteConfirm(false);
+    }
+  }
+
   if (!board) return null;
 
   const NewFieldIcon = FIELD_TYPE_ICONS[newFieldType] ?? Type;
@@ -460,18 +481,19 @@ export function EditBoardModal({ open, onClose }: Props) {
               Geral
             </h3>
 
-            <div>
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">
-                Ícone
-              </label>
-              <BoardIconPicker value={icon} onChange={setIcon} color={color} />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">
-                Cor
-              </label>
-              <BoardColorPicker value={color} onChange={setColor} />
+            <div className="flex items-end gap-4">
+              <div>
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">
+                  Ícone
+                </label>
+                <BoardIconPicker value={icon} onChange={setIcon} color={color} />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground block mb-2">
+                  Cor
+                </label>
+                <BoardColorPicker value={color} onChange={setColor} />
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -599,21 +621,51 @@ export function EditBoardModal({ open, onClose }: Props) {
           </section>
         </div>
 
-        <div className="flex gap-2 justify-end pt-4 border-t border-border mt-4">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-accent transition"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!name.trim() || loading}
-            className="px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition disabled:opacity-50 inline-flex items-center gap-2"
-          >
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Salvar alterações
-          </button>
+        <div className="flex items-center justify-between pt-4 border-t border-border mt-4 gap-2">
+          {!deleteConfirm ? (
+            <button
+              onClick={() => setDeleteConfirm(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg text-danger hover:bg-danger/10 transition"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Excluir board
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
+              <span className="text-xs text-muted-foreground">Confirmar exclusão?</span>
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                className="px-2.5 py-1 text-xs rounded border border-border hover:bg-accent transition"
+              >
+                Não
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-2.5 py-1 text-xs rounded bg-danger text-danger-foreground hover:opacity-90 transition disabled:opacity-50 inline-flex items-center gap-1"
+              >
+                {deleting && <Loader2 className="h-3 w-3 animate-spin" />}
+                Sim, excluir
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-accent transition"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!name.trim() || loading}
+              className="px-4 py-2 text-sm rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition disabled:opacity-50 inline-flex items-center gap-2"
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Salvar
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

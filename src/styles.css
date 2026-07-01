@@ -150,6 +150,16 @@
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  input, textarea, [contenteditable="true"] {
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+  }
+  button, [role="button"], a, label, select {
+    cursor: pointer;
   }
   ::selection {
     background: color-mix(in oklab, var(--primary) 30%, transparent);

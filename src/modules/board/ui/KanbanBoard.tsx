@@ -66,7 +66,7 @@ function Column({
         </button>
       </div>
 
-      <div className={cn("flex flex-col gap-2 overflow-y-auto scrollbar-thin pr-1 flex-1 min-h-0", isMobile && "pb-24")}>
+      <div className="flex flex-col gap-2 overflow-y-auto scrollbar-thin pr-1 flex-1 min-h-0">
         <SortableContext items={cards.map((c) => c._id)} strategy={verticalListSortingStrategy}>
           <AnimatePresence initial={false}>
             {cards.map((card) => (
@@ -228,7 +228,7 @@ export function KanbanBoard() {
   if (isMobile && hasConfiguredGroups) {
     const mobileCards = byGroup.get(activeMobileCol) ?? [];
     return (
-      <>
+      <div className="flex flex-col h-full overflow-hidden">
         <div className="flex overflow-x-auto gap-2 px-4 py-2.5 border-b border-border shrink-0 scrollbar-thin">
           {groups.map((g) => (
             <button
@@ -279,7 +279,7 @@ export function KanbanBoard() {
           onClose={() => setPendingGroupValue(null)}
           initialValues={pendingGroupValue !== null ? { [groupField]: pendingGroupValue } : {}}
         />
-      </>
+      </div>
     );
   }
 

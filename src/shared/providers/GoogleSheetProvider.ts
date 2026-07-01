@@ -146,6 +146,17 @@ export class GoogleSheetProvider implements ISheetProvider {
     await this.api.setValues(this.sheetId, `_cards!${colLetter(archivedIndex + 1)}${sheetRow}`, [["true"]]);
   }
 
+  async deleteBoard(boardId: string): Promise<void> {
+    const values = await this.api.getValues(this.sheetId, "_boards");
+    if (values.length < 2) return;
+    const [headers, ...rows] = values;
+    const rowIndex = rows.findIndex((row) => row[0] === boardId);
+    if (rowIndex < 0) return;
+    const sheetRow = rowIndex + 2;
+    const emptyRow = Array(headers.length).fill("");
+    await this.api.setValues(this.sheetId, `_boards!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`, [emptyRow]);
+  }
+
   async saveBoard(board: BoardConfig): Promise<BoardConfig> {
     const values = await this.api.getValues(this.sheetId, "_boards");
     if (values.length < 2) throw new Error("Aba _boards não encontrada");
