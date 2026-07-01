@@ -82,12 +82,12 @@ export function SpreadsheetPage() {
       : (connection?.name ?? "Planilha");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
       <div className="absolute inset-0 -z-10 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[400px] h-[400px] rounded-full bg-primary/8 blur-[100px]" />
       </div>
 
-      <header className="px-6 py-4 flex items-center gap-3 border-b border-border/50">
+      <header className="shrink-0 px-6 py-4 flex items-center gap-3 border-b border-border/50">
         <Link
           to="/"
           className="shrink-0 h-9 w-9 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition flex items-center justify-center"
@@ -105,7 +105,8 @@ export function SpreadsheetPage() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-10">
+      <main className="flex-1 overflow-y-auto scrollbar-thin">
+        <div className="max-w-6xl mx-auto px-6 py-10">
         {loading ? (
           <div>
             <div className="h-8 w-32 skeleton rounded mb-1" />
@@ -155,6 +156,7 @@ export function SpreadsheetPage() {
             onEditBoard={setEditingBoard}
           />
         )}
+        </div>
       </main>
 
       {!mock && (
@@ -260,7 +262,7 @@ function BoardGrid({
                 {/* Right column */}
                 <div className="flex-1 min-w-0 flex flex-col">
                   <div
-                    className="flex items-center px-4 py-5 rounded-bl-2xl"
+                    className="flex items-center px-4 py-5"
                     style={{ backgroundColor: effectiveColor }}
                   >
                     <p className={cn("font-bold leading-snug text-white drop-shadow-sm line-clamp-2 group-hover:opacity-90 transition-opacity", nameFontClass(b.name))}>
