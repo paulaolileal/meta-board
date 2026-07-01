@@ -60,7 +60,7 @@ const FEATURES = [
 
 function LoginPage({ onSignIn, isSigningIn }: { onSignIn: () => void; isSigningIn: boolean }) {
   return (
-    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
+    <div className="relative min-h-screen overflow-hidden bg-background flex flex-col lg:flex-row">
       <div className="absolute inset-0 -z-10 pointer-events-none">
         <div className="absolute top-1/4 -left-20 w-[600px] h-[600px] rounded-full bg-primary/8 blur-[140px]" />
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] rounded-full bg-primary-glow/6 blur-[120px]" />
@@ -142,6 +142,18 @@ function LoginPage({ onSignIn, isSigningIn }: { onSignIn: () => void; isSigningI
           <p className="text-center text-xs text-muted-foreground mt-6">
             Seus dados permanecem na sua planilha Google Sheets.
           </p>
+
+          <div className="flex justify-center mt-10">
+            <a
+              href="https://lealtek.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="opacity-40 hover:opacity-70 transition-opacity"
+              title="Desenvolvido por LealTEK"
+            >
+              <img src="/lealtek-full.png" alt="LealTEK" className="h-12 object-contain" />
+            </a>
+          </div>
         </div>
       </motion.div>
     </div>

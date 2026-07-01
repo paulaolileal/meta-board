@@ -51,13 +51,13 @@ export function SpreadsheetPage() {
   const title = "Meus boards";
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="relative h-screen overflow-hidden flex flex-col bg-background">
       <div className="absolute inset-0 -z-10 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[400px] h-[400px] rounded-full bg-primary/8 blur-[100px]" />
       </div>
 
       <header className="shrink-0 px-6 py-4 flex items-center gap-3 border-b border-border/50">
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <img src="/logo-mb.png" alt="MetaBoard" className="h-7 w-7 object-contain rounded-lg shrink-0" />
           <nav className="flex items-center gap-1 text-sm min-w-0" aria-label="Breadcrumb">
             <Link to="/" className="text-muted-foreground hover:text-foreground transition whitespace-nowrap">MetaBoard</Link>
@@ -65,6 +65,15 @@ export function SpreadsheetPage() {
             <span className="font-semibold truncate">{title}</span>
           </nav>
         </div>
+        <a
+          href="https://lealtek.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="opacity-50 hover:opacity-80 transition-opacity shrink-0"
+          title="Desenvolvido por LealTEK"
+        >
+          <img src="/lealtek-full.png" alt="LealTEK" className="h-10 object-contain" />
+        </a>
       </header>
 
       {/* Content area + FAB together in a relative container, same pattern as BoardPage */}
