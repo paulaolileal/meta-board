@@ -16,6 +16,8 @@ export function BoardPage() {
 
   const { isLoading, isError, error } = useBoardData(boardId!);
   const hydrated = useBoardStore((s) => s.hydrated);
+  const storeBoardId = useBoardStore((s) => s.boardId);
+  const isReady = hydrated && storeBoardId === boardId;
 
   const [editOpen, setEditOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -33,12 +35,14 @@ export function BoardPage() {
       <BoardTopBar onOpenSettings={() => setEditOpen(true)} />
 
       <div className="flex-1 min-h-0 overflow-hidden relative">
-        {!hydrated && isLoading ? (
-          <BoardSkeleton />
-        ) : isError ? (
-          <div className="p-8 text-danger">
-            {String((error as Error)?.message ?? "Erro ao carregar board")}
-          </div>
+        {!isReady ? (
+          isError ? (
+            <div className="p-8 text-danger">
+              {String((error as Error)?.message ?? "Erro ao carregar board")}
+            </div>
+          ) : (
+            <BoardSkeleton />
+          )
         ) : (
           <KanbanBoard />
         )}
