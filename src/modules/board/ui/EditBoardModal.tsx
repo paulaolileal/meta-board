@@ -31,8 +31,6 @@ import {
 } from "@/components/ui/dialog";
 import { getSheetProvider, isMockMode, envSpreadsheetId } from "@/shared/providers/providerFactory";
 import { useBoardStore } from "@/modules/board/store";
-import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
-import { ENV_CONNECTION_ID } from "@/routes/HomePage";
 import { BoardIconPicker } from "@/shared/icons/BoardIconPicker";
 import { BoardColorPicker } from "@/shared/colors/BoardColorPicker";
 
@@ -248,8 +246,6 @@ export function EditBoardModal({ open, onClose, onDeleted }: Props) {
   const fields = useBoardStore((s) => s.fields);
   const setBoard = useBoardStore((s) => s.setBoard);
   const setFields = useBoardStore((s) => s.setFields);
-  const connectionId = useBoardStore((s) => s.connectionId);
-  const connections = useSpreadsheetStore((s) => s.connections);
 
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("KanbanSquare");
@@ -276,12 +272,7 @@ export function EditBoardModal({ open, onClose, onDeleted }: Props) {
     [fields],
   );
 
-  const sheetId = useMemo(() => {
-    if (isMockMode()) return MOCK_SHEET_ID;
-    if (connectionId === ENV_CONNECTION_ID) return envSpreadsheetId ?? "";
-    return connections.find((c) => c.id === connectionId)?.sheetId ?? "";
-  }, [connectionId, connections]);
-
+  const sheetId = isMockMode() ? MOCK_SHEET_ID : (envSpreadsheetId ?? "");
   const provider = useMemo(() => getSheetProvider(sheetId), [sheetId]);
 
   useEffect(() => {

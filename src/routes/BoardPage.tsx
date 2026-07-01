@@ -8,22 +8,18 @@ import { EditBoardModal } from "@/modules/board/ui/EditBoardModal";
 import { AiCardModal } from "@/modules/board/ui/AiCardModal";
 import { CreateCardModal } from "@/modules/board/ui/CreateCardModal";
 import { CreateCardSpeedDial } from "@/modules/board/ui/CreateCardSpeedDial";
-import { isMockMode } from "@/shared/providers/providerFactory";
 
 export function BoardPage() {
-  const { connectionId, boardId } = useParams<{ connectionId: string; boardId: string }>();
+  const { boardId } = useParams<{ boardId: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { isLoading, isError, error } = useBoardData(connectionId!, boardId!);
+  const { isLoading, isError, error } = useBoardData(boardId!);
   const hydrated = useBoardStore((s) => s.hydrated);
 
   const [editOpen, setEditOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-
-  const mock = isMockMode() || connectionId === "mock";
-  const backTo = mock ? "/" : `/s/${connectionId}`;
 
   useEffect(() => {
     if (searchParams.get("edit") === "1" && hydrated) {
@@ -34,7 +30,7 @@ export function BoardPage() {
 
   return (
     <div className="h-screen w-full flex flex-col bg-background overflow-hidden">
-      <BoardTopBar connectionId={connectionId!} onOpenSettings={() => setEditOpen(true)} />
+      <BoardTopBar onOpenSettings={() => setEditOpen(true)} />
 
       <div className="flex-1 min-h-0 overflow-hidden relative">
         {!hydrated && isLoading ? (
@@ -53,7 +49,7 @@ export function BoardPage() {
         />
       </div>
 
-      <EditBoardModal open={editOpen} onClose={() => setEditOpen(false)} onDeleted={() => navigate(backTo)} />
+      <EditBoardModal open={editOpen} onClose={() => setEditOpen(false)} onDeleted={() => navigate("/boards")} />
       <AiCardModal open={aiOpen} onClose={() => setAiOpen(false)} />
       <CreateCardModal
         open={createOpen}

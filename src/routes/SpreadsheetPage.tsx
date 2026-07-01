@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Plus, AlertCircle, ChevronRight, LayoutGrid, Settings, Loader2 } from "lucide-react";
-import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
 import { getSheetProvider, isMockMode, envSpreadsheetId } from "@/shared/providers/providerFactory";
-import { ENV_CONNECTION_ID } from "@/routes/HomePage";
 import type { BoardConfig } from "@/modules/project/domain/types";
 import { CreateBoardModal } from "@/modules/project/ui/CreateBoardModal";
 import { BoardIconPicker } from "@/shared/icons/BoardIconPicker";
@@ -20,7 +18,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-const MOCK_CONNECTION_ID = "mock";
 const MOCK_SHEET_ID = "mock";
 const DEFAULT_BOARD_COLOR = "var(--primary)";
 
@@ -31,55 +28,39 @@ function nameFontClass(name: string): string {
 }
 
 export function SpreadsheetPage() {
-  const { connectionId } = useParams<{ connectionId: string }>();
   const navigate = useNavigate();
-  const { connections, touch } = useSpreadsheetStore();
   const [boards, setBoards] = useState<BoardConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingBoard, setEditingBoard] = useState<BoardConfig | null>(null);
 
-  const mock = isMockMode() || connectionId === MOCK_CONNECTION_ID;
-  const isEnvConnection = connectionId === ENV_CONNECTION_ID;
-  const connection = connections.find((c) => c.id === connectionId);
-  const sheetId = mock
-    ? MOCK_SHEET_ID
-    : isEnvConnection
-      ? (envSpreadsheetId ?? "")
-      : (connection?.sheetId ?? "");
+  const mock = isMockMode();
+  const sheetId = mock ? MOCK_SHEET_ID : (envSpreadsheetId ?? "");
 
   useEffect(() => {
-    if (!connectionId) return;
     const provider = getSheetProvider(sheetId);
     setLoading(true);
     setError(null);
     provider
       .loadBoards()
-      .then((b) => {
-        setBoards(b);
-        if (connection) touch(connection.id);
-      })
+      .then(setBoards)
       .catch((e) => setError(String(e?.message ?? e)))
       .finally(() => setLoading(false));
-  }, [connectionId, sheetId]);
+  }, [sheetId]);
 
   async function handleBoardCreated(board: BoardConfig) {
     setBoards((prev) => [...prev, board]);
     setCreateOpen(false);
     toast.success(`Board "${board.name}" criado`);
-    navigate(`/s/${connectionId}/b/${board.id}`);
+    navigate(`/boards/${board.id}`);
   }
 
   function handleBoardSaved(updated: BoardConfig) {
     setBoards((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
   }
 
-  const title = mock
-    ? "Boards de exemplo"
-    : isEnvConnection
-      ? "Minha Planilha"
-      : (connection?.name ?? "Planilha");
+  const title = mock ? "Boards de exemplo" : "Minha Planilha";
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -154,7 +135,6 @@ export function SpreadsheetPage() {
             ) : (
               <BoardGrid
                 boards={boards}
-                connectionId={connectionId!}
                 onEditBoard={setEditingBoard}
               />
             )}
@@ -198,11 +178,9 @@ export function SpreadsheetPage() {
 
 function BoardGrid({
   boards,
-  connectionId,
   onEditBoard,
 }: {
   boards: BoardConfig[];
-  connectionId: string;
   onEditBoard: (board: BoardConfig) => void;
 }) {
   const navigate = useNavigate();
@@ -232,7 +210,7 @@ function BoardGrid({
               {/* Main click area */}
               <button
                 className="absolute inset-0 z-0"
-                onClick={() => navigate(`/s/${connectionId}/b/${b.id}`)}
+                onClick={() => navigate(`/boards/${b.id}`)}
                 aria-label={`Abrir ${b.name}`}
               />
 

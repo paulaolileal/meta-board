@@ -5,14 +5,13 @@ interface BoardState {
   board: BoardConfig | null;
   fields: FieldDef[];
   cards: CardRecord[];
-  connectionId: string | null;
   boardId: string | null;
   search: string;
   filterTags: string[];
   openCardId: string | null;
   hydrated: boolean;
 
-  setAll: (board: BoardConfig, fields: FieldDef[], cards: CardRecord[], connectionId: string, boardId: string) => void;
+  setAll: (board: BoardConfig, fields: FieldDef[], cards: CardRecord[], boardId: string) => void;
   setBoard: (board: BoardConfig) => void;
   setFields: (fields: FieldDef[]) => void;
   setSearch: (q: string) => void;
@@ -28,15 +27,14 @@ export const useBoardStore = create<BoardState>((set) => ({
   board: null,
   fields: [],
   cards: [],
-  connectionId: null,
   boardId: null,
   search: "",
   filterTags: [],
   openCardId: null,
   hydrated: false,
 
-  setAll: (board, fields, cards, connectionId, boardId) =>
-    set({ board, fields, cards, connectionId, boardId, hydrated: true }),
+  setAll: (board, fields, cards, boardId) =>
+    set({ board, fields, cards, boardId, hydrated: true }),
 
   setBoard: (board) => set({ board }),
 

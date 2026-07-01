@@ -1,9 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { getSheetProvider, isMockMode, envSpreadsheetId } from "@/shared/providers/providerFactory";
-import { ENV_CONNECTION_ID } from "@/routes/HomePage";
 import { useBoardStore } from "@/modules/board/store";
-import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
 import type { CardRecord } from "@/modules/project/domain/types";
 import { cacheSet } from "@/shared/cache/localCache";
 
@@ -14,20 +12,13 @@ export function useCardMutations() {
   const upsertCard = useBoardStore((s) => s.upsertCard);
   const removeCard = useBoardStore((s) => s.removeCard);
   const reorderCards = useBoardStore((s) => s.reorderCards);
-  const connectionId = useBoardStore((s) => s.connectionId);
   const boardId = useBoardStore((s) => s.boardId);
-  const connections = useSpreadsheetStore((s) => s.connections);
   const pending = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  const sheetId = useMemo(() => {
-    if (isMockMode()) return MOCK_SHEET_ID;
-    if (connectionId === ENV_CONNECTION_ID) return envSpreadsheetId ?? "";
-    return connections.find((c) => c.id === connectionId)?.sheetId ?? "";
-  }, [connectionId, connections]);
-
+  const sheetId = isMockMode() ? MOCK_SHEET_ID : (envSpreadsheetId ?? "");
   const provider = useMemo(() => getSheetProvider(sheetId), [sheetId]);
 
-  const cacheKey = `board:${connectionId}:${boardId}`;
+  const cacheKey = `board:${boardId}`;
 
   const flushPersist = useCallback(async () => {
     const { board, fields, cards } = useBoardStore.getState();

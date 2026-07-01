@@ -1,29 +1,19 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Plus, LogOut, Loader2, Table2, Kanban, Brain, Rocket, Megaphone, FileSpreadsheet } from "lucide-react";
-import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
-import { isMockMode, googleAuthService, envSpreadsheetId } from "@/shared/providers/providerFactory";
-import type { SpreadsheetConnection } from "@/modules/project/domain/types";
-import { SpreadsheetList } from "@/modules/project/ui/SpreadsheetList";
-import { ConnectSheetModal } from "@/modules/project/ui/ConnectSheetModal";
+import { LogOut, Loader2, Table2, Kanban, Brain } from "lucide-react";
+import { isMockMode, googleAuthService } from "@/shared/providers/providerFactory";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
 
-const MOCK_CONNECTION_ID = "mock";
-export const ENV_CONNECTION_ID = "env";
-
 export function HomePage() {
   const navigate = useNavigate();
-  const { connections, addConnection } = useSpreadsheetStore();
   const { user, setUser, clearUser } = useAuthStore();
-  const [connectOpen, setConnectOpen] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const mock = isMockMode();
   const isAuthenticated = mock || googleAuthService.isAuthenticated();
 
-  // Silent recovery: token still valid in sessionStorage but user info not in store
   useEffect(() => {
     if (!mock && googleAuthService.isAuthenticated() && !user) {
       googleAuthService.fetchUserInfo().then((info) => {
@@ -33,8 +23,8 @@ export function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated && envSpreadsheetId) {
-      navigate(`/s/${ENV_CONNECTION_ID}`, { replace: true });
+    if (isAuthenticated) {
+      navigate("/boards", { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -58,83 +48,9 @@ export function HomePage() {
     toast.success("Desconectado do Google");
   }
 
-  function handleOpenMock(boardId: string) {
-    navigate(`/s/${MOCK_CONNECTION_ID}/b/${boardId}`);
-  }
+  if (isAuthenticated) return null;
 
-  if (!mock && !isAuthenticated) {
-    return <LoginPage onSignIn={handleSignIn} isSigningIn={isSigningIn} />;
-  }
-
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="absolute inset-0 -z-10 pointer-events-none">
-        <div className="absolute top-20 -left-20 w-[500px] h-[500px] rounded-full bg-primary/10 blur-[120px]" />
-        <div className="absolute bottom-0 right-0 w-[600px] h-[500px] rounded-full bg-primary-glow/8 blur-[140px]" />
-      </div>
-
-      <header className="px-6 py-5 flex items-center justify-between border-b border-border/50">
-        <div className="flex items-center gap-2.5">
-          <img src="/logo-mb.png" alt="MetaBoard" className="h-9 w-9 object-contain rounded-xl" />
-          <div>
-            <div className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase leading-none">lealtek</div>
-            <div className="font-semibold text-sm leading-tight">MetaBoard</div>
-          </div>
-        </div>
-
-        {!mock && (
-          <div className="flex items-center gap-3">
-            {user && (
-              <div className="flex items-center gap-2">
-                {user.picture && (
-                  <img
-                    src={user.picture}
-                    alt={user.name}
-                    className="w-7 h-7 rounded-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                )}
-                <span className="text-sm text-muted-foreground hidden sm:block">{user.name}</span>
-              </div>
-            )}
-            <button
-              onClick={handleSignOut}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg border border-border hover:bg-accent transition"
-            >
-              <LogOut className="h-4 w-4" />
-              Sair
-            </button>
-          </div>
-        )}
-      </header>
-
-      <main className="max-w-6xl mx-auto px-6 py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          {mock ? (
-            <MockSection onOpen={handleOpenMock} />
-          ) : (
-            <ConnectedSection
-              connections={connections}
-              onConnect={() => setConnectOpen(true)}
-            />
-          )}
-        </motion.div>
-      </main>
-
-      <ConnectSheetModal
-        open={connectOpen}
-        onClose={() => setConnectOpen(false)}
-        onConnected={(conn) => {
-          addConnection(conn);
-          navigate(`/s/${conn.id}`);
-        }}
-      />
-    </div>
-  );
+  return <LoginPage onSignIn={handleSignIn} isSigningIn={isSigningIn} />;
 }
 
 const FEATURES = [
@@ -151,7 +67,6 @@ function LoginPage({ onSignIn, isSigningIn }: { onSignIn: () => void; isSigningI
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] rounded-full bg-primary-glow/6 blur-[120px]" />
       </div>
 
-      {/* Hero */}
       <motion.div
         initial={{ opacity: 0, x: -16 }}
         animate={{ opacity: 1, x: 0 }}
@@ -190,7 +105,6 @@ function LoginPage({ onSignIn, isSigningIn }: { onSignIn: () => void; isSigningI
         </div>
       </motion.div>
 
-      {/* Painel de login */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -231,110 +145,6 @@ function LoginPage({ onSignIn, isSigningIn }: { onSignIn: () => void; isSigningI
           </p>
         </div>
       </motion.div>
-    </div>
-  );
-}
-
-const MOCK_BOARD_ICONS: Record<string, React.ElementType> = {
-  "board-dev": Rocket,
-  "board-marketing": Megaphone,
-  "board-produto": Sparkles,
-};
-
-function MockSection({ onOpen }: { onOpen: (boardId: string) => void }) {
-  const mockBoards = [
-    { id: "board-dev", name: "Dev Tracker", description: "Rastreamento de tarefas de desenvolvimento" },
-    { id: "board-marketing", name: "Marketing", description: "Campanhas e conteúdo" },
-    { id: "board-produto", name: "Produto", description: "Roadmap e features" },
-  ];
-
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-warning/15 text-warning-foreground border border-warning/30">
-          <Sparkles className="h-3 w-3" />
-          Modo desenvolvimento
-        </span>
-      </div>
-      <h1 className="text-3xl font-semibold tracking-tight mb-2">Boards de exemplo</h1>
-      <p className="text-muted-foreground mb-8 max-w-xl">
-        Para conectar planilhas reais, defina{" "}
-        <code className="px-1.5 py-0.5 rounded bg-muted text-xs">VITE_GOOGLE_CLIENT_ID</code> no arquivo{" "}
-        <code className="px-1.5 py-0.5 rounded bg-muted text-xs">.env.local</code>.
-      </p>
-
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {mockBoards.map((b) => {
-          const Icon = MOCK_BOARD_ICONS[b.id];
-          return (
-            <motion.button
-              key={b.id}
-              whileHover={{ y: -2 }}
-              onClick={() => onOpen(b.id)}
-              className="text-left p-5 rounded-2xl bg-card border border-border cursor-pointer shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elegant)] hover:border-primary/20 transition-all duration-200"
-            >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 to-primary-glow/20 flex items-center justify-center mb-4">
-                {Icon && <Icon className="h-5 w-5 text-primary/70" />}
-              </div>
-              <div className="font-semibold mb-1">{b.name}</div>
-              <p className="text-sm text-muted-foreground">{b.description}</p>
-            </motion.button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function ConnectedSection({
-  connections,
-  onConnect,
-}: {
-  connections: SpreadsheetConnection[];
-  onConnect: () => void;
-}) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight mb-1">Suas planilhas</h1>
-          <p className="text-muted-foreground">Cada planilha pode conter vários boards.</p>
-        </div>
-        <button
-          onClick={onConnect}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium shadow-[var(--shadow-glow)] hover:opacity-90 transition"
-        >
-          <Plus className="h-4 w-4" />
-          Conectar planilha
-        </button>
-      </div>
-
-      {connections.length === 0 ? (
-        <EmptyConnections onConnect={onConnect} />
-      ) : (
-        <SpreadsheetList connections={connections} />
-      )}
-    </div>
-  );
-}
-
-function EmptyConnections({ onConnect }: { onConnect: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mb-4">
-        <FileSpreadsheet className="h-10 w-10 text-muted-foreground/40" />
-      </div>
-      <h2 className="text-xl font-semibold mb-2">Nenhuma planilha conectada</h2>
-      <p className="text-muted-foreground mb-6 max-w-sm">
-        Conecte uma planilha Google Sheets existente ou crie uma nova para começar.
-      </p>
-      <button
-        onClick={onConnect}
-        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-glow text-primary-foreground font-medium shadow-[var(--shadow-glow)] hover:opacity-90 transition"
-      >
-        <Plus className="h-4 w-4" />
-        Conectar planilha
-      </button>
     </div>
   );
 }

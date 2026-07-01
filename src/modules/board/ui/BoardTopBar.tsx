@@ -20,8 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useBoardStore } from "@/modules/board/store";
 import { useThemeStore, type ThemeMode } from "@/modules/settings/themeStore";
-import { getSheetProvider, isMockMode } from "@/shared/providers/providerFactory";
-import { useSpreadsheetStore } from "@/modules/project/store/spreadsheetStore";
+import { getSheetProvider, isMockMode, envSpreadsheetId } from "@/shared/providers/providerFactory";
 import { cn } from "@/lib/utils";
 import type { FieldType } from "@/modules/project/domain/types";
 
@@ -31,11 +30,10 @@ const THEME_ICONS = { light: Sun, auto: Monitor, dark: Moon } as const;
 const THEME_LABELS = { light: "Claro", auto: "Auto", dark: "Escuro" } as const;
 
 interface Props {
-  connectionId: string;
   onOpenSettings: () => void;
 }
 
-export function BoardTopBar({ connectionId, onOpenSettings }: Props) {
+export function BoardTopBar({ onOpenSettings }: Props) {
   const board = useBoardStore((s) => s.board);
   const fields = useBoardStore((s) => s.fields);
   const search = useBoardStore((s) => s.search);
@@ -46,15 +44,10 @@ export function BoardTopBar({ connectionId, onOpenSettings }: Props) {
   const clearFilters = useBoardStore((s) => s.clearFilters);
   const mode = useThemeStore((s) => s.mode);
   const setMode = useThemeStore((s) => s.setMode);
-  const connections = useSpreadsheetStore((s) => s.connections);
-
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const sheetId = useMemo(
-    () => connections.find((c) => c.id === connectionId)?.sheetId ?? "mock",
-    [connections, connectionId],
-  );
+  const sheetId = isMockMode() ? "mock" : (envSpreadsheetId ?? "");
 
   const tagOptions = useMemo(
     () => fields.find((f) => f.id === "tags")?.options ?? [],
@@ -67,7 +60,7 @@ export function BoardTopBar({ connectionId, onOpenSettings }: Props) {
   );
 
   const isMock = isMockMode();
-  const backTo = isMock ? "/" : `/s/${connectionId}`;
+  const backTo = "/boards";
   const hasActiveFilters = !!(search || filterTags.length > 0);
   const showSubRow = tagOptions.length > 0;
 
