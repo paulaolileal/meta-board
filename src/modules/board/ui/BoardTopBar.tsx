@@ -90,6 +90,8 @@ export function BoardTopBar({ onOpenSettings }: Props) {
 
   const ThemeIcon = THEME_ICONS[mode];
 
+  const accentColor = board?.color ?? "var(--primary)";
+
   return (
     <div className="shrink-0 border-b border-border glass">
       {/* Main header row */}
@@ -225,6 +227,8 @@ export function BoardTopBar({ onOpenSettings }: Props) {
           </button>
         </div>
       </div>
+
+      <div className="h-[3px] w-full" style={{ background: accentColor }} />
 
       {/* Sub-row: tag filters */}
       {showSubRow && (
