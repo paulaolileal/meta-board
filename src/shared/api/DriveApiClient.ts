@@ -11,23 +11,15 @@ export interface DriveFile {
 export class DriveApiClient {
   constructor(private readonly auth: GoogleAuthService) {}
 
-  async findSpreadsheetInFolder(folderName: string, spreadsheetName: string): Promise<DriveFile | null> {
-    const folderParams = new URLSearchParams({
-      q: `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and trashed=false`,
-      fields: "files(id)",
-      pageSize: "1",
-    });
-    const folderSearch = await this.request("GET", `${DRIVE_BASE}/files?${folderParams}`);
-    if (!folderSearch.files?.length) return null;
-
-    const folderId = folderSearch.files[0].id as string;
-    const fileParams = new URLSearchParams({
-      q: `mimeType='application/vnd.google-apps.spreadsheet' and name='${spreadsheetName}' and '${folderId}' in parents and trashed=false`,
+  async findSpreadsheet(name: string): Promise<DriveFile | null> {
+    const params = new URLSearchParams({
+      q: `mimeType='application/vnd.google-apps.spreadsheet' and name='${name}' and trashed=false`,
       fields: "files(id,name,modifiedTime)",
+      orderBy: "modifiedTime desc",
       pageSize: "1",
     });
-    const fileSearch = await this.request("GET", `${DRIVE_BASE}/files?${fileParams}`);
-    return (fileSearch.files?.[0] as DriveFile) ?? null;
+    const result = await this.request("GET", `${DRIVE_BASE}/files?${params}`);
+    return (result.files?.[0] as DriveFile) ?? null;
   }
 
   async getOrCreateFolder(name: string): Promise<string> {
@@ -47,9 +39,13 @@ export class DriveApiClient {
   }
 
   async moveToFolder(fileId: string, folderId: string): Promise<void> {
+    const fileMeta = await this.request("GET", `${DRIVE_BASE}/files/${fileId}?fields=parents`);
+    const currentParents: string[] = fileMeta.parents ?? [];
+    if (currentParents.includes(folderId)) return;
+
     const params = new URLSearchParams({
       addParents: folderId,
-      removeParents: "root",
+      removeParents: currentParents.join(","),
       fields: "id",
     });
     await this.request("PATCH", `${DRIVE_BASE}/files/${fileId}?${params}`);
