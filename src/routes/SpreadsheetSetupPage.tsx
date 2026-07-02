@@ -33,7 +33,7 @@ export function SpreadsheetSetupPage() {
   async function findOrCreate(email: string) {
     setError(null);
     try {
-      const existing = await driveApiClient.findSpreadsheetInFolder(FOLDER_NAME);
+      const existing = await driveApiClient.findSpreadsheetInFolder(FOLDER_NAME, SPREADSHEET_NAME);
 
       let spreadsheetId: string;
       if (existing) {
