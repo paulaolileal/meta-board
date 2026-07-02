@@ -1,10 +1,8 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeftRight, LogOut } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { googleAuthService } from "@/shared/providers/providerFactory";
 import { useAuthStore } from "@/store/authStore";
-import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -17,9 +15,7 @@ import {
 
 export function UserAccountMenu() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { user, clearUser } = useAuthStore();
-  const { clearSpreadsheetId } = useSpreadsheetStore();
 
   if (!user) return null;
 
@@ -30,12 +26,6 @@ export function UserAccountMenu() {
     .slice(0, 2)
     .join("")
     .toUpperCase();
-
-  function handleChangeSpreadsheet() {
-    clearSpreadsheetId(user!.email);
-    queryClient.clear();
-    navigate("/setup");
-  }
 
   function handleSignOut() {
     googleAuthService.signOut();
@@ -64,11 +54,6 @@ export function UserAccountMenu() {
             <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleChangeSpreadsheet} className="cursor-pointer">
-          <ArrowLeftRight />
-          Trocar planilha
-        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={handleSignOut}
