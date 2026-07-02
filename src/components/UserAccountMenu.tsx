@@ -48,7 +48,7 @@ export function UserAccountMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="shrink-0 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label="Menu da conta"
         >
           <Avatar className="h-8 w-8">
@@ -65,14 +65,14 @@ export function UserAccountMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleChangeSpreadsheet}>
+        <DropdownMenuItem onClick={handleChangeSpreadsheet} className="cursor-pointer">
           <ArrowLeftRight />
           Trocar planilha
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={handleSignOut}
-          className="text-danger focus:text-danger focus:bg-danger/10"
+          className="cursor-pointer text-danger focus:text-danger focus:bg-danger/10"
         >
           <LogOut />
           Desconectar

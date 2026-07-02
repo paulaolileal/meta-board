@@ -133,16 +133,6 @@ export function SpreadsheetPage() {
           </main>
         </div>
 
-        <motion.button
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          onClick={() => setCreateOpen(true)}
-          className="absolute bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-glow)] flex items-center justify-center hover:opacity-90 active:scale-95 transition-all"
-          aria-label="Novo board"
-        >
-          <Plus className="h-6 w-6" />
-        </motion.button>
       </div>
 
       <footer className="shrink-0 border-t border-border/30 py-3 flex justify-center">
@@ -156,6 +146,17 @@ export function SpreadsheetPage() {
           <img src="/lealtek-full.png" alt="LealTEK" className="h-12 object-contain" />
         </a>
       </footer>
+
+      <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        onClick={() => setCreateOpen(true)}
+        className="absolute bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-glow)] flex items-center justify-center hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+        aria-label="Novo board"
+      >
+        <Plus className="h-6 w-6" />
+      </motion.button>
 
       <CreateBoardModal
         open={createOpen}
