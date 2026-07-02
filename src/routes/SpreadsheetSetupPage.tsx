@@ -77,6 +77,8 @@ export function SpreadsheetSetupPage() {
     setCreating(true);
     try {
       const { spreadsheetId } = await sheetsApiClient.createSpreadsheet(newName.trim());
+      const folderId = await driveApiClient.getOrCreateFolder("LealTEK Apps");
+      await driveApiClient.moveToFolder(spreadsheetId, folderId);
       initProvider(spreadsheetId);
       await getSheetProvider().initializeSpreadsheet?.();
       setSpreadsheetId(user.email, spreadsheetId);
