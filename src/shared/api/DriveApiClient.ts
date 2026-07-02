@@ -11,14 +11,24 @@ export interface DriveFile {
 export class DriveApiClient {
   constructor(private readonly auth: GoogleAuthService) {}
 
-  async listSpreadsheets(): Promise<DriveFile[]> {
-    const params = new URLSearchParams({
-      q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
-      fields: "files(id,name,modifiedTime)",
-      pageSize: "50",
+  async findSpreadsheetInFolder(folderName: string): Promise<DriveFile | null> {
+    const folderParams = new URLSearchParams({
+      q: `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and trashed=false`,
+      fields: "files(id)",
+      pageSize: "1",
     });
-    const data = await this.request("GET", `${DRIVE_BASE}/files?${params}`);
-    return (data.files as DriveFile[]) ?? [];
+    const folderSearch = await this.request("GET", `${DRIVE_BASE}/files?${folderParams}`);
+    if (!folderSearch.files?.length) return null;
+
+    const folderId = folderSearch.files[0].id as string;
+    const fileParams = new URLSearchParams({
+      q: `mimeType='application/vnd.google-apps.spreadsheet' and '${folderId}' in parents and trashed=false`,
+      fields: "files(id,name,modifiedTime)",
+      pageSize: "1",
+      orderBy: "modifiedTime desc",
+    });
+    const fileSearch = await this.request("GET", `${DRIVE_BASE}/files?${fileParams}`);
+    return (fileSearch.files?.[0] as DriveFile) ?? null;
   }
 
   async getOrCreateFolder(name: string): Promise<string> {
