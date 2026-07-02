@@ -16,7 +16,6 @@ export class DriveApiClient {
     const params = new URLSearchParams({
       q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
       fields: "files(id,name,modifiedTime)",
-      orderBy: "modifiedTime desc",
       pageSize: "50",
     });
     const res = await fetch(`${DRIVE_BASE}/files?${params}`, {

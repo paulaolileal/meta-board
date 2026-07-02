@@ -39,7 +39,7 @@ const STORAGE_KEY_TOKEN = "mb:gis:token";
 const STORAGE_KEY_EXPIRY = "mb:gis:expiry";
 const STORAGE_KEY_CONSENTED = "mb:gis:consented";
 const SCOPE =
-  "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly openid email profile";
+  "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file openid email profile";
 const EXPIRY_BUFFER_MS = 30_000;
 const PROACTIVE_REFRESH_BEFORE_MS = 5 * 60 * 1000;
 
