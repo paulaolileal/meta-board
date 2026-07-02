@@ -13,6 +13,7 @@ import {
 import type { DriveFile } from "@/shared/api/DriveApiClient";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import { useAuthStore } from "@/store/authStore";
+import { UserAccountMenu } from "@/components/UserAccountMenu";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -115,15 +116,7 @@ export function SpreadsheetSetupPage() {
             <span className="font-semibold truncate">Escolher planilha</span>
           </nav>
         </div>
-        <a
-          href="https://lealtek.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="opacity-50 hover:opacity-80 transition-opacity shrink-0"
-          title="Desenvolvido por LealTEK"
-        >
-          <img src="/lealtek-full.png" alt="LealTEK" className="h-10 object-contain" />
-        </a>
+        <UserAccountMenu />
       </header>
 
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thin">

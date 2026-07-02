@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Plus, AlertCircle, ChevronRight, LayoutGrid, Settings, ArrowLeftRight } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { Plus, AlertCircle, ChevronRight, LayoutGrid, Settings } from "lucide-react";
 import { getSheetProvider } from "@/shared/providers/providerFactory";
 import type { BoardConfig } from "@/modules/project/domain/types";
 import { CreateBoardModal } from "@/modules/project/ui/CreateBoardModal";
@@ -10,8 +9,7 @@ import { EditBoardModal } from "@/modules/board/ui/EditBoardModal";
 import { getIcon } from "@/shared/icons/iconRegistry";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useSpreadsheetStore } from "@/store/spreadsheetStore";
-import { useAuthStore } from "@/store/authStore";
+import { UserAccountMenu } from "@/components/UserAccountMenu";
 
 const DEFAULT_BOARD_COLOR = "var(--primary)";
 
@@ -23,20 +21,11 @@ function nameFontClass(name: string): string {
 
 export function SpreadsheetPage() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const user = useAuthStore((s) => s.user);
-  const { clearSpreadsheetId } = useSpreadsheetStore();
   const [boards, setBoards] = useState<BoardConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editingBoard, setEditingBoard] = useState<BoardConfig | null>(null);
-
-  function handleChangeSpreadsheet() {
-    if (user?.email) clearSpreadsheetId(user.email);
-    queryClient.clear();
-    navigate("/setup");
-  }
 
   useEffect(() => {
     const provider = getSheetProvider();
@@ -86,23 +75,7 @@ export function SpreadsheetPage() {
             <span className="font-semibold truncate">{title}</span>
           </nav>
         </div>
-        <button
-          onClick={handleChangeSpreadsheet}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition px-2.5 py-1.5 rounded-lg hover:bg-accent shrink-0"
-          title="Trocar planilha"
-        >
-          <ArrowLeftRight className="h-3.5 w-3.5" />
-          Trocar planilha
-        </button>
-        <a
-          href="https://lealtek.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="opacity-50 hover:opacity-80 transition-opacity shrink-0"
-          title="Desenvolvido por LealTEK"
-        >
-          <img src="/lealtek-full.png" alt="LealTEK" className="h-10 object-contain" />
-        </a>
+        <UserAccountMenu />
       </header>
 
       {/* Content area + FAB together in a relative container, same pattern as BoardPage */}
@@ -171,6 +144,18 @@ export function SpreadsheetPage() {
           <Plus className="h-6 w-6" />
         </motion.button>
       </div>
+
+      <footer className="shrink-0 border-t border-border/30 py-3 flex justify-center">
+        <a
+          href="https://lealtek.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="opacity-40 hover:opacity-70 transition-opacity"
+          title="Desenvolvido por LealTEK"
+        >
+          <img src="/lealtek-full.png" alt="LealTEK" className="h-12 object-contain" />
+        </a>
+      </footer>
 
       <CreateBoardModal
         open={createOpen}

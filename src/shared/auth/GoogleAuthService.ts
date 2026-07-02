@@ -97,7 +97,22 @@ export class GoogleAuthService {
 
   async signIn(): Promise<void> {
     await this.waitForGis();
+    return this._requestToken(this._hasConsented ? "" : "consent");
+  }
 
+  silentSignIn(): Promise<void> {
+    if (this._silentRefreshPromise) return this._silentRefreshPromise;
+    this._silentRefreshPromise = this.waitForGis()
+      .then(() => this._requestToken("none"))
+      .finally(() => {
+        this._silentRefreshPromise = null;
+      });
+    return this._silentRefreshPromise;
+  }
+
+  private _silentRefreshPromise: Promise<void> | null = null;
+
+  private _requestToken(prompt: string): Promise<void> {
     return new Promise((resolve, reject) => {
       this.resolveSignIn = resolve;
       this.rejectSignIn = reject;
@@ -131,7 +146,7 @@ export class GoogleAuthService {
         });
       }
 
-      this.tokenClient.requestAccessToken({ prompt: this._hasConsented ? "" : "consent" });
+      this.tokenClient.requestAccessToken({ prompt });
     });
   }
 

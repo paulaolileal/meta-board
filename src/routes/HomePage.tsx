@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { LogOut, Loader2, Table2, Kanban, Brain } from "lucide-react";
+import { Loader2, Table2, Kanban, Brain } from "lucide-react";
 import { googleAuthService } from "@/shared/providers/providerFactory";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -9,7 +9,8 @@ import { useAuthStore } from "@/store/authStore";
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { user, setUser, clearUser } = useAuthStore();
+  const { user, setUser } = useAuthStore();
+  const isInitializing = useAuthStore((s) => s.isInitializing);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const isAuthenticated = googleAuthService.isAuthenticated();
 
@@ -23,10 +24,10 @@ export function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!isInitializing && isAuthenticated) {
       navigate("/boards", { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isInitializing, isAuthenticated, navigate]);
 
   async function handleSignIn() {
     setIsSigningIn(true);
@@ -42,12 +43,7 @@ export function HomePage() {
     }
   }
 
-  function handleSignOut() {
-    googleAuthService.signOut();
-    clearUser();
-    toast.success("Desconectado do Google");
-  }
-
+  if (isInitializing) return null;
   if (isAuthenticated) return null;
 
   return <LoginPage onSignIn={handleSignIn} isSigningIn={isSigningIn} />;
@@ -163,6 +159,28 @@ function LoginPage({ onSignIn, isSigningIn }: { onSignIn: () => void; isSigningI
 
           <p className="text-center text-xs text-muted-foreground mt-6">
             Seus dados permanecem na sua planilha Google Sheets.
+          </p>
+
+          <p className="text-center text-xs text-muted-foreground mt-4">
+            Ao continuar, você concorda com os{" "}
+            <a
+              href="https://lealtek.com/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              Termos de Uso
+            </a>{" "}
+            e a{" "}
+            <a
+              href="https://lealtek.com/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              Política de Privacidade
+            </a>
+            .
           </p>
 
           <div className="flex justify-center mt-10">

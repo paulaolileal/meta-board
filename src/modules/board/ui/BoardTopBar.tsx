@@ -23,6 +23,7 @@ import { useThemeStore, type ThemeMode } from "@/modules/settings/themeStore";
 import { getSheetProvider } from "@/shared/providers/providerFactory";
 import { cn } from "@/lib/utils";
 import type { FieldType } from "@/modules/project/domain/types";
+import { UserAccountMenu } from "@/components/UserAccountMenu";
 
 const SELECT_TYPES: FieldType[] = ["select", "chip", "multiselect"];
 const THEME_CYCLE: ThemeMode[] = ["light", "auto", "dark"];
@@ -226,6 +227,8 @@ export function BoardTopBar({ onOpenSettings }: Props) {
           >
             <Settings className="h-4 w-4" />
           </button>
+
+          <UserAccountMenu />
         </div>
       </div>
 
