@@ -62,6 +62,23 @@ Este app foi construído com esse foco:
 
 ## Funcionalidades
 
+### Seleção de Planilha
+
+Após o primeiro login (ou ao clicar em "Trocar planilha"), o app exibe a tela `/setup`:
+
+- **Listar planilhas** — busca as planilhas do Google Drive do usuário via Drive API v3
+- **Busca local** — filtra a lista por nome em tempo real
+- **Criar nova planilha** — cria uma planilha em branco e a organiza automaticamente dentro da pasta **"LealTEK Apps"** no Drive
+- A escolha fica salva em `localStorage`, associada ao e-mail do usuário, e é restaurada automaticamente em sessões futuras
+
+**Menu do usuário** (`UserAccountMenu`) — acessível pelo avatar no canto superior direito em todas as telas autenticadas:
+
+- Exibe nome e e-mail da conta Google
+- Atalho para **Trocar planilha** (redireciona para `/setup`)
+- Botão de **Sair** (encerra a sessão)
+
+**Sincronização cross-tab** — ao sair em uma aba, todas as outras abas abertas deslogam automaticamente. Um `silentSignIn()` com `prompt: none` recupera o token de acesso em novas abas sem exigir nova interação do usuário.
+
 ### Lista de Boards
 
 A tela inicial (após login) exibe todos os boards configurados na planilha conectada:
@@ -164,15 +181,18 @@ Modal de edição completa acessível pelo botão ⚙ de cada board:
 - Skeleton loading em grids e colunas
 - Toast notifications para todas as ações
 - Rota `*` com página 404 customizada
+- **Sincronização cross-tab** — logout em uma aba encerra todas; `silentSignIn` restaura token sem interação
+- **AuthSplash** — spinner exibido durante a inicialização da sessão antes de renderizar rotas protegidas
 
 ## Rotas da aplicação
 
-| Rota               | Página                                |
-| ------------------ | ------------------------------------- |
-| `/`                | Login com Google OAuth                |
-| `/boards`          | Lista de boards da planilha conectada |
-| `/boards/:boardId` | Kanban board específico               |
-| `*`                | Página não encontrada                 |
+| Rota               | Página                                                            |
+| ------------------ | ----------------------------------------------------------------- |
+| `/`                | Login com Google OAuth                                            |
+| `/setup`           | Seleção ou criação de planilha (exibida após login sem planilha) |
+| `/boards`          | Lista de boards da planilha conectada                             |
+| `/boards/:boardId` | Kanban board específico                                           |
+| `*`                | Página não encontrada                                             |
 
 ---
 
@@ -185,9 +205,10 @@ Modal de edição completa acessível pelo botão ⚙ de cada board:
 - **dnd-kit** (drag & drop — @dnd-kit/core + @dnd-kit/sortable)
 - **Framer Motion** (animações)
 - **React Hook Form** + Zod (formulários e validação)
-- **Zustand** (estado global: board + auth)
+- **Zustand** (estado global: board + auth + spreadsheet)
 - **Google Identity Services** (OAuth implícito, token em memória)
-- **OpenAI API** (extração de campos com IA)
+- **Google Drive API v3** (listagem e criação de planilhas)
+- **OpenAI API** via **Vercel Edge Functions** (extração de campos com IA — chave nunca exposta no bundle)
 
 ---
 
@@ -208,6 +229,10 @@ routes → modules → shared/providers ← shared/auth
 ### Estrutura de pastas
 
 ```
+api/
+  openai/
+    chat.ts                 Vercel Edge Function — proxy para /v1/chat/completions
+    responses.ts            Vercel Edge Function — proxy para /v1/responses
 src/
   modules/
     board/
@@ -215,26 +240,30 @@ src/
       store.ts              Zustand: board ativo, fields, cards, busca, filtros
       useBoardData.ts       TanStack Query — carrega board, fields e cards
       useCardMutations.ts   Mutações: criar, salvar, deletar card e reordenar
-      useAiCardExtraction.ts Hook de extração de campos com IA (OpenAI)
+      useAiCardExtraction.ts Hook de extração de campos com IA (OpenAI via proxy)
     project/
       domain/types.ts       Tipos: BoardConfig, FieldDef, CardRecord, FieldType, FieldValue...
       ui/CreateBoardModal.tsx Modal de criação de novo board
     fields/
       FieldRenderer.tsx     Renderizador de campos em modo closed/open
+  components/
+    UserAccountMenu.tsx     Menu do usuário: avatar, nome/email, trocar planilha, sair
   routes/
     HomePage.tsx            Página de login
+    SpreadsheetSetupPage.tsx Seleção ou criação de planilha (pós-login, sem planilha salva)
     SpreadsheetPage.tsx     Lista de boards
     BoardPage.tsx           Board Kanban
   shared/
     providers/
       ISheetProvider.ts     Interface — contrato único de acesso a dados
       GoogleSheetProvider.ts CRUD via Sheets API v4
-      providerFactory.ts    Singleton — instancia o provider com env vars
+      providerFactory.ts    initProvider(id) — instancia provider sob demanda
     auth/
-      GoogleAuthService.ts  OAuth2 implícito; token vive em closure
+      GoogleAuthService.ts  OAuth2 implícito; silentSignIn para refresh cross-tab
     api/
       SheetsApiClient.ts    HTTP client para Sheets API v4
-      OpenAiClient.ts       Client OpenAI para extração de campos
+      DriveApiClient.ts     Listagem e criação de planilhas via Drive API v3
+      OpenAiClient.ts       Client OpenAI — chama proxy Vercel, nunca OpenAI diretamente
     cache/
       localCache.ts         Cache local com IndexedDB (idb)
     icons/
@@ -243,11 +272,12 @@ src/
     colors/
       BoardColorPicker.tsx  Seletor de cor
   store/
-    authStore.ts            Zustand: informações do usuário autenticado
+    authStore.ts            Zustand: usuário autenticado + isInitializing
+    spreadsheetStore.ts     Zustand + localStorage: spreadsheetId salvo por e-mail
   settings/
     themeStore.ts           Zustand: tema claro/escuro
   app/
-    App.tsx                 Router raiz + rotas protegidas
+    App.tsx                 Router raiz + rotas protegidas + useAuthSync (cross-tab)
     providers.tsx           TanStack Query + Sonner
 ```
 
@@ -258,12 +288,19 @@ src/
 | `src/modules/project/domain/types.ts`         | Todos os tipos: BoardConfig, FieldDef, CardRecord, FieldType, FieldValue |
 | `src/shared/providers/ISheetProvider.ts`      | Interface `ISheetProvider` — contrato único                              |
 | `src/shared/providers/GoogleSheetProvider.ts` | CRUD contra a Sheets API v4                                              |
-| `src/shared/providers/providerFactory.ts`     | Singleton — instancia provider + auth com env vars                       |
-| `src/shared/auth/GoogleAuthService.ts`        | OAuth implícito Google; token vive apenas em closure                     |
+| `src/shared/providers/providerFactory.ts`     | `initProvider(id)` — instancia provider sob demanda (não mais singleton) |
+| `src/shared/auth/GoogleAuthService.ts`        | OAuth implícito Google; `silentSignIn()` para refresh cross-tab          |
+| `src/shared/api/DriveApiClient.ts`            | Lista planilhas do Drive e cria novas dentro da pasta "LealTEK Apps"     |
+| `src/store/authStore.ts`                      | Zustand: usuário autenticado + flag `isInitializing`                     |
+| `src/store/spreadsheetStore.ts`               | Zustand + localStorage: `spreadsheetId` persistido por e-mail            |
+| `src/routes/SpreadsheetSetupPage.tsx`         | Fluxo de seleção/criação de planilha após primeiro login                 |
+| `src/components/UserAccountMenu.tsx`          | Menu do usuário: avatar, nome/email, trocar planilha, sair               |
 | `src/modules/board/store.ts`                  | Zustand: board ativo, fields, cards, busca e filtros                     |
 | `src/modules/board/useBoardData.ts`           | TanStack Query — carrega e sincroniza dados do board                     |
 | `src/modules/board/useCardMutations.ts`       | Mutações de card com reordenação otimista                                |
-| `src/modules/board/useAiCardExtraction.ts`    | Extração de campos via OpenAI com schema estruturado                     |
+| `src/modules/board/useAiCardExtraction.ts`    | Extração de campos via OpenAI (chama proxy Vercel, não OpenAI diretamente)|
+| `api/openai/chat.ts`                          | Vercel Edge Function — proxy seguro para OpenAI `/v1/chat/completions`   |
+| `api/openai/responses.ts`                     | Vercel Edge Function — proxy seguro para OpenAI `/v1/responses`          |
 
 ### Entidades e convenções de dados
 
@@ -319,12 +356,13 @@ https://docs.google.com/spreadsheets/d/<SPREADSHEET_ID>/edit
 ### Passo 2 — Criar projeto no Google Cloud Console
 
 1. Acesse https://console.cloud.google.com → crie um projeto
-2. Em **APIs & Services → Library**, pesquise e habilite **Google Sheets API**
+2. Em **APIs & Services → Library**, pesquise e habilite **Google Sheets API** e **Google Drive API**
 3. Em **APIs & Services → OAuth consent screen**:
    - Tipo: **External**
    - Preencha nome do app, e-mail de suporte e e-mail do desenvolvedor
+   - Em **Scopes**, adicione: `spreadsheets` (Sheets API) e `drive.file` (Drive API — acessa apenas arquivos criados/abertos pelo app)
    - Em **Test users**, adicione seu e-mail (obrigatório enquanto o app estiver em modo de teste)
-   - Salvar e continuar (pode pular Escopos por ora)
+   - Salvar e continuar
 
 ### Passo 3 — Criar credencial OAuth Client ID
 
@@ -346,9 +384,11 @@ Crie `.env.local` na raiz do projeto:
 
 ```env
 VITE_GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
-VITE_SPREADSHEET_ID=1AbC...XyZ
-VITE_OPENAI_API_KEY=sk-...          # Opcional — habilita criação de cards com IA
+OPENAI_API_KEY=sk-...               # Opcional — habilita criação de cards com IA (server-side)
 ```
+
+> `VITE_SPREADSHEET_ID` foi removido — cada usuário seleciona ou cria sua própria planilha no primeiro login.
+> `OPENAI_API_KEY` **não usa o prefixo `VITE_`** — ela vive apenas nas Vercel Edge Functions e nunca é injetada no bundle do browser.
 
 Reinicie o dev server.
 
@@ -356,12 +396,19 @@ Reinicie o dev server.
 
 Na tela inicial, clique **Continuar com Google** — uma popup abre pedindo consentimento. O token de acesso fica **somente em memória** (closure em `src/shared/auth/GoogleAuthService.ts`). Nunca é gravado em `localStorage` ou cookies.
 
+Após o login, se nenhuma planilha estiver configurada, o app redireciona automaticamente para `/setup`, onde o usuário pode:
+
+- **Selecionar** uma planilha existente do Google Drive
+- **Criar** uma nova planilha (salva automaticamente dentro da pasta **"LealTEK Apps"** no Drive)
+
+A escolha fica salva em `localStorage` associada ao e-mail do usuário. É possível trocar de planilha a qualquer momento pelo **menu do usuário** (avatar no canto superior direito).
+
 ### Segurança — o que NÃO fazemos
 
 - Não armazenamos `client_secret`, service account ou private keys
-- Não persistimos o `access_token` entre sessões — ele vive apenas em closure
-- `spreadsheetId` vive apenas em `src/shared/providers/providerFactory.ts`
-- `VITE_OPENAI_API_KEY` é usado apenas no browser em contexto de desenvolvimento/demo — para produção, considere proxy serverless
+- Não persistimos o `access_token` entre sessões — ele vive apenas em closure; `silentSignIn()` recupera um novo token sem interação do usuário em novas abas
+- `spreadsheetId` é salvo em `localStorage` associado ao e-mail do usuário — o usuário controla qual planilha usar
+- `OPENAI_API_KEY` nunca chega ao browser — todas as chamadas à OpenAI passam pelas Vercel Edge Functions em `api/openai/`
 
 ---
 
@@ -383,11 +430,13 @@ Na tela inicial, clique **Continuar com Google** — uma popup abre pedindo cons
 
 Em **Settings → Environment Variables**, adicione:
 
-| Variável                | Valor                              |
-| ----------------------- | ---------------------------------- |
-| `VITE_GOOGLE_CLIENT_ID` | `xxxxx.apps.googleusercontent.com` |
-| `VITE_SPREADSHEET_ID`   | `1AbC...XyZ`                       |
-| `VITE_OPENAI_API_KEY`   | `sk-...` (opcional)                |
+| Variável                | Valor                              | Visibilidade    |
+| ----------------------- | ---------------------------------- | --------------- |
+| `VITE_GOOGLE_CLIENT_ID` | `xxxxx.apps.googleusercontent.com` | Build (VITE_)   |
+| `OPENAI_API_KEY`        | `sk-...` (opcional)                | Server (seguro) |
+
+> `VITE_SPREADSHEET_ID` foi removido — cada usuário conecta sua própria planilha pelo app.
+> `OPENAI_API_KEY` **não usa o prefixo `VITE_`** — ela só é acessível pelas Edge Functions e nunca aparece no bundle público.
 
 **Passo 3 — Configurar roteamento SPA**
 
