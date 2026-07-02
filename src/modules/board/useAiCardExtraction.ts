@@ -238,15 +238,13 @@ export function useAiCardExtraction() {
   const fields = useBoardStore((s) => s.fields);
 
   async function extractCards(text: string): Promise<ExtractionResult[]> {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined;
-    if (!apiKey) throw new Error("VITE_OPENAI_API_KEY não configurada no .env.local");
     if (!board) throw new Error("Board não carregado");
 
     const extractableFields = fields.filter((f) => f.editable !== false && f.visible !== false);
 
     const systemPrompt = buildSystemPrompt(board.name, board.description, extractableFields);
 
-    const raw = await chatComplete(apiKey, [
+    const raw = await chatComplete([
       { role: "system", content: systemPrompt },
       { role: "user", content: text },
     ]);
@@ -294,7 +292,6 @@ export function useAiCardExtraction() {
           );
 
           const searchText = await chatCompleteWithWebSearch(
-            apiKey,
             instructions,
             "Find the missing information using web search.",
           );

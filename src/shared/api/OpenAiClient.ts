@@ -4,21 +4,13 @@ export interface OpenAiMessage {
 }
 
 export async function chatComplete(
-  apiKey: string,
   messages: OpenAiMessage[],
   model = "gpt-4o-mini",
 ): Promise<string> {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("/api/openai/chat", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      response_format: { type: "json_object" },
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, messages, response_format: { type: "json_object" } }),
   });
 
   if (!response.ok) {
@@ -36,23 +28,14 @@ export async function chatComplete(
 }
 
 export async function chatCompleteWithWebSearch(
-  apiKey: string,
   instructions: string,
   input: string,
   model = "gpt-4o-mini",
 ): Promise<string> {
-  const response = await fetch("https://api.openai.com/v1/responses", {
+  const response = await fetch("/api/openai/responses", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      tools: [{ type: "web_search_preview" }],
-      instructions,
-      input,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, tools: [{ type: "web_search_preview" }], instructions, input }),
   });
 
   if (!response.ok) {
