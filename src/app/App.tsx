@@ -2,16 +2,35 @@ import type { ReactNode } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { HomePage } from "@/routes/HomePage";
 import { SpreadsheetPage } from "@/routes/SpreadsheetPage";
+import { SpreadsheetSetupPage } from "@/routes/SpreadsheetSetupPage";
 import { BoardPage } from "@/routes/BoardPage";
 import { Link } from "react-router-dom";
-import { googleAuthService } from "@/shared/providers/providerFactory";
+import { googleAuthService, initProvider } from "@/shared/providers/providerFactory";
 import { useAuthStore } from "@/store/authStore";
+import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const user = useAuthStore((s) => s.user);
   if (!user || !googleAuthService.isAuthenticated()) {
     return <Navigate to="/" replace />;
   }
+  return <>{children}</>;
+}
+
+function SpreadsheetRoute({ children }: { children: ReactNode }) {
+  const user = useAuthStore((s) => s.user);
+  const getSpreadsheetId = useSpreadsheetStore((s) => s.getSpreadsheetId);
+
+  if (!user || !googleAuthService.isAuthenticated()) {
+    return <Navigate to="/" replace />;
+  }
+
+  const spreadsheetId = user.email ? getSpreadsheetId(user.email) : undefined;
+  if (!spreadsheetId) {
+    return <Navigate to="/setup" replace />;
+  }
+
+  initProvider(spreadsheetId);
   return <>{children}</>;
 }
 
@@ -34,19 +53,27 @@ export function AppRouter() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route
-        path="/boards"
+        path="/setup"
         element={
           <ProtectedRoute>
-            <SpreadsheetPage />
+            <SpreadsheetSetupPage />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/boards"
+        element={
+          <SpreadsheetRoute>
+            <SpreadsheetPage />
+          </SpreadsheetRoute>
         }
       />
       <Route
         path="/boards/:boardId"
         element={
-          <ProtectedRoute>
+          <SpreadsheetRoute>
             <BoardPage />
-          </ProtectedRoute>
+          </SpreadsheetRoute>
         }
       />
       <Route path="*" element={<NotFound />} />
