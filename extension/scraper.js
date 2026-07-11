@@ -53,31 +53,58 @@
   const isPostOrReelPage = /\/(p|reel|reels)\/[^/]+\/?/.test(window.location.pathname);
   if (!isPostOrReelPage) return null;
 
-  const captionEl = document.querySelector("h1, div[data-testid='post-caption'], ul li span");
-  const captionText = text(captionEl);
+  // Instagram has also dropped <h1>/<h2>/<ul>/<li> from the post/comments
+  // panel, so tag-based selectors can no longer find the caption or its
+  // author. <time datetime> is the one semantic element Instagram keeps for
+  // accessibility, and it encodes a structural fact that survives markup
+  // churn: every real comment's timestamp sits inside a permalink link
+  // (a[href*="/c/"]), while the caption's timestamp — rendered as the
+  // list's first entry — is not wrapped in any link at all.
+  function containerWithAuthorLink(timeEl) {
+    let node = timeEl.parentElement;
+    while (node && node !== document.body) {
+      const username = firstValidUsername(node.querySelectorAll("a[href^='/']"));
+      if (username) return { container: node, username };
+      node = node.parentElement;
+    }
+    return undefined;
+  }
+
+  function entryFromTime(timeEl) {
+    const found = containerWithAuthorLink(timeEl);
+    if (!found) return undefined;
+    const body = text(found.container.nextElementSibling);
+    const isPinned = /fixad|pinned/i.test(found.container.parentElement?.textContent || "");
+    return { username: found.username, body, isPinned };
+  }
+
+  const timeEls = Array.from(document.querySelectorAll("time[datetime]"));
+  const captionTimeEl = timeEls.find((t) => !t.closest("a"));
+  const captionEntry = captionTimeEl ? entryFromTime(captionTimeEl) : undefined;
+
+  // Fallback for page variants where the time-based heuristic above doesn't
+  // apply (older markup still using semantic tags).
+  const legacyCaptionEl = document.querySelector("h1, div[data-testid='post-caption'], ul li span");
+
+  const captionText = captionEntry?.body || text(legacyCaptionEl);
 
   // Username: prefer the address bar (present whenever the post/reel was
   // reached from a profile link, and immune to markup churn), then the
-  // header's profile link, then the caption block's author link. The old
+  // caption entry's author link, then legacy header/h2 selectors. The old
   // "a.notranslate" selector matched the wrong person: Instagram also tags
   // the "Curtido por X" liker link as notranslate, and that link sits
   // earlier in the DOM than the author's.
   const profileUsername =
     usernameFromHref(window.location.pathname.split("/").slice(0, 2).join("/")) ||
+    captionEntry?.username ||
     firstValidUsername(document.querySelectorAll("header a[href^='/']")) ||
     firstValidUsername(document.querySelectorAll("h2 a[href^='/']"));
 
-  const commentEls = Array.from(document.querySelectorAll("ul li"));
-  const pinnedAuthorComments = commentEls
-    .filter((li) => {
-      const label = li.textContent || "";
-      const isPinned = /fixad|pinned/i.test(label);
-      const isAuthor =
-        !!profileUsername && li.querySelector(`a[href="/${profileUsername}/"]`) !== null;
-      return isPinned || isAuthor;
-    })
-    .map((li) => text(li))
-    .filter(Boolean);
+  const pinnedAuthorComments = timeEls
+    .map(entryFromTime)
+    .filter((entry) => entry?.body)
+    .filter((entry) => entry.isPinned || (!!profileUsername && entry.username === profileUsername))
+    .map((entry) => entry.body);
 
   // Instagram streams <video> through MediaSource Extensions, so
   // currentSrc/src is a page-local "blob:" URL that can't be fetched
