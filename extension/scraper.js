@@ -34,8 +34,15 @@
 
   function usernameFromHref(href) {
     const segments = (href || "").split("/").filter(Boolean);
-    if (segments.length !== 1 || RESERVED_PATH_SEGMENTS.has(segments[0])) return undefined;
-    return segments[0];
+    if (segments.length === 1 && !RESERVED_PATH_SEGMENTS.has(segments[0])) {
+      return segments[0];
+    }
+    // Reels shown inline in a feed link to "/<user>/reels/" rather than
+    // "/<user>/", since that tab is where the avatar/name click lands.
+    if (segments.length === 2 && segments[1] === "reels" && !RESERVED_PATH_SEGMENTS.has(segments[0])) {
+      return segments[0];
+    }
+    return undefined;
   }
 
   function firstValidUsername(anchors) {
@@ -86,7 +93,22 @@
   // apply (older markup still using semantic tags).
   const legacyCaptionEl = document.querySelector("h1, div[data-testid='post-caption'], ul li span");
 
-  const captionText = captionEntry?.body || text(legacyCaptionEl);
+  // Reels rendered inline in the feed (rather than opened on their own /p/
+  // page) skip the comments panel entirely, so there is no <time> to anchor
+  // on and no <h1>/<header> either. The caption is just the longest
+  // dir="auto" span on the page outside of a <time> element — every other
+  // span on a reel view (button labels, counters, timestamps) is short.
+  function captionFromLongTextSpan() {
+    const MIN_LENGTH = 40;
+    for (const span of document.querySelectorAll("span[dir='auto']")) {
+      if (span.closest("time")) continue;
+      const value = text(span);
+      if (value && value.length >= MIN_LENGTH) return value;
+    }
+    return undefined;
+  }
+
+  const captionText = captionEntry?.body || text(legacyCaptionEl) || captionFromLongTextSpan();
 
   // Username: prefer the address bar (present whenever the post/reel was
   // reached from a profile link, and immune to markup churn), then the
@@ -94,9 +116,27 @@
   // "a.notranslate" selector matched the wrong person: Instagram also tags
   // the "Curtido por X" liker link as notranslate, and that link sits
   // earlier in the DOM than the author's.
+  // Reels shown inline in the feed carry no <header>/<h2>; the owner's
+  // avatar/name link is instead identified by an aria-label like "Vídeos
+  // do Reels de <user>" (or the English "Reel videos by <user>").
+  function usernameFromReelOwnerLink() {
+    const anchors = document.querySelectorAll(
+      "a[aria-label*='Reels de '], a[aria-label*='Reel videos by ']",
+    );
+    for (const anchor of anchors) {
+      const fromHref = usernameFromHref(anchor.getAttribute("href"));
+      if (fromHref) return fromHref;
+      const label = anchor.getAttribute("aria-label") || "";
+      const match = label.match(/Reels?(?: de| videos by) (.+)$/i);
+      if (match) return match[1].trim();
+    }
+    return undefined;
+  }
+
   const profileUsername =
     usernameFromHref(window.location.pathname.split("/").slice(0, 2).join("/")) ||
     captionEntry?.username ||
+    usernameFromReelOwnerLink() ||
     firstValidUsername(document.querySelectorAll("header a[href^='/']")) ||
     firstValidUsername(document.querySelectorAll("h2 a[href^='/']"));
 
