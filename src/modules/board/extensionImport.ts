@@ -27,9 +27,13 @@ export function clearPendingExtensionImport(): void {
 }
 
 export function formatExtensionImportAsText(payload: ExtensionImportPayload): string {
+  const authorProfileUrl = payload.profileUsername
+    ? `https://www.instagram.com/${payload.profileUsername}/`
+    : undefined;
+
   return JSON.stringify(
     {
-      "Author Username": payload.profileUsername,
+      "Author Username": authorProfileUrl,
       Caption: payload.captionText,
       "Tagged Users": payload.mentions,
       "Pinned Comments": payload.pinnedAuthorComments,

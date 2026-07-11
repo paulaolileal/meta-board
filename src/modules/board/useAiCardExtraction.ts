@@ -71,9 +71,9 @@ STRICT RULES — violating these produces useless data:
 6. If the text describes multiple distinct items, return one card per item.
    If only one item, return an array with one card.
 
-7. [REQUIRED] fields: if you cannot extract the value for a field marked [REQUIRED] directly
-   from the text, do NOT include that card in the response at all. Do not guess, infer from
-   external knowledge, or leave REQUIRED fields to be filled by web search.
+7. [REQUIRED] fields: try your best to extract the value for a field marked [REQUIRED] directly
+   from the text. If you truly cannot find it, still include the card in the response and simply
+   omit that field — never guess, infer from external knowledge, or drop the whole card.
 
 SOCIAL MEDIA EXTRACTION HINTS:
 - @username mentions (e.g. "@anciaculinaria") very often indicate the name of the featured
@@ -203,17 +203,6 @@ function sanitizeCard(
   return result;
 }
 
-function dropCardsWithMissingRequired(
-  results: ExtractionResult[],
-  fields: FieldDef[],
-): ExtractionResult[] {
-  const requiredFields = fields.filter((f) => f.required);
-  if (requiredFields.length === 0) return results;
-  return results.filter((r) =>
-    requiredFields.every((f) => f.id in r.values && r.values[f.id] !== undefined),
-  );
-}
-
 function extractJsonFromText(text: string): Record<string, unknown> {
   const codeBlock = text.match(/```json\s*([\s\S]*?)```/);
   if (codeBlock) return JSON.parse(codeBlock[1]) as Record<string, unknown>;
@@ -277,7 +266,7 @@ export function useAiCardExtraction() {
       return { values, sources, reasons };
     });
 
-    return dropCardsWithMissingRequired(phase1Results, extractableFields);
+    return phase1Results;
   }
 
   async function enrichMissingFields(
