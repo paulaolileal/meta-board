@@ -8,6 +8,7 @@ import { EditBoardModal } from "@/modules/board/ui/EditBoardModal";
 import { AiCardModal } from "@/modules/board/ui/AiCardModal";
 import { CreateCardModal } from "@/modules/board/ui/CreateCardModal";
 import { CreateCardSpeedDial } from "@/modules/board/ui/CreateCardSpeedDial";
+import { useExtensionImport } from "@/modules/board/useExtensionImport";
 
 export function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
@@ -22,6 +23,14 @@ export function BoardPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [aiInitialText, setAiInitialText] = useState<string | undefined>(undefined);
+  const [aiInitialVideoUrl, setAiInitialVideoUrl] = useState<string | undefined>(undefined);
+
+  useExtensionImport((extractedText, videoUrl) => {
+    setAiInitialText(extractedText);
+    setAiInitialVideoUrl(videoUrl);
+    setAiOpen(true);
+  });
 
   useEffect(() => {
     if (searchParams.get("edit") === "1" && hydrated) {
@@ -59,7 +68,12 @@ export function BoardPage() {
         onClose={() => setEditOpen(false)}
         onDeleted={() => navigate("/boards")}
       />
-      <AiCardModal open={aiOpen} onClose={() => setAiOpen(false)} />
+      <AiCardModal
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        initialText={aiInitialText}
+        initialVideoUrl={aiInitialVideoUrl}
+      />
       <CreateCardModal open={createOpen} onClose={() => setCreateOpen(false)} initialValues={{}} />
     </div>
   );
