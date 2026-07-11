@@ -5,6 +5,7 @@ import { initProvider, getSheetProvider } from "@/shared/providers/providerFacto
 import { useAuthStore } from "@/store/authStore";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import type { BoardConfig } from "@/modules/project/domain/types";
+import { getIcon } from "@/shared/icons/iconRegistry";
 import {
   EXTENSION_IMPORT_READY_EVENT,
   readPendingExtensionImport,
@@ -16,6 +17,8 @@ export interface AiImportNavigationState {
   aiImportText: string;
   aiImportVideoUrl?: string;
 }
+
+const DEFAULT_BOARD_COLOR = "var(--primary)";
 
 /**
  * Watches for a post captured by the Chrome extension (from anywhere in the
@@ -104,15 +107,30 @@ export function ExtensionImportGate() {
             <p className="text-sm text-muted-foreground py-4">Nenhum board encontrado.</p>
           ) : (
             <div className="space-y-1.5">
-              {boards.map((b) => (
-                <button
-                  key={b.id}
-                  onClick={() => handleSelect(b.id)}
-                  className="w-full text-left px-4 py-3 rounded-xl border border-border hover:border-primary/40 hover:bg-accent transition font-medium text-sm"
-                >
-                  {b.name}
-                </button>
-              ))}
+              {boards.map((b) => {
+                const effectiveColor = b.color || DEFAULT_BOARD_COLOR;
+                const LucideIcon = getIcon(b.icon);
+
+                return (
+                  <button
+                    key={b.id}
+                    onClick={() => handleSelect(b.id)}
+                    className="w-full flex items-center gap-3 text-left px-4 py-3 rounded-xl border border-border hover:border-primary/40 hover:bg-accent transition font-medium text-sm"
+                  >
+                    <span
+                      className="shrink-0 h-9 w-9 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: effectiveColor }}
+                    >
+                      {LucideIcon ? (
+                        <LucideIcon size={18} className="text-white" />
+                      ) : (
+                        <span className="text-base leading-none">{b.icon}</span>
+                      )}
+                    </span>
+                    <span className="truncate">{b.name}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
