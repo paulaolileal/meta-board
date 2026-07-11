@@ -6,6 +6,7 @@ import { SpreadsheetPage } from "@/routes/SpreadsheetPage";
 import { SpreadsheetSetupPage } from "@/routes/SpreadsheetSetupPage";
 import { BoardPage } from "@/routes/BoardPage";
 import { ExtensionInstructionsPage } from "@/routes/ExtensionInstructionsPage";
+import { ExtensionImportGate } from "@/modules/board/ui/ExtensionImportGate";
 import { Link } from "react-router-dom";
 import { googleAuthService, initProvider } from "@/shared/providers/providerFactory";
 import { useAuthStore } from "@/store/authStore";
@@ -106,41 +107,44 @@ export function AppRouter() {
   useAuthSync();
 
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route
-        path="/setup"
-        element={
-          <ProtectedRoute>
-            <SpreadsheetSetupPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/extension"
-        element={
-          <ProtectedRoute>
-            <ExtensionInstructionsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/boards"
-        element={
-          <SpreadsheetRoute>
-            <SpreadsheetPage />
-          </SpreadsheetRoute>
-        }
-      />
-      <Route
-        path="/boards/:boardId"
-        element={
-          <SpreadsheetRoute>
-            <BoardPage />
-          </SpreadsheetRoute>
-        }
-      />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      <ExtensionImportGate />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route
+          path="/setup"
+          element={
+            <ProtectedRoute>
+              <SpreadsheetSetupPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/extension"
+          element={
+            <ProtectedRoute>
+              <ExtensionInstructionsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/boards"
+          element={
+            <SpreadsheetRoute>
+              <SpreadsheetPage />
+            </SpreadsheetRoute>
+          }
+        />
+        <Route
+          path="/boards/:boardId"
+          element={
+            <SpreadsheetRoute>
+              <BoardPage />
+            </SpreadsheetRoute>
+          }
+        />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   );
 }

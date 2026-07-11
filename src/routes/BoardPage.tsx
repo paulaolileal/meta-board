@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useBoardData } from "@/modules/board/useBoardData";
 import { useBoardStore } from "@/modules/board/store";
 import { BoardTopBar } from "@/modules/board/ui/BoardTopBar";
@@ -8,11 +8,12 @@ import { EditBoardModal } from "@/modules/board/ui/EditBoardModal";
 import { AiCardModal } from "@/modules/board/ui/AiCardModal";
 import { CreateCardModal } from "@/modules/board/ui/CreateCardModal";
 import { CreateCardSpeedDial } from "@/modules/board/ui/CreateCardSpeedDial";
-import { useExtensionImport } from "@/modules/board/useExtensionImport";
+import type { AiImportNavigationState } from "@/modules/board/ui/ExtensionImportGate";
 
 export function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { isLoading, isError, error } = useBoardData(boardId!);
@@ -26,11 +27,16 @@ export function BoardPage() {
   const [aiInitialText, setAiInitialText] = useState<string | undefined>(undefined);
   const [aiInitialVideoUrl, setAiInitialVideoUrl] = useState<string | undefined>(undefined);
 
-  useExtensionImport((extractedText, videoUrl) => {
-    setAiInitialText(extractedText);
-    setAiInitialVideoUrl(videoUrl);
+  useEffect(() => {
+    const state = location.state as AiImportNavigationState | null;
+    if (!state?.aiImportText) return;
+
+    setAiInitialText(state.aiImportText);
+    setAiInitialVideoUrl(state.aiImportVideoUrl);
     setAiOpen(true);
-  });
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   useEffect(() => {
     if (searchParams.get("edit") === "1" && hydrated) {
