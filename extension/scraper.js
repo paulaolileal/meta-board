@@ -17,18 +17,22 @@
 
   // Instagram's DOM is unstable and unversioned; these selectors are best-effort
   // and expected to need updates when Instagram changes its markup.
-  const articleEl = document.querySelector("article");
-  if (!articleEl) return null;
+  // Instagram no longer wraps post content in <article>/<header>, so we scope
+  // to the whole document and gate on the URL instead.
+  const isPostOrReelPage = /\/(p|reel|reels)\/[^/]+\/?/.test(window.location.pathname);
+  if (!isPostOrReelPage) return null;
 
-  const captionEl = articleEl.querySelector("h1, div[data-testid='post-caption'], ul li span");
+  const captionEl = document.querySelector("h1, div[data-testid='post-caption'], ul li span");
   const captionText = text(captionEl);
 
-  const profileLinkEl = articleEl.querySelector("header a[role='link']");
+  // Instagram tags the author's profile link with "notranslate" so autotranslate
+  // skips usernames; this has stayed stable across markup rewrites.
+  const profileLinkEl = document.querySelector("a.notranslate[href^='/']");
   const profileUsername = profileLinkEl
     ? profileLinkEl.getAttribute("href")?.replace(/\//g, "")
     : undefined;
 
-  const commentEls = Array.from(articleEl.querySelectorAll("ul li"));
+  const commentEls = Array.from(document.querySelectorAll("ul li"));
   const pinnedAuthorComments = commentEls
     .filter((li) => {
       const label = li.textContent || "";
@@ -40,7 +44,7 @@
     .map((li) => text(li))
     .filter(Boolean);
 
-  const videoEl = articleEl.querySelector("video");
+  const videoEl = document.querySelector("video");
   const videoUrl = videoEl ? videoEl.currentSrc || videoEl.src || undefined : undefined;
 
   return {
