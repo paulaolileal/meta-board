@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { FieldEditor } from "./CardDrawer";
 import { useCardMutations } from "@/modules/board/useCardMutations";
 import { useAiCardExtraction, type ExtractionResult } from "@/modules/board/useAiCardExtraction";
-import { useBoardStore } from "@/modules/board/store";
+import { transcribeVideo } from "@/shared/api/OpenAiClient";
 import type { CardRecord } from "@/modules/project/domain/types";
 
 const MAX_STACK = 2;
@@ -24,19 +24,27 @@ const STACK_SCALE = 0.03;
 interface Props {
   open: boolean;
   onClose: () => void;
+  initialText?: string;
+  initialVideoUrl?: string;
 }
 
 type Step = "input" | "review";
 type CardStatus = "pending" | "approved" | "rejected";
 
-export function AiCardModal({ open, onClose }: Props) {
-  const fields = useBoardStore((s) => s.fields);
+export function AiCardModal({ open, onClose, initialText, initialVideoUrl }: Props) {
   const { createCard } = useCardMutations();
-  const { extractCards } = useAiCardExtraction();
+  const {
+    extractFromText,
+    enrichMissingFields,
+    extractableFields: editableFields,
+  } = useAiCardExtraction();
 
   const [step, setStep] = useState<Step>("input");
   const [text, setText] = useState("");
+  const [videoUrl, setVideoUrl] = useState<string | undefined>(undefined);
   const [extracting, setExtracting] = useState(false);
+  const [enriching, setEnriching] = useState(false);
+  const [enrichedOnce, setEnrichedOnce] = useState(false);
   const [creating, setCreating] = useState(false);
 
   const [cards, setCards] = useState<ExtractionResult[]>([]);
@@ -49,13 +57,16 @@ export function AiCardModal({ open, onClose }: Props) {
   useEffect(() => {
     if (open) {
       setStep("input");
-      setText("");
+      setText(initialText ?? "");
+      setVideoUrl(initialVideoUrl);
       setCards([]);
       setCardValues([]);
       setCardStatuses([]);
       setCurrentIndex(0);
+      setEnriching(false);
+      setEnrichedOnce(false);
     }
-  }, [open]);
+  }, [open, initialText, initialVideoUrl]);
 
   useEffect(() => {
     if (open && step === "input") {
@@ -63,13 +74,13 @@ export function AiCardModal({ open, onClose }: Props) {
     }
   }, [open, step]);
 
-  const editableFields = fields.filter((f) => f.editable !== false && f.visible !== false);
+  const hasMissingFields = cardValues.some((cv) => editableFields.some((f) => !(f.id in cv)));
 
   async function handleExtract() {
     if (!text.trim()) return;
     setExtracting(true);
     try {
-      const results = await extractCards(text);
+      const results = await extractFromText(text);
       if (results.length === 0 || results.every((r) => Object.keys(r.values).length === 0)) {
         toast.error("Nenhum campo pôde ser extraído do texto.");
         return;
@@ -78,11 +89,37 @@ export function AiCardModal({ open, onClose }: Props) {
       setCardValues(results.map((r) => ({ ...r.values })));
       setCardStatuses(results.map(() => "pending" as CardStatus));
       setCurrentIndex(0);
+      setEnrichedOnce(false);
       setStep("review");
     } catch (err) {
       toast.error((err as Error).message ?? "Erro ao extrair campos");
     } finally {
       setExtracting(false);
+    }
+  }
+
+  async function handleEnrich() {
+    setEnriching(true);
+    try {
+      let transcript: string | undefined;
+      if (videoUrl) {
+        try {
+          transcript = await transcribeVideo(videoUrl);
+        } catch {
+          toast.error("Não foi possível transcrever o vídeo — continuando sem ele.");
+        }
+      }
+
+      const merged = cards.map((c, i) => ({ ...c, values: cardValues[i] }));
+      const results = await enrichMissingFields(merged, transcript);
+
+      setCards(results);
+      setCardValues(results.map((r) => ({ ...r.values })));
+      setEnrichedOnce(true);
+    } catch (err) {
+      toast.error((err as Error).message ?? "Erro ao completar campos");
+    } finally {
+      setEnriching(false);
     }
   }
 
@@ -211,6 +248,22 @@ export function AiCardModal({ open, onClose }: Props) {
           </span>
         )}
       </header>
+
+      {hasMissingFields && !enrichedOnce && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border bg-accent/40 text-sm shrink-0">
+          <span className="text-muted-foreground">Alguns campos ficaram vazios.</span>
+          <button
+            onClick={handleEnrich}
+            disabled={enriching}
+            className="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition disabled:opacity-50 inline-flex items-center gap-1.5"
+          >
+            {enriching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {enriching
+              ? "Completando…"
+              : `Tentar completar com busca na web${videoUrl ? " e vídeo" : ""}?`}
+          </button>
+        </div>
+      )}
 
       {/* Card stack + arrows + approve/reject */}
       <TooltipProvider delayDuration={400}>

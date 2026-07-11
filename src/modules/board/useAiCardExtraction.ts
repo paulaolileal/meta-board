@@ -105,6 +105,7 @@ function buildSearchInstructions(
   extractedFields: FieldDef[],
   extractedValues: Partial<CardRecord>,
   missingFields: FieldDef[],
+  videoTranscript?: string,
 ): string {
   const extractedLines = extractedFields
     .filter((f) => f.id in extractedValues)
@@ -119,11 +120,15 @@ function buildSearchInstructions(
     })
     .join("\n");
 
+  const videoTranscriptBlock = videoTranscript
+    ? `\nVideo transcript (additional context, also a valid source for the missing fields):\n${videoTranscript}\n`
+    : "";
+
   return `You are a data enrichment assistant for a board called "${boardName}"${boardDescription ? ` (${boardDescription})` : ""}.
 
 Already extracted from the user's text:
 ${extractedLines}
-
+${videoTranscriptBlock}
 Search the web to find the missing fields below. Use the extracted fields as search context.
 
 Missing fields:
@@ -237,10 +242,10 @@ export function useAiCardExtraction() {
   const board = useBoardStore((s) => s.board);
   const fields = useBoardStore((s) => s.fields);
 
-  async function extractCards(text: string): Promise<ExtractionResult[]> {
-    if (!board) throw new Error("Board não carregado");
+  const extractableFields = fields.filter((f) => f.editable !== false && f.visible !== false);
 
-    const extractableFields = fields.filter((f) => f.editable !== false && f.visible !== false);
+  async function extractFromText(text: string): Promise<ExtractionResult[]> {
+    if (!board) throw new Error("Board não carregado");
 
     const systemPrompt = buildSystemPrompt(board.name, board.description, extractableFields);
 
@@ -272,13 +277,19 @@ export function useAiCardExtraction() {
       return { values, sources, reasons };
     });
 
-    const validPhase1Results = dropCardsWithMissingRequired(phase1Results, extractableFields);
-    if (validPhase1Results.length === 0) return [];
+    return dropCardsWithMissingRequired(phase1Results, extractableFields);
+  }
+
+  async function enrichMissingFields(
+    results: ExtractionResult[],
+    videoTranscript?: string,
+  ): Promise<ExtractionResult[]> {
+    if (!board) throw new Error("Board não carregado");
 
     const enriched = await Promise.allSettled(
-      validPhase1Results.map(async (result) => {
+      results.map(async (result) => {
         const missingFields = extractableFields.filter((f) => !(f.id in result.values));
-        const hasSearchContext = Object.keys(result.values).length > 0;
+        const hasSearchContext = Object.keys(result.values).length > 0 || !!videoTranscript;
 
         if (missingFields.length === 0 || !hasSearchContext) return result;
 
@@ -289,6 +300,7 @@ export function useAiCardExtraction() {
             extractableFields,
             result.values,
             missingFields,
+            videoTranscript,
           );
 
           const searchText = await chatCompleteWithWebSearch(
@@ -317,8 +329,8 @@ export function useAiCardExtraction() {
       }),
     );
 
-    return enriched.map((r, i) => (r.status === "fulfilled" ? r.value : validPhase1Results[i]));
+    return enriched.map((r, i) => (r.status === "fulfilled" ? r.value : results[i]));
   }
 
-  return { extractCards };
+  return { extractFromText, enrichMissingFields, extractableFields };
 }
