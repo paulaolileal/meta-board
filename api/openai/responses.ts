@@ -1,4 +1,4 @@
-import { verifyGoogleAuth } from "../_lib/verifyGoogleAuth";
+import { verifyGoogleAuth } from "../_lib/verifyGoogleAuth.js";
 
 export const config = { runtime: "edge" };
 
