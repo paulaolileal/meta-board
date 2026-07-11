@@ -1,6 +1,13 @@
+import { googleAuthService } from "@/shared/providers/providerFactory";
+
 export interface OpenAiMessage {
   role: "system" | "user" | "assistant";
   content: string;
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = await googleAuthService.ensureValidToken();
+  return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 }
 
 export async function chatComplete(
@@ -9,7 +16,7 @@ export async function chatComplete(
 ): Promise<string> {
   const response = await fetch("/api/openai/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await authHeaders(),
     body: JSON.stringify({ model, messages, response_format: { type: "json_object" } }),
   });
 
@@ -34,7 +41,7 @@ export async function chatCompleteWithWebSearch(
 ): Promise<string> {
   const response = await fetch("/api/openai/responses", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await authHeaders(),
     body: JSON.stringify({ model, tools: [{ type: "web_search_preview" }], instructions, input }),
   });
 
@@ -57,4 +64,20 @@ export async function chatCompleteWithWebSearch(
   if (!text) throw new Error("No response from web search");
 
   return text;
+}
+
+export async function transcribeVideo(videoUrl: string): Promise<string> {
+  const response = await fetch("/api/openai/transcribe", {
+    method: "POST",
+    headers: await authHeaders(),
+    body: JSON.stringify({ videoUrl }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? `Transcription error ${response.status}`);
+  }
+
+  const data = (await response.json()) as { text: string };
+  return data.text;
 }
