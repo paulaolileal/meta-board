@@ -43,8 +43,8 @@ export function AiCardModal({ open, onClose, initialText, initialVideoUrl }: Pro
   const [text, setText] = useState("");
   const [videoUrl, setVideoUrl] = useState<string | undefined>(undefined);
   const [extracting, setExtracting] = useState(false);
-  const [enriching, setEnriching] = useState(false);
-  const [enrichedOnce, setEnrichedOnce] = useState(false);
+  const [enrichingIndex, setEnrichingIndex] = useState<number | null>(null);
+  const [enrichedFlags, setEnrichedFlags] = useState<boolean[]>([]);
   const [creating, setCreating] = useState(false);
 
   const [cards, setCards] = useState<ExtractionResult[]>([]);
@@ -63,8 +63,8 @@ export function AiCardModal({ open, onClose, initialText, initialVideoUrl }: Pro
       setCardValues([]);
       setCardStatuses([]);
       setCurrentIndex(0);
-      setEnriching(false);
-      setEnrichedOnce(false);
+      setEnrichingIndex(null);
+      setEnrichedFlags([]);
     }
   }, [open, initialText, initialVideoUrl]);
 
@@ -73,8 +73,6 @@ export function AiCardModal({ open, onClose, initialText, initialVideoUrl }: Pro
       setTimeout(() => textareaRef.current?.focus(), 50);
     }
   }, [open, step]);
-
-  const hasMissingFields = cardValues.some((cv) => editableFields.some((f) => !(f.id in cv)));
 
   async function handleExtract() {
     if (!text.trim()) return;
@@ -89,7 +87,7 @@ export function AiCardModal({ open, onClose, initialText, initialVideoUrl }: Pro
       setCardValues(results.map((r) => ({ ...r.values })));
       setCardStatuses(results.map(() => "pending" as CardStatus));
       setCurrentIndex(0);
-      setEnrichedOnce(false);
+      setEnrichedFlags(results.map(() => false));
       setStep("review");
     } catch (err) {
       toast.error((err as Error).message ?? "Erro ao extrair campos");
@@ -98,8 +96,8 @@ export function AiCardModal({ open, onClose, initialText, initialVideoUrl }: Pro
     }
   }
 
-  async function handleEnrich() {
-    setEnriching(true);
+  async function handleEnrich(index: number) {
+    setEnrichingIndex(index);
     try {
       let transcript: string | undefined;
       if (videoUrl) {
@@ -110,16 +108,18 @@ export function AiCardModal({ open, onClose, initialText, initialVideoUrl }: Pro
         }
       }
 
-      const merged = cards.map((c, i) => ({ ...c, values: cardValues[i] }));
-      const results = await enrichMissingFields(merged, transcript);
+      const [result] = await enrichMissingFields(
+        [{ ...cards[index], values: cardValues[index] }],
+        transcript,
+      );
 
-      setCards(results);
-      setCardValues(results.map((r) => ({ ...r.values })));
-      setEnrichedOnce(true);
+      setCards((prev) => prev.map((c, i) => (i === index ? result : c)));
+      setCardValues((prev) => prev.map((cv, i) => (i === index ? { ...result.values } : cv)));
+      setEnrichedFlags((prev) => prev.map((f, i) => (i === index ? true : f)));
     } catch (err) {
       toast.error((err as Error).message ?? "Erro ao completar campos");
     } finally {
-      setEnriching(false);
+      setEnrichingIndex(null);
     }
   }
 
@@ -188,6 +188,10 @@ export function AiCardModal({ open, onClose, initialText, initialVideoUrl }: Pro
         : "";
 
   const currentCard = cards[currentIndex];
+  const currentCardHasMissingFields = editableFields.some(
+    (f) => !(f.id in (cardValues[currentIndex] ?? {})),
+  );
+  const currentCardCanEnrich = currentCardHasMissingFields && !enrichedFlags[currentIndex];
 
   if (!open) return null;
 
@@ -249,25 +253,9 @@ export function AiCardModal({ open, onClose, initialText, initialVideoUrl }: Pro
         )}
       </header>
 
-      {hasMissingFields && !enrichedOnce && (
-        <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border bg-accent/40 text-sm shrink-0">
-          <span className="text-muted-foreground">Alguns campos ficaram vazios.</span>
-          <button
-            onClick={handleEnrich}
-            disabled={enriching}
-            className="shrink-0 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition disabled:opacity-50 inline-flex items-center gap-1.5"
-          >
-            {enriching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {enriching
-              ? "Completando…"
-              : `Tentar completar com busca na web${videoUrl ? " e vídeo" : ""}?`}
-          </button>
-        </div>
-      )}
-
       {/* Card stack + arrows + approve/reject */}
       <TooltipProvider delayDuration={400}>
-        <div className="flex-1 flex flex-col items-center justify-center px-4 py-4">
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center px-4 py-4">
           <div
             className={`flex items-center gap-3 w-full max-w-2xl ${cards.length > 1 ? "" : "justify-center"}`}
           >
@@ -397,6 +385,32 @@ export function AiCardModal({ open, onClose, initialText, initialVideoUrl }: Pro
               <X className="h-4 w-4" />
               Rejeitar
             </button>
+
+            {currentCardCanEnrich && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleEnrich(currentIndex)}
+                    disabled={enrichingIndex === currentIndex}
+                    aria-label="Tentar completar com busca na web"
+                    className="shrink-0 w-12 py-3 rounded-xl border-2 border-border hover:border-blue-400 hover:text-blue-500 hover:bg-blue-500/5 transition inline-flex items-center justify-center disabled:opacity-50"
+                  >
+                    {enrichingIndex === currentIndex ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Globe className="h-4 w-4" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  className="bg-popover text-foreground border border-border shadow-md font-normal text-[11px]"
+                >
+                  {`Tentar completar com busca na web${videoUrl ? " e vídeo" : ""}`}
+                </TooltipContent>
+              </Tooltip>
+            )}
+
             <button
               onClick={() => navigate("next", "approved")}
               className={`flex-1 py-3 text-sm rounded-xl border-2 transition font-medium inline-flex items-center justify-center gap-2 ${
