@@ -100,12 +100,15 @@
   // span on a reel view (button labels, counters, timestamps) is short.
   function captionFromLongTextSpan() {
     const MIN_LENGTH = 40;
+    let longest;
     for (const span of document.querySelectorAll("span[dir='auto']")) {
       if (span.closest("time")) continue;
       const value = text(span);
-      if (value && value.length >= MIN_LENGTH) return value;
+      if (value && value.length >= MIN_LENGTH && (!longest || value.length > longest.length)) {
+        longest = value;
+      }
     }
-    return undefined;
+    return longest;
   }
 
   const captionText = captionEntry?.body || text(legacyCaptionEl) || captionFromLongTextSpan();
