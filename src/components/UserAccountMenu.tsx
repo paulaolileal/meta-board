@@ -1,8 +1,9 @@
-import { useNavigate } from "react-router-dom";
-import { LogOut } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Download, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { googleAuthService } from "@/shared/providers/providerFactory";
 import { useAuthStore } from "@/store/authStore";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -16,6 +17,7 @@ import {
 export function UserAccountMenu() {
   const navigate = useNavigate();
   const { user, clearUser } = useAuthStore();
+  const isMobile = useIsMobile();
 
   if (!user) return null;
 
@@ -54,6 +56,14 @@ export function UserAccountMenu() {
             <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
           </div>
         </DropdownMenuLabel>
+        {!isMobile && (
+          <DropdownMenuItem asChild className="cursor-pointer">
+            <Link to="/extension">
+              <Download />
+              Extensão do Chrome
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={handleSignOut}

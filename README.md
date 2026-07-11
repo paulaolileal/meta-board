@@ -384,11 +384,13 @@ Crie `.env.local` na raiz do projeto:
 
 ```env
 VITE_GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
+GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com   # mesmo valor acima, sem prefixo VITE_ (usado server-side)
 OPENAI_API_KEY=sk-...               # Opcional — habilita criação de cards com IA (server-side)
 ```
 
 > `VITE_SPREADSHEET_ID` foi removido — cada usuário seleciona ou cria sua própria planilha no primeiro login.
 > `OPENAI_API_KEY` **não usa o prefixo `VITE_`** — ela vive apenas nas Vercel Edge Functions e nunca é injetada no bundle do browser.
+> `GOOGLE_CLIENT_ID` (sem prefixo `VITE_`) é usado pelas Edge Functions em `api/openai/` para validar o token Google do chamador — sem ele, essas rotas respondem `403` para qualquer requisição.
 
 Reinicie o dev server.
 
@@ -409,6 +411,7 @@ A escolha fica salva em `localStorage` associada ao e-mail do usuário. É poss�
 - Não persistimos o `access_token` entre sessões — ele vive apenas em closure; `silentSignIn()` recupera um novo token sem interação do usuário em novas abas
 - `spreadsheetId` é salvo em `localStorage` associado ao e-mail do usuário — o usuário controla qual planilha usar
 - `OPENAI_API_KEY` nunca chega ao browser — todas as chamadas à OpenAI passam pelas Vercel Edge Functions em `api/openai/`
+- Todas as rotas em `api/openai/` (incluindo transcrição de vídeo) exigem um `Authorization: Bearer <token>` Google válido, verificado server-side via `api/_lib/verifyGoogleAuth.ts` contra o endpoint `tokeninfo` do Google — sem isso, a rota responde `401`/`403` antes de gastar cota da OpenAI
 
 ---
 
@@ -430,13 +433,15 @@ A escolha fica salva em `localStorage` associada ao e-mail do usuário. É poss�
 
 Em **Settings → Environment Variables**, adicione:
 
-| Variável                | Valor                              | Visibilidade    |
-| ----------------------- | ---------------------------------- | --------------- |
-| `VITE_GOOGLE_CLIENT_ID` | `xxxxx.apps.googleusercontent.com` | Build (VITE_)   |
-| `OPENAI_API_KEY`        | `sk-...` (opcional)                | Server (seguro) |
+| Variável                | Valor                                 | Visibilidade    |
+| ----------------------- | -------------------------------------- | --------------- |
+| `VITE_GOOGLE_CLIENT_ID` | `xxxxx.apps.googleusercontent.com`    | Build (VITE_)   |
+| `GOOGLE_CLIENT_ID`      | mesmo valor acima, sem prefixo `VITE_` | Server (seguro) |
+| `OPENAI_API_KEY`        | `sk-...` (opcional)                   | Server (seguro) |
 
 > `VITE_SPREADSHEET_ID` foi removido — cada usuário conecta sua própria planilha pelo app.
 > `OPENAI_API_KEY` **não usa o prefixo `VITE_`** — ela só é acessível pelas Edge Functions e nunca aparece no bundle público.
+> `GOOGLE_CLIENT_ID` (sem prefixo `VITE_`) é obrigatória — sem ela, as rotas de IA em `api/openai/` rejeitam todas as requisições com `403`.
 
 **Passo 3 — Configurar roteamento SPA**
 

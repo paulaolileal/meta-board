@@ -5,6 +5,7 @@ import { HomePage } from "@/routes/HomePage";
 import { SpreadsheetPage } from "@/routes/SpreadsheetPage";
 import { SpreadsheetSetupPage } from "@/routes/SpreadsheetSetupPage";
 import { BoardPage } from "@/routes/BoardPage";
+import { ExtensionInstructionsPage } from "@/routes/ExtensionInstructionsPage";
 import { Link } from "react-router-dom";
 import { googleAuthService, initProvider } from "@/shared/providers/providerFactory";
 import { useAuthStore } from "@/store/authStore";
@@ -112,6 +113,14 @@ export function AppRouter() {
         element={
           <ProtectedRoute>
             <SpreadsheetSetupPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/extension"
+        element={
+          <ProtectedRoute>
+            <ExtensionInstructionsPage />
           </ProtectedRoute>
         }
       />
