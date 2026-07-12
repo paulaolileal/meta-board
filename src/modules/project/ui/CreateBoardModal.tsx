@@ -20,6 +20,8 @@ import {
   Mail,
   Palette,
   Smile,
+  MapPin,
+  Clock,
 } from "lucide-react";
 import {
   Dialog,
@@ -48,6 +50,7 @@ const FIELD_TYPE_OPTIONS: { type: FieldType; label: string; Icon: React.ElementT
   { type: "text", label: "Texto", Icon: Type },
   { type: "longtext", label: "Texto longo", Icon: AlignLeft },
   { type: "number", label: "Número", Icon: Hash },
+  { type: "longnumber", label: "Número longo", Icon: Hash },
   { type: "bool", label: "Booleano", Icon: ToggleLeft },
   { type: "date", label: "Data", Icon: Calendar },
   { type: "datetime", label: "Data e hora", Icon: CalendarClock },
@@ -60,6 +63,8 @@ const FIELD_TYPE_OPTIONS: { type: FieldType; label: string; Icon: React.ElementT
   { type: "checklist", label: "Checklist", Icon: ListChecks },
   { type: "email", label: "E-mail", Icon: Mail },
   { type: "color", label: "Cor", Icon: Palette },
+  { type: "location", label: "Localização", Icon: MapPin },
+  { type: "duration", label: "Duração", Icon: Clock },
 ];
 
 function slugify(name: string): string {

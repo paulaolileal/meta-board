@@ -8,12 +8,12 @@ function setStatus(message, kind) {
 
 button.addEventListener("click", async () => {
   button.disabled = true;
-  setStatus("Lendo o post...", "");
+  setStatus("Lendo a página...", "");
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || !tab.url?.includes("instagram.com")) {
-      throw new Error("Abra um post ou reel do Instagram antes de clicar em enviar.");
+    if (!tab?.id || !tab.url?.startsWith("http")) {
+      throw new Error("Abra uma página da web antes de clicar em enviar.");
     }
 
     const [{ result: payload }] = await chrome.scripting.executeScript({
@@ -22,7 +22,7 @@ button.addEventListener("click", async () => {
     });
 
     if (!payload) {
-      throw new Error("Não consegui ler este post. Tente abrir a página novamente.");
+      throw new Error("Não consegui ler esta página. Tente abrir novamente.");
     }
 
     await chrome.runtime.sendMessage({ type: "IMPORT_PAYLOAD", payload });

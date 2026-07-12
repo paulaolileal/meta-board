@@ -1,4 +1,6 @@
-(function scrapeInstagramPost() {
+(function scrapePage() {
+  const MAX_PAGE_TEXT_LENGTH = 20000;
+
   function text(el) {
     return el ? el.textContent.trim() : undefined;
   }
@@ -18,6 +20,40 @@
   function unescapeJsonUrl(url) {
     return url.replace(/\\u0026/g, "&").replace(/\\\//g, "/");
   }
+
+  function videoUrlFromMeta() {
+    const meta = document.querySelector(
+      "meta[property='og:video:secure_url'], meta[property='og:video']",
+    );
+    return meta?.getAttribute("content") || undefined;
+  }
+
+  function videoUrlFromElement() {
+    const videoEl = document.querySelector("video");
+    const src = videoEl ? videoEl.currentSrc || videoEl.src : undefined;
+    return src && !src.startsWith("blob:") ? src : undefined;
+  }
+
+  // Site-agnostic fallback: `innerText` follows the browser's own "rendered
+  // text" algorithm, which already skips <script>/<style>/display:none
+  // content — so this needs no per-site parsing to be useful on any page
+  // (product listings, articles, tweets, whatever the user is looking at).
+  function collectPageText() {
+    const raw = document.body ? document.body.innerText : "";
+    const collapsed = raw
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    return collapsed.length > MAX_PAGE_TEXT_LENGTH
+      ? collapsed.slice(0, MAX_PAGE_TEXT_LENGTH)
+      : collapsed;
+  }
+
+  // ---- Instagram-specific extraction ----
+  // Instagram's DOM is unstable and unversioned; everything below is
+  // best-effort and expected to need updates when Instagram changes its
+  // markup. It only runs on instagram.com post/reel pages — every other
+  // site falls back to the generic collectPageText() above.
 
   // Path segments that are never a username, used to tell apart profile
   // links (e.g. "/domburgueria/") from Instagram's own routes.
@@ -53,13 +89,6 @@
     return undefined;
   }
 
-  // Instagram's DOM is unstable and unversioned; these selectors are best-effort
-  // and expected to need updates when Instagram changes its markup.
-  // Instagram no longer wraps post content in <article>/<header>, so we scope
-  // to the whole document and gate on the URL instead.
-  const isPostOrReelPage = /\/(p|reel|reels)\/[^/]+\/?/.test(window.location.pathname);
-  if (!isPostOrReelPage) return null;
-
   // Instagram has also dropped <h1>/<h2>/<ul>/<li> from the post/comments
   // panel, so tag-based selectors can no longer find the caption or its
   // author. <time datetime> is the one semantic element Instagram keeps for
@@ -85,14 +114,6 @@
     return { username: found.username, body, isPinned };
   }
 
-  const timeEls = Array.from(document.querySelectorAll("time[datetime]"));
-  const captionTimeEl = timeEls.find((t) => !t.closest("a"));
-  const captionEntry = captionTimeEl ? entryFromTime(captionTimeEl) : undefined;
-
-  // Fallback for page variants where the time-based heuristic above doesn't
-  // apply (older markup still using semantic tags).
-  const legacyCaptionEl = document.querySelector("h1, div[data-testid='post-caption'], ul li span");
-
   // Reels rendered inline in the feed (rather than opened on their own /p/
   // page) skip the comments panel entirely, so there is no <time> to anchor
   // on and no <h1>/<header> either. The caption is just the longest
@@ -110,8 +131,6 @@
     }
     return longest;
   }
-
-  const captionText = captionEntry?.body || text(legacyCaptionEl) || captionFromLongTextSpan();
 
   // Username: prefer the address bar (present whenever the post/reel was
   // reached from a profile link, and immune to markup churn), then the
@@ -136,19 +155,6 @@
     return undefined;
   }
 
-  const profileUsername =
-    usernameFromHref(window.location.pathname.split("/").slice(0, 2).join("/")) ||
-    captionEntry?.username ||
-    usernameFromReelOwnerLink() ||
-    firstValidUsername(document.querySelectorAll("header a[href^='/']")) ||
-    firstValidUsername(document.querySelectorAll("h2 a[href^='/']"));
-
-  const pinnedAuthorComments = timeEls
-    .map(entryFromTime)
-    .filter((entry) => entry?.body)
-    .filter((entry) => entry.isPinned || (!!profileUsername && entry.username === profileUsername))
-    .map((entry) => entry.body);
-
   // Instagram streams <video> through MediaSource Extensions, so
   // currentSrc/src is a page-local "blob:" URL that can't be fetched
   // server-side (e.g. for transcription). The real CDN mp4 URL instead
@@ -164,28 +170,60 @@
     return undefined;
   }
 
-  function videoUrlFromMeta() {
-    const meta = document.querySelector(
-      "meta[property='og:video:secure_url'], meta[property='og:video']",
+  function scrapeInstagramPost() {
+    const isPostOrReelPage = /\/(p|reel|reels)\/[^/]+\/?/.test(window.location.pathname);
+    if (!isPostOrReelPage) return undefined;
+
+    const timeEls = Array.from(document.querySelectorAll("time[datetime]"));
+    const captionTimeEl = timeEls.find((t) => !t.closest("a"));
+    const captionEntry = captionTimeEl ? entryFromTime(captionTimeEl) : undefined;
+
+    // Fallback for page variants where the time-based heuristic above doesn't
+    // apply (older markup still using semantic tags).
+    const legacyCaptionEl = document.querySelector(
+      "h1, div[data-testid='post-caption'], ul li span",
     );
-    return meta?.getAttribute("content") || undefined;
+
+    const captionText = captionEntry?.body || text(legacyCaptionEl) || captionFromLongTextSpan();
+
+    const profileUsername =
+      usernameFromHref(window.location.pathname.split("/").slice(0, 2).join("/")) ||
+      captionEntry?.username ||
+      usernameFromReelOwnerLink() ||
+      firstValidUsername(document.querySelectorAll("header a[href^='/']")) ||
+      firstValidUsername(document.querySelectorAll("h2 a[href^='/']"));
+
+    const pinnedAuthorComments = timeEls
+      .map(entryFromTime)
+      .filter((entry) => entry?.body)
+      .filter((entry) => entry.isPinned || (!!profileUsername && entry.username === profileUsername))
+      .map((entry) => entry.body);
+
+    const videoUrl = videoUrlFromEmbeddedJson() || videoUrlFromMeta() || videoUrlFromElement();
+
+    return {
+      captionText,
+      pinnedAuthorComments,
+      mentions: extractMentions(captionText),
+      links: extractLinks(captionText),
+      profileUsername,
+      videoUrl,
+    };
   }
 
-  function videoUrlFromElement() {
-    const videoEl = document.querySelector("video");
-    const src = videoEl ? videoEl.currentSrc || videoEl.src : undefined;
-    return src && !src.startsWith("blob:") ? src : undefined;
-  }
+  const isInstagram = window.location.hostname.includes("instagram.com");
+  const instagramResult = isInstagram ? scrapeInstagramPost() : undefined;
 
-  const videoUrl = videoUrlFromEmbeddedJson() || videoUrlFromMeta() || videoUrlFromElement();
-
-  return {
-    captionText,
-    pinnedAuthorComments,
-    mentions: extractMentions(captionText),
-    links: extractLinks(captionText),
-    profileUsername,
-    videoUrl,
+  const base = {
     postUrl: window.location.href,
+    pageText: collectPageText(),
   };
+
+  // Instagram pages get the fully structured payload (plus pageText as a
+  // supplementary fallback); every other site — Shopee, TikTok, a news
+  // article, anything — gets whatever the browser can render as text, with
+  // no site-specific parsing at all.
+  return instagramResult
+    ? { ...base, ...instagramResult }
+    : { ...base, videoUrl: videoUrlFromMeta() || videoUrlFromElement() };
 })();

@@ -57,6 +57,17 @@ export class SheetsApiClient {
     await this.request("POST", `${SHEETS_BASE}/${spreadsheetId}:batchUpdate`, { requests });
   }
 
+  async batchUpdateValues(
+    spreadsheetId: string,
+    data: Array<{ range: string; values: string[][] }>,
+  ): Promise<void> {
+    if (!data.length) return;
+    await this.request("POST", `${SHEETS_BASE}/${spreadsheetId}/values:batchUpdate`, {
+      valueInputOption: "USER_ENTERED",
+      data,
+    });
+  }
+
   async getSpreadsheetMetadata(spreadsheetId: string): Promise<SpreadsheetMetadata> {
     return this.request(
       "GET",

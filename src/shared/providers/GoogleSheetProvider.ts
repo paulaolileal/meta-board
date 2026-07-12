@@ -233,7 +233,9 @@ export class GoogleSheetProvider implements ISheetProvider {
       ...partial,
     };
 
-    await this.api.appendValues(this.sheetId, "_cards", [this.cardToRow(headers, card)]);
+    await this.api.appendValues(this.sheetId, `_cards!A:${colLetter(headers.length)}`, [
+      this.cardToRow(headers, card),
+    ]);
     return card;
   }
 
@@ -312,8 +314,50 @@ export class GoogleSheetProvider implements ISheetProvider {
   }
 
   async createField(field: FieldDef): Promise<FieldDef> {
-    await this.api.appendValues(this.sheetId, "_fields", [this.fieldDefToRow(field)]);
+    await this.api.appendValues(this.sheetId, `_fields!A:${colLetter(FIELDS_HEADERS.length)}`, [
+      this.fieldDefToRow(field),
+    ]);
     return field;
+  }
+
+  async deleteField(fieldId: string, boardId: string): Promise<void> {
+    const values = await this.api.getValues(this.sheetId, "_fields");
+    if (values.length < 2) return;
+    const [headers, ...rows] = values;
+    const rowIndex = rows.findIndex((row) => row[0] === fieldId && row[1] === boardId);
+    if (rowIndex < 0) return;
+    const sheetRow = rowIndex + 2;
+    const emptyRow = Array(headers.length).fill("");
+    await this.api.setValues(
+      this.sheetId,
+      `_fields!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`,
+      [emptyRow],
+    );
+  }
+
+  async saveCardsBulk(cards: CardRecord[]): Promise<CardRecord[]> {
+    if (!cards.length) return cards;
+    const values = await this.api.getValues(this.sheetId, "_cards");
+    if (values.length < 2) throw new Error("Aba _cards não encontrada");
+    const [headers, ...rows] = values;
+    const updatedAt = now();
+
+    const data: Array<{ range: string; values: string[][] }> = [];
+    const result: CardRecord[] = [];
+    for (const card of cards) {
+      const rowIndex = rows.findIndex((row) => row[0] === card._id);
+      if (rowIndex < 0) continue;
+      const updated = { ...card, _updatedAt: updatedAt };
+      const sheetRow = rowIndex + 2;
+      data.push({
+        range: `_cards!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`,
+        values: [this.cardToRow(headers, updated)],
+      });
+      result.push(updated);
+    }
+
+    await this.api.batchUpdateValues(this.sheetId, data);
+    return result;
   }
 
   async sync(): Promise<void> {
@@ -383,11 +427,17 @@ export class GoogleSheetProvider implements ISheetProvider {
       updatedAt: now(),
     };
 
-    await this.api.appendValues(this.sheetId, "_boards", [this.boardConfigToRow(newBoard)]);
+    await this.api.appendValues(this.sheetId, `_boards!A:${colLetter(BOARDS_HEADERS.length)}`, [
+      this.boardConfigToRow(newBoard),
+    ]);
 
     if (fields.length) {
       const rows = fields.map((f) => this.fieldDefToRow({ ...f, boardId: newBoard.id }));
-      await this.api.appendValues(this.sheetId, "_fields", rows);
+      await this.api.appendValues(
+        this.sheetId,
+        `_fields!A:${colLetter(FIELDS_HEADERS.length)}`,
+        rows,
+      );
     }
 
     return newBoard;

@@ -12,9 +12,11 @@ export interface ISheetProvider {
   saveBoard(board: BoardConfig): Promise<BoardConfig>;
   saveField(field: FieldDef): Promise<FieldDef>;
   createField(field: FieldDef): Promise<FieldDef>;
+  deleteField(fieldId: string, boardId: string): Promise<void>;
   sync(): Promise<void>;
   initializeSpreadsheet?(): Promise<void>;
   deleteBoard?(boardId: string): Promise<void>;
+  saveCardsBulk?(cards: CardRecord[]): Promise<CardRecord[]>;
   createBoard?(
     config: Omit<BoardConfig, "id" | "createdAt" | "updatedAt">,
     fields: FieldDef[],

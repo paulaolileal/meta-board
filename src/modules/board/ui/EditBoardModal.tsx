@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Loader2,
   Plus,
-  ChevronDown,
   ChevronUp,
   X,
   Columns3,
@@ -45,7 +44,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
-import type { BoardConfig, FieldDef, FieldType } from "@/modules/project/domain/types";
+import type { BoardConfig, CardRecord, FieldDef, FieldType } from "@/modules/project/domain/types";
 import {
   Dialog,
   DialogContent,
@@ -57,6 +56,12 @@ import { getSheetProvider } from "@/shared/providers/providerFactory";
 import { useBoardStore } from "@/modules/board/store";
 import { BoardIconPicker } from "@/shared/icons/BoardIconPicker";
 import { BoardColorPicker } from "@/shared/colors/BoardColorPicker";
+import { cacheDel } from "@/shared/cache/localCache";
+import {
+  areTypesCompatible,
+  coerceFieldValue,
+  collectDistinctOptionValues,
+} from "@/modules/fields/fieldTypeCoercion";
 
 const SELECT_TYPES: FieldType[] = ["select", "chip", "multiselect"];
 
@@ -64,6 +69,7 @@ const FIELD_TYPE_ORDER: FieldType[] = [
   "text",
   "longtext",
   "number",
+  "longnumber",
   "bool",
   "date",
   "datetime",
@@ -133,10 +139,15 @@ const FIELD_TYPE_LABELS: Record<FieldType, string> = {
 
 interface SortableFieldRowProps {
   field: FieldDef;
+  label: string;
+  type: FieldType;
+  isRiskyTypeChange: boolean;
   isExpanded: boolean;
   isInClosedLayout: boolean;
   options: string[];
   newOption: string;
+  onLabelChange: (val: string) => void;
+  onTypeChange: (type: FieldType) => void;
   onToggleExpand: () => void;
   onToggleClosedLayout: () => void;
   onRemove: () => void;
@@ -147,10 +158,15 @@ interface SortableFieldRowProps {
 
 function SortableFieldRow({
   field,
+  label,
+  type,
+  isRiskyTypeChange,
   isExpanded,
   isInClosedLayout,
   options,
   newOption,
+  onLabelChange,
+  onTypeChange,
   onToggleExpand,
   onToggleClosedLayout,
   onRemove,
@@ -162,8 +178,8 @@ function SortableFieldRow({
     id: field.id,
   });
 
-  const Icon = FIELD_TYPE_ICONS[field.type] ?? Type;
-  const isSelectable = SELECT_TYPES.includes(field.type);
+  const Icon = FIELD_TYPE_ICONS[type] ?? Type;
+  const isSelectable = SELECT_TYPES.includes(type);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -188,11 +204,39 @@ function SortableFieldRow({
         </button>
 
         <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <span className="text-sm flex-1 truncate">{field.label}</span>
+        <input
+          value={label}
+          onChange={(e) => onLabelChange(e.target.value)}
+          className="text-sm flex-1 min-w-0 bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-ring/40 rounded px-1 py-0.5 truncate"
+          aria-label="Nome do campo"
+        />
 
-        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
-          {FIELD_TYPE_LABELS[field.type] ?? field.type}
-        </span>
+        {isSelectable && (
+          <button
+            onClick={onToggleExpand}
+            className="h-5 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition shrink-0"
+            aria-label={isExpanded ? "Ocultar opções" : "Editar opções"}
+          >
+            {isExpanded ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <List className="h-3.5 w-3.5" />
+            )}
+          </button>
+        )}
+
+        <select
+          value={type}
+          onChange={(e) => onTypeChange(e.target.value as FieldType)}
+          className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0 border-none focus:outline-none focus:ring-1 focus:ring-ring/40 cursor-pointer"
+          aria-label="Tipo do campo"
+        >
+          {FIELD_TYPE_ORDER.map((t) => (
+            <option key={t} value={t}>
+              {FIELD_TYPE_LABELS[t]}
+            </option>
+          ))}
+        </select>
 
         {field.required && (
           <span className="text-[10px] text-primary font-medium shrink-0">obrigatório</span>
@@ -209,20 +253,6 @@ function SortableFieldRow({
           {isInClosedLayout ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
         </button>
 
-        {isSelectable && (
-          <button
-            onClick={onToggleExpand}
-            className="h-5 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition shrink-0"
-            aria-label={isExpanded ? "Ocultar opções" : "Editar opções"}
-          >
-            {isExpanded ? (
-              <ChevronUp className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5" />
-            )}
-          </button>
-        )}
-
         {!field.required && (
           <button
             onClick={onRemove}
@@ -234,6 +264,13 @@ function SortableFieldRow({
           </button>
         )}
       </div>
+
+      {isRiskyTypeChange && (
+        <p className="px-3 pb-2 -mt-1 text-[11px] text-warning flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3 shrink-0" />
+          Esta conversão pode causar perda de dados nos valores já preenchidos nos cards.
+        </p>
+      )}
 
       {isExpanded && (
         <div className="px-3 pb-3 pt-2 border-t border-border space-y-2">
@@ -297,6 +334,7 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
   const storeFields = useBoardStore((s) => s.fields);
   const setBoard = useBoardStore((s) => s.setBoard);
   const setFields = useBoardStore((s) => s.setFields);
+  const setCards = useBoardStore((s) => s.setCards);
 
   const [localBoard, setLocalBoard] = useState<BoardConfig | null>(null);
   const [localFields, setLocalFields] = useState<FieldDef[]>([]);
@@ -319,6 +357,8 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
   const [expandedFieldId, setExpandedFieldId] = useState<string | null>(null);
   const [fieldOptionsMap, setFieldOptionsMap] = useState<Record<string, string[]>>({});
   const [newOptionByField, setNewOptionByField] = useState<Record<string, string>>({});
+  const [fieldLabelMap, setFieldLabelMap] = useState<Record<string, string>>({});
+  const [fieldTypeMap, setFieldTypeMap] = useState<Record<string, FieldType>>({});
   const [orderedFieldIds, setOrderedFieldIds] = useState<string[]>([]);
   const [closedLayout, setClosedLayout] = useState<string[]>([]);
   const [fieldsToDelete, setFieldsToDelete] = useState<Set<string>>(new Set());
@@ -342,6 +382,8 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
       setExpandedFieldId(null);
       setFieldOptionsMap({});
       setNewOptionByField({});
+      setFieldLabelMap({});
+      setFieldTypeMap({});
       setFieldsToDelete(new Set());
       setDeleteConfirm(false);
       const sorted = [...fields].sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99));
@@ -373,6 +415,22 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
   function getFieldOptions(fieldId: string): string[] {
     if (fieldId in fieldOptionsMap) return fieldOptionsMap[fieldId];
     return fields.find((f) => f.id === fieldId)?.options ?? [];
+  }
+
+  function getFieldLabel(field: FieldDef): string {
+    return fieldLabelMap[field.id] ?? field.label;
+  }
+
+  function getFieldType(field: FieldDef): FieldType {
+    return fieldTypeMap[field.id] ?? field.type;
+  }
+
+  function handleFieldLabelChange(fieldId: string, label: string) {
+    setFieldLabelMap((prev) => ({ ...prev, [fieldId]: label }));
+  }
+
+  function handleFieldTypeChange(fieldId: string, type: FieldType) {
+    setFieldTypeMap((prev) => ({ ...prev, [fieldId]: type }));
   }
 
   function addFieldOption(fieldId: string) {
@@ -481,26 +539,89 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
         if (idx >= 0) updatedFields.splice(idx, 1);
       }
 
+      // Detect real field-type changes so card values can be migrated to match.
+      const typeChanges = orderedFieldIds
+        .filter((id) => !fieldsToDelete.has(id))
+        .map((id) => {
+          const original = fields.find((f) => f.id === id);
+          const toType = fieldTypeMap[id];
+          return original && toType && toType !== original.type
+            ? { fieldId: id, fromType: original.type, toType }
+            : null;
+        })
+        .filter((c): c is { fieldId: string; fromType: FieldType; toType: FieldType } => !!c);
+
+      let migratedCards: CardRecord[] | null = null;
+      if (typeChanges.length > 0) {
+        migratedCards = await provider.loadCards(board.id);
+        for (const { fieldId, fromType, toType } of typeChanges) {
+          for (const card of migratedCards) {
+            if (fieldId in card) {
+              card[fieldId] = coerceFieldValue(card[fieldId], fromType, toType);
+            }
+          }
+        }
+      }
+
       for (let i = 0; i < orderedFieldIds.length; i++) {
         const fieldId = orderedFieldIds[i];
         if (fieldsToDelete.has(fieldId)) continue;
         const field = updatedFields.find((f) => f.id === fieldId);
         if (!field) continue;
-        const newOptions = fieldOptionsMap[fieldId];
-        const needsUpdate = field.displayOrder !== i || newOptions !== undefined;
+
+        const trimmedLabel = fieldLabelMap[fieldId]?.trim();
+        const labelChanged = !!trimmedLabel && trimmedLabel !== field.label;
+        const pendingType = fieldTypeMap[fieldId];
+        const typeChanged = pendingType !== undefined && pendingType !== field.type;
+        const effectiveType = pendingType ?? field.type;
+
+        let newOptions = fieldOptionsMap[fieldId];
+        if (
+          typeChanged &&
+          SELECT_TYPES.includes(effectiveType) &&
+          newOptions === undefined &&
+          (field.options ?? []).length === 0 &&
+          migratedCards
+        ) {
+          const distinct = collectDistinctOptionValues(migratedCards, fieldId);
+          if (distinct.length) newOptions = distinct;
+        }
+
+        const needsUpdate =
+          field.displayOrder !== i || newOptions !== undefined || labelChanged || typeChanged;
+
         if (needsUpdate) {
           const savedField = await provider.saveField({
             ...field,
             displayOrder: i,
             ...(newOptions !== undefined ? { options: newOptions } : {}),
+            ...(labelChanged ? { label: trimmedLabel } : {}),
+            ...(typeChanged ? { type: effectiveType } : {}),
           });
           const idx = updatedFields.findIndex((f) => f.id === fieldId);
           if (idx >= 0) updatedFields[idx] = savedField;
         }
       }
 
-      if (isStandalone) setLocalFields(updatedFields);
-      else setFields(updatedFields);
+      for (const fieldId of fieldsToDelete) {
+        await provider.deleteField(fieldId, board.id);
+      }
+
+      if (migratedCards && migratedCards.length) {
+        if (provider.saveCardsBulk) {
+          await provider.saveCardsBulk(migratedCards);
+        } else {
+          for (const card of migratedCards) await provider.saveCard(card);
+        }
+      }
+
+      if (isStandalone) {
+        setLocalFields(updatedFields);
+      } else {
+        setFields(updatedFields);
+        if (migratedCards) setCards(migratedCards);
+      }
+      await cacheDel(`board:${board.id}`);
       onSaved?.(savedBoard);
       toast.success("Board atualizado");
       onClose();
@@ -648,26 +769,36 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
                   strategy={verticalListSortingStrategy}
                 >
                   <div className="space-y-1.5">
-                    {visibleFields.map((f) => (
-                      <SortableFieldRow
-                        key={f.id}
-                        field={f}
-                        isExpanded={expandedFieldId === f.id}
-                        isInClosedLayout={closedLayout.includes(f.id)}
-                        options={SELECT_TYPES.includes(f.type) ? getFieldOptions(f.id) : []}
-                        newOption={newOptionByField[f.id] ?? ""}
-                        onToggleExpand={() =>
-                          setExpandedFieldId(expandedFieldId === f.id ? null : f.id)
-                        }
-                        onToggleClosedLayout={() => toggleClosedLayout(f.id)}
-                        onRemove={() => markFieldForDeletion(f.id)}
-                        onOptionAdd={() => addFieldOption(f.id)}
-                        onOptionRemove={(opt) => removeFieldOption(f.id, opt)}
-                        onNewOptionChange={(val) =>
-                          setNewOptionByField((prev) => ({ ...prev, [f.id]: val }))
-                        }
-                      />
-                    ))}
+                    {visibleFields.map((f) => {
+                      const pendingType = getFieldType(f);
+                      return (
+                        <SortableFieldRow
+                          key={f.id}
+                          field={f}
+                          label={getFieldLabel(f)}
+                          type={pendingType}
+                          isRiskyTypeChange={
+                            pendingType !== f.type && !areTypesCompatible(f.type, pendingType)
+                          }
+                          isExpanded={expandedFieldId === f.id}
+                          isInClosedLayout={closedLayout.includes(f.id)}
+                          options={SELECT_TYPES.includes(pendingType) ? getFieldOptions(f.id) : []}
+                          newOption={newOptionByField[f.id] ?? ""}
+                          onLabelChange={(val) => handleFieldLabelChange(f.id, val)}
+                          onTypeChange={(type) => handleFieldTypeChange(f.id, type)}
+                          onToggleExpand={() =>
+                            setExpandedFieldId(expandedFieldId === f.id ? null : f.id)
+                          }
+                          onToggleClosedLayout={() => toggleClosedLayout(f.id)}
+                          onRemove={() => markFieldForDeletion(f.id)}
+                          onOptionAdd={() => addFieldOption(f.id)}
+                          onOptionRemove={(opt) => removeFieldOption(f.id, opt)}
+                          onNewOptionChange={(val) =>
+                            setNewOptionByField((prev) => ({ ...prev, [f.id]: val }))
+                          }
+                        />
+                      );
+                    })}
                   </div>
                 </SortableContext>
               </DndContext>

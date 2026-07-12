@@ -9,6 +9,10 @@ export interface ExtensionImportPayload {
   profileUsername?: string;
   videoUrl?: string;
   postUrl?: string;
+  /** Raw, unparsed text collected from the page — the fallback (and often
+   * only) source of content on sites without dedicated extraction, like
+   * Shopee or TikTok. */
+  pageText?: string;
 }
 
 export function readPendingExtensionImport(): ExtensionImportPayload | null {
@@ -39,6 +43,9 @@ export function formatExtensionImportAsText(payload: ExtensionImportPayload): st
       "Pinned Comments": payload.pinnedAuthorComments,
       Links: payload.links,
       "Post URL": payload.postUrl,
+      // Only sent when no structured caption was extracted (non-Instagram
+      // sites), since it's a full, unparsed dump of the page's visible text.
+      "Page Text": payload.captionText ? undefined : payload.pageText,
     },
     null,
     2,

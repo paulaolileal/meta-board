@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ChevronRight, Download, Chrome, Instagram, Copy } from "lucide-react";
+import { ChevronRight, Download, Chrome, Globe, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { UserAccountMenu } from "@/components/UserAccountMenu";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,7 @@ const STEPS: Step[] = [
   {
     title: "Pronto!",
     description:
-      'Abra um post ou reel no Instagram, clique no ícone do MetaBoard na barra do Chrome e depois em "Enviar para o MetaBoard".',
+      'Abra a página que quiser importar, clique no ícone do MetaBoard na barra do Chrome e depois em "Enviar para o MetaBoard".',
   },
 ];
 
@@ -83,10 +83,10 @@ export function ExtensionInstructionsPage() {
 
       <div className="flex-1 flex flex-col items-center px-6 py-10">
         <div className="w-full max-w-xl text-center mb-8">
-          <h1 className="text-2xl font-bold mb-2">Envie posts do Instagram em um clique</h1>
+          <h1 className="text-2xl font-bold mb-2">Envie qualquer página em um clique</h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Instale a extensão do MetaBoard e mande legenda, comentários fixados e vídeo de um post
-            direto para o seu board — sem copiar e colar nada.
+            Instale a extensão do MetaBoard e mande o conteúdo de um post do Instagram, produto,
+            artigo ou qualquer outra página direto para o seu board — sem copiar e colar nada.
           </p>
 
           <div className="flex items-center justify-center gap-4 mt-4 text-xs text-muted-foreground">
@@ -95,8 +95,8 @@ export function ExtensionInstructionsPage() {
               Google Chrome
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <Instagram className="h-3.5 w-3.5" />
-              Posts e reels
+              <Globe className="h-3.5 w-3.5" />
+              Qualquer site
             </span>
           </div>
 
