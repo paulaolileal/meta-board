@@ -193,11 +193,24 @@
       firstValidUsername(document.querySelectorAll("header a[href^='/']")) ||
       firstValidUsername(document.querySelectorAll("h2 a[href^='/']"));
 
-    const pinnedAuthorComments = timeEls
+    // The caption's own <time> is excluded here so it isn't double-counted
+    // as an "author comment" below (its author is, by definition, the
+    // profile owner).
+    const commentEntries = timeEls
+      .filter((t) => t !== captionTimeEl)
       .map(entryFromTime)
-      .filter((entry) => entry?.body)
-      .filter((entry) => entry.isPinned || (!!profileUsername && entry.username === profileUsername))
-      .map((entry) => entry.body);
+      .filter((entry) => entry?.body);
+
+    const pinnedComments = commentEntries.filter((entry) => entry.isPinned);
+
+    // Only the first 5 comments are checked for the author replying to
+    // their own post — comments further down are too likely to be a
+    // different user who merely mentions/tags the author.
+    const authorCommentsInFirst5 = commentEntries
+      .slice(0, 5)
+      .filter((entry) => !!profileUsername && entry.username === profileUsername);
+
+    const pinnedAuthorComments = [...new Set([...pinnedComments, ...authorCommentsInFirst5].map((entry) => entry.body))];
 
     const videoUrl = videoUrlFromEmbeddedJson() || videoUrlFromMeta() || videoUrlFromElement();
 
