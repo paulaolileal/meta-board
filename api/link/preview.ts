@@ -4,8 +4,10 @@ export const config = { runtime: "edge" };
 
 const FETCH_TIMEOUT_MS = 8000;
 const MAX_HTML_BYTES = 300_000;
-const BROWSER_USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+// Many storefronts (Shopee, etc.) render as client-side SPAs for regular browsers,
+// so the initial HTML has no og:image tag. They still serve a pre-rendered page with
+// full Open Graph metadata to known social-crawler user agents (for link share cards).
+const BROWSER_USER_AGENT = "facebookexternalhit/1.1";
 
 const BLOCKED_HOSTNAMES = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
 const PRIVATE_IP_PATTERN = /^(10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[0-1])\.)/;

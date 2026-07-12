@@ -45,6 +45,16 @@ function selectColor(value: string, options: string[]): string {
   return SELECT_PALETTE[idx >= 0 ? idx % SELECT_PALETTE.length : 0];
 }
 
+function friendlySiteName(url: string): string {
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, "");
+    const label = hostname.split(".")[0];
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  } catch {
+    return url;
+  }
+}
+
 function asString(v: FieldValue): string {
   if (v == null) return "";
   if (Array.isArray(v)) return v.join(", ");
@@ -295,7 +305,7 @@ function UrlFieldValue({ value, mode }: { value: FieldValue; mode: "closed" | "o
       onClick={(e) => e.stopPropagation()}
     >
       <LinkIcon className="h-3.5 w-3.5" />
-      {s.replace(/^https?:\/\//, "").slice(0, 40)}
+      {mode === "closed" ? friendlySiteName(s) : s.replace(/^https?:\/\//, "").slice(0, 40)}
     </a>
   );
 }
