@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { format, isValid, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CheckCircle2, Circle, Link as LinkIcon, Calendar, MapPin, Clock } from "lucide-react";
@@ -8,6 +9,8 @@ import type {
   FieldValue,
 } from "@/modules/project/domain/types";
 import { cn } from "@/lib/utils";
+import { getLinkPreviewImage } from "@/shared/api/LinkPreviewClient";
+import { isMarketplaceProductUrl } from "./marketplaceUrl";
 
 interface RenderProps {
   field: FieldDef;
@@ -87,22 +90,8 @@ export function FieldRenderer({ field, value, mode }: RenderProps) {
         </span>
       );
     }
-    case "url": {
-      const s = asString(value);
-      if (!s) return <span className="text-muted-foreground">—</span>;
-      return (
-        <a
-          href={s}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 text-primary hover:underline text-sm"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <LinkIcon className="h-3.5 w-3.5" />
-          {s.replace(/^https?:\/\//, "").slice(0, 40)}
-        </a>
-      );
-    }
+    case "url":
+      return <UrlFieldValue value={value} mode={mode} />;
     case "image": {
       const s = asString(value);
       if (!s) return null;
@@ -257,4 +246,56 @@ export function FieldRenderer({ field, value, mode }: RenderProps) {
     default:
       return <span>{asString(value)}</span>;
   }
+}
+
+function UrlFieldValue({ value, mode }: { value: FieldValue; mode: "closed" | "open" }) {
+  const s = asString(value);
+  const showPreview = mode === "closed" && isMarketplaceProductUrl(s);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!showPreview) return;
+    let cancelled = false;
+    getLinkPreviewImage(s).then((image) => {
+      if (!cancelled) setPreviewImage(image);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showPreview, s]);
+
+  if (!s) return <span className="text-muted-foreground">—</span>;
+
+  if (showPreview && previewImage) {
+    return (
+      <a
+        href={s}
+        target="_blank"
+        rel="noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="block"
+      >
+        <img
+          src={previewImage}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          className="w-full h-32 object-cover rounded-lg bg-muted/30"
+        />
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={s}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1.5 text-primary hover:underline text-sm"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <LinkIcon className="h-3.5 w-3.5" />
+      {s.replace(/^https?:\/\//, "").slice(0, 40)}
+    </a>
+  );
 }
