@@ -5,6 +5,8 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { CardRecord, FieldDef, FieldType, FieldValue } from "@/modules/project/domain/types";
 import { FieldRenderer } from "@/modules/fields/FieldRenderer";
+import { isMarketplaceProductUrl } from "@/modules/fields/marketplaceUrl";
+import { useLinkPreviewImage } from "@/modules/fields/useLinkPreviewImage";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -30,6 +32,14 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
   const imageFieldId = layout.find((id) => fieldMap.get(id)?.type === "image");
   const imageField = imageFieldId ? fieldMap.get(imageFieldId) : undefined;
   const imageValue = imageFieldId ? (card[imageFieldId] as string | undefined) : undefined;
+  const hasImageCover = !!(imageField && imageValue);
+
+  const urlFieldId = layout.find((id) => fieldMap.get(id)?.type === "url");
+  const urlValue = urlFieldId ? (card[urlFieldId] as string | undefined) : undefined;
+  const wantsLinkPreview = !hasImageCover && !!urlValue && isMarketplaceProductUrl(urlValue);
+  const linkPreviewImage = useLinkPreviewImage(urlValue, wantsLinkPreview);
+
+  const coverImage = hasImageCover ? imageValue : linkPreviewImage;
 
   const nonImageLayout = layout.filter((id) => fieldMap.get(id)?.type !== "image");
   const [titleId, ...bodyIds] = nonImageLayout;
@@ -37,7 +47,7 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
   const titleValue = titleId != null ? (card[titleId] as FieldValue) : undefined;
 
   const hasCollapsible =
-    (imageField && imageValue) ||
+    !!coverImage ||
     bodyIds.some((id) => {
       const v = card[id];
       return v != null && v !== "" && !(Array.isArray(v) && v.length === 0);
@@ -65,7 +75,7 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
       )}
     >
       <AnimatePresence initial={false}>
-        {!collapsed && imageField && imageValue && (
+        {!collapsed && coverImage && (
           <motion.div
             key="image"
             initial={{ opacity: 0, height: 0 }}
@@ -74,7 +84,17 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
             transition={{ duration: 0.16 }}
             className="overflow-hidden"
           >
-            <FieldRenderer field={imageField} value={imageValue} mode="closed" />
+            {hasImageCover ? (
+              <FieldRenderer field={imageField!} value={imageValue!} mode="closed" />
+            ) : (
+              <img
+                src={coverImage}
+                alt=""
+                className="w-full h-40 object-cover rounded-t-2xl bg-muted/30"
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+            )}
           </motion.div>
         )}
       </AnimatePresence>
