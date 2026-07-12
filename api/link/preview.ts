@@ -1,13 +1,19 @@
 import { verifyGoogleAuth } from "../_lib/verifyGoogleAuth.js";
 
-export const config = { runtime: "edge" };
-
+// Runs on the Node.js runtime (not Edge): some marketplaces (Mercado Livre,
+// AliExpress) serve an anti-bot challenge page to Vercel's Edge Network IPs,
+// so the Node.js serverless network path is tried instead.
 const FETCH_TIMEOUT_MS = 8000;
 const MAX_HTML_BYTES = 300_000;
 // Many storefronts (Shopee, etc.) render as client-side SPAs for regular browsers,
 // so the initial HTML has no og:image tag. They still serve a pre-rendered page with
 // full Open Graph metadata to known social-crawler user agents (for link share cards).
-const BROWSER_USER_AGENT = "facebookexternalhit/1.1";
+// Tried in order; a second crawler identity is attempted if the first yields no image,
+// since some sites specifically block facebookexternalhit while allowing Googlebot.
+const CRAWLER_USER_AGENTS = [
+  "facebookexternalhit/1.1",
+  "Googlebot/2.1 (+http://www.google.com/bot.html)",
+];
 
 const BLOCKED_HOSTNAMES = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
 const PRIVATE_IP_PATTERN = /^(10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[0-1])\.)/;
@@ -35,6 +41,54 @@ function extractMetaContent(html: string, properties: string[]): string | null {
 
 function isBlockedHostname(hostname: string): boolean {
   return BLOCKED_HOSTNAMES.has(hostname) || PRIVATE_IP_PATTERN.test(hostname);
+}
+
+interface PreviewResult {
+  image: string | null;
+  title: string | null;
+}
+
+async function fetchPreview(url: URL, userAgent: string): Promise<PreviewResult | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  try {
+    const pageResponse = await fetch(url.toString(), {
+      headers: {
+        "User-Agent": userAgent,
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+      },
+      signal: controller.signal,
+    });
+
+    if (!pageResponse.ok) {
+      console.error(
+        "Link preview upstream non-ok status",
+        url.hostname,
+        userAgent,
+        pageResponse.status,
+      );
+      return null;
+    }
+
+    const fullHtml = await pageResponse.text();
+    const html = fullHtml.length > MAX_HTML_BYTES ? fullHtml.slice(0, MAX_HTML_BYTES) : fullHtml;
+
+    const image = extractMetaContent(html, ["og:image", "og:image:secure_url", "twitter:image"]);
+    const title = extractMetaContent(html, ["og:title"]);
+
+    if (!image) {
+      console.error("Link preview no og:image found", url.hostname, userAgent, fullHtml.length);
+    }
+
+    return { image, title };
+  } catch (error) {
+    console.error("Link preview fetch failed", url.hostname, userAgent, error);
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -66,46 +120,14 @@ export default async function handler(req: Request): Promise<Response> {
     return Response.json({ error: "Invalid url host" }, { status: 400 });
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-  try {
-    const pageResponse = await fetch(parsed.toString(), {
-      headers: {
-        "User-Agent": BROWSER_USER_AGENT,
-        Accept: "text/html,application/xhtml+xml",
-      },
-      signal: controller.signal,
-    });
-
-    if (!pageResponse.ok) {
-      console.error("Link preview upstream non-ok status", parsed.hostname, pageResponse.status);
-      return Response.json({ image: null, title: null }, { status: 200 });
-    }
-
-    const fullHtml = await pageResponse.text();
-    const html = fullHtml.length > MAX_HTML_BYTES ? fullHtml.slice(0, MAX_HTML_BYTES) : fullHtml;
-
-    const image = extractMetaContent(html, ["og:image", "og:image:secure_url", "twitter:image"]);
-    const title = extractMetaContent(html, ["og:title"]);
-
-    if (!image) {
-      console.error(
-        "Link preview no og:image found",
-        parsed.hostname,
-        fullHtml.length,
-        fullHtml.slice(0, 500),
-      );
-    }
-
-    return Response.json(
-      { image, title },
-      { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } },
-    );
-  } catch (error) {
-    console.error("Link preview failed", error);
-    return Response.json({ image: null, title: null }, { status: 200 });
-  } finally {
-    clearTimeout(timeout);
+  let result: PreviewResult = { image: null, title: null };
+  for (const userAgent of CRAWLER_USER_AGENTS) {
+    const attempt = await fetchPreview(parsed, userAgent);
+    if (attempt) result = attempt;
+    if (attempt?.image) break;
   }
+
+  return Response.json(result, {
+    headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" },
+  });
 }
