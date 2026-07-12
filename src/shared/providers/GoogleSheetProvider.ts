@@ -162,6 +162,26 @@ export class GoogleSheetProvider implements ISheetProvider {
     this.api = new SheetsApiClient(auth);
   }
 
+  // Google Sheets' values:append endpoint auto-detects the target "table" shape,
+  // which proved unreliable (rows landing at drifting column offsets). Writing to
+  // an explicit A1:B2-style range computed from the sheet's actual row count is
+  // deterministic and avoids that heuristic entirely.
+  private async appendRows(
+    sheetName: string,
+    columnCount: number,
+    rows: string[][],
+  ): Promise<void> {
+    if (!rows.length) return;
+    const existing = await this.api.getValues(this.sheetId, `${sheetName}!A:A`);
+    const startRow = existing.length + 1;
+    const endRow = startRow + rows.length - 1;
+    await this.api.setValues(
+      this.sheetId,
+      `${sheetName}!A${startRow}:${colLetter(columnCount)}${endRow}`,
+      rows,
+    );
+  }
+
   async loadBoards(): Promise<BoardConfig[]> {
     const values = await this.api.getValues(this.sheetId, "_boards");
     if (values.length < 2) return [];
@@ -233,9 +253,7 @@ export class GoogleSheetProvider implements ISheetProvider {
       ...partial,
     };
 
-    await this.api.appendValues(this.sheetId, `_cards!A:${colLetter(headers.length)}`, [
-      this.cardToRow(headers, card),
-    ]);
+    await this.appendRows("_cards", headers.length, [this.cardToRow(headers, card)]);
     return card;
   }
 
@@ -314,9 +332,7 @@ export class GoogleSheetProvider implements ISheetProvider {
   }
 
   async createField(field: FieldDef): Promise<FieldDef> {
-    await this.api.appendValues(this.sheetId, `_fields!A:${colLetter(FIELDS_HEADERS.length)}`, [
-      this.fieldDefToRow(field),
-    ]);
+    await this.appendRows("_fields", FIELDS_HEADERS.length, [this.fieldDefToRow(field)]);
     return field;
   }
 
@@ -427,17 +443,11 @@ export class GoogleSheetProvider implements ISheetProvider {
       updatedAt: now(),
     };
 
-    await this.api.appendValues(this.sheetId, `_boards!A:${colLetter(BOARDS_HEADERS.length)}`, [
-      this.boardConfigToRow(newBoard),
-    ]);
+    await this.appendRows("_boards", BOARDS_HEADERS.length, [this.boardConfigToRow(newBoard)]);
 
     if (fields.length) {
       const rows = fields.map((f) => this.fieldDefToRow({ ...f, boardId: newBoard.id }));
-      await this.api.appendValues(
-        this.sheetId,
-        `_fields!A:${colLetter(FIELDS_HEADERS.length)}`,
-        rows,
-      );
+      await this.appendRows("_fields", FIELDS_HEADERS.length, rows);
     }
 
     return newBoard;

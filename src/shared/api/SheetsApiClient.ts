@@ -38,14 +38,6 @@ export class SheetsApiClient {
     );
   }
 
-  async appendValues(spreadsheetId: string, range: string, values: string[][]): Promise<void> {
-    await this.request(
-      "POST",
-      `${SHEETS_BASE}/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
-      { values },
-    );
-  }
-
   async clearValues(spreadsheetId: string, range: string): Promise<void> {
     await this.request(
       "POST",
