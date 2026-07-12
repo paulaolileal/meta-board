@@ -34,7 +34,15 @@ Available fields:
 ${fieldLines}
 
 VALUE FORMAT per field type:
-- text / longtext / url / email / icon / color → string
+- text / url / email / icon / color → string
+- longtext → string. If the source text expresses a sequence of steps (e.g. recipe instructions,
+  a tutorial, a how-to) or a set of discrete items (e.g. ingredients, a list of features),
+  format the value as a plain-text list instead of a single paragraph: one item per line,
+  prefixed with "- " for an unordered list or "1. ", "2. ", ... for an ordered/sequential list.
+  Choose ordered vs. unordered based on whether order matters in the source (steps → ordered,
+  ingredients/features → unordered). Use plain flowing prose instead when the source content is
+  not naturally a list. This rule applies to ANY field of type longtext, regardless of its label —
+  do not special-case specific field names or board types.
 - number / longnumber → number
 - bool → boolean
 - date → "YYYY-MM-DD"
@@ -150,6 +158,10 @@ STRICT RULES:
   If no direct image URL is available, omit the field.
 - For longtext fields: capture ALL relevant information found across the page for that field, not just
   the first snippet. Combine multiple relevant excerpts into a single coherent text, separated by newlines.
+  If the combined content expresses a sequence of steps (e.g. recipe instructions, a tutorial) or a set
+  of discrete items (e.g. ingredients, features), format it as a plain-text list — one item per line,
+  prefixed with "- " (unordered) or "1. ", "2. ", ... (ordered, when sequence order matters). Use plain
+  prose otherwise. This applies to any longtext field regardless of its label, not just specific ones.
 - When in doubt → omit the field entirely.
 - If the source page does not explicitly state a value for a field, omit it.
 
