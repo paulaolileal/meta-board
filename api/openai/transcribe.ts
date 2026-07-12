@@ -8,12 +8,11 @@ interface TranscribeBody {
   videoUrl?: string;
 }
 
-export default async function handler(req: Request): Promise<Response> {
-  if (req.method !== "POST") {
-    return Response.json({ error: "Method not allowed" }, { status: 405 });
-  }
-
-  const auth = await verifyGoogleAuth(req);
+// Named per-method export (not `export default function handler`) is what makes
+// Vercel's Node.js runtime hand this a Web API Request instead of a classic
+// http.IncomingMessage — the default-export form doesn't get the Fetch API req/res.
+export async function POST(req: Request): Promise<Response> {
+  const auth = await verifyGoogleAuth(req.headers.get("authorization"));
   if (!auth.ok) {
     return Response.json({ error: auth.message }, { status: auth.status });
   }
@@ -44,12 +43,18 @@ export default async function handler(req: Request): Promise<Response> {
 
     const contentLength = Number(videoResponse.headers.get("content-length") ?? 0);
     if (contentLength > MAX_VIDEO_BYTES) {
-      return Response.json({ error: "Video exceeds the 25MB transcription limit" }, { status: 413 });
+      return Response.json(
+        { error: "Video exceeds the 25MB transcription limit" },
+        { status: 413 },
+      );
     }
 
     const videoBlob = await videoResponse.blob();
     if (videoBlob.size > MAX_VIDEO_BYTES) {
-      return Response.json({ error: "Video exceeds the 25MB transcription limit" }, { status: 413 });
+      return Response.json(
+        { error: "Video exceeds the 25MB transcription limit" },
+        { status: 413 },
+      );
     }
 
     const form = new FormData();

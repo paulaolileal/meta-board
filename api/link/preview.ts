@@ -91,12 +91,11 @@ async function fetchPreview(url: URL, userAgent: string): Promise<PreviewResult 
   }
 }
 
-export default async function handler(req: Request): Promise<Response> {
-  if (req.method !== "GET") {
-    return Response.json({ error: "Method not allowed" }, { status: 405 });
-  }
-
-  const auth = await verifyGoogleAuth(req);
+// Named per-method export (not `export default function handler`) is what makes
+// Vercel's Node.js runtime hand this a Web API Request instead of a classic
+// http.IncomingMessage — the default-export form doesn't get the Fetch API req/res.
+export async function GET(req: Request): Promise<Response> {
+  const auth = await verifyGoogleAuth(req.headers.get("authorization"));
   if (!auth.ok) {
     return Response.json({ error: auth.message }, { status: auth.status });
   }

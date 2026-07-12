@@ -7,7 +7,7 @@ export default async function handler(req: Request): Promise<Response> {
     return Response.json({ error: "Method not allowed" }, { status: 405 });
   }
 
-  const auth = await verifyGoogleAuth(req);
+  const auth = await verifyGoogleAuth(req.headers.get("authorization"));
   if (!auth.ok) {
     return Response.json({ error: auth.message }, { status: auth.status });
   }

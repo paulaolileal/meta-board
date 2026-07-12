@@ -6,8 +6,13 @@ interface GoogleTokenInfo {
   error_description?: string;
 }
 
-export async function verifyGoogleAuth(req: Request): Promise<GoogleAuthCheck> {
-  const authHeader = req.headers.get("authorization");
+// Accepts a raw header value instead of a Request/IncomingMessage so it works
+// the same way for both Edge functions (Fetch API Request) and Node.js
+// serverless functions (classic http.IncomingMessage) — each caller extracts
+// the header its own way and passes the string through.
+export async function verifyGoogleAuth(
+  authHeader: string | null | undefined,
+): Promise<GoogleAuthCheck> {
   const token = authHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
 
   if (!token) {
