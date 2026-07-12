@@ -90,7 +90,12 @@ export default async function handler(req: Request): Promise<Response> {
     const title = extractMetaContent(html, ["og:title"]);
 
     if (!image) {
-      console.error("Link preview no og:image found", parsed.hostname, fullHtml.length);
+      console.error(
+        "Link preview no og:image found",
+        parsed.hostname,
+        fullHtml.length,
+        fullHtml.slice(0, 500),
+      );
     }
 
     return Response.json(
