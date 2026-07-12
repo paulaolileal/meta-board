@@ -79,6 +79,7 @@ export default async function handler(req: Request): Promise<Response> {
     });
 
     if (!pageResponse.ok) {
+      console.error("Link preview upstream non-ok status", parsed.hostname, pageResponse.status);
       return Response.json({ image: null, title: null }, { status: 200 });
     }
 
@@ -87,6 +88,10 @@ export default async function handler(req: Request): Promise<Response> {
 
     const image = extractMetaContent(html, ["og:image", "og:image:secure_url", "twitter:image"]);
     const title = extractMetaContent(html, ["og:title"]);
+
+    if (!image) {
+      console.error("Link preview no og:image found", parsed.hostname, fullHtml.length);
+    }
 
     return Response.json(
       { image, title },
