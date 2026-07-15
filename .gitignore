@@ -31,3 +31,6 @@ public/extension.zip
 *.njsproj
 *.sln
 *.sw?
+
+.claude/
+tsconfig.tsbuildinfo
