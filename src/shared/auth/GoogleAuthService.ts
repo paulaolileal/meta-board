@@ -42,10 +42,12 @@ export const TOKEN_REQUEST_SUPERSEDED = "token-request-superseded";
 const STORAGE_KEY_TOKEN = "mb:gis:token";
 const STORAGE_KEY_EXPIRY = "mb:gis:expiry";
 const STORAGE_KEY_CONSENTED = "mb:gis:consented";
-const SCOPE =
-  "https://www.googleapis.com/auth/drive.file openid email profile";
+const SCOPE = "https://www.googleapis.com/auth/drive.file openid email profile";
 const EXPIRY_BUFFER_MS = 30_000;
 const PROACTIVE_REFRESH_BEFORE_MS = 5 * 60 * 1000;
+// Backoff schedule for retrying a failed silent proactive refresh before
+// giving up and asking the user to re-authenticate interactively.
+const PROACTIVE_RETRY_DELAYS_MS = [30_000, 60_000, 120_000];
 
 export class GoogleAuthService {
   private clientId: string;
@@ -53,6 +55,8 @@ export class GoogleAuthService {
   private resolveSignIn: (() => void) | null = null;
   private rejectSignIn: ((err: string) => void) | null = null;
   private _refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private _proactiveRetryCount = 0;
+  private _reauthRequiredHandler: ((required: boolean) => void) | null = null;
 
   // Primary storage: memory (never persisted, cleared on tab close)
   private _accessToken: string | null = null;
@@ -91,6 +95,12 @@ export class GoogleAuthService {
     } catch {
       return null;
     }
+  }
+
+  // Lets callers show a non-blocking "session expiring" prompt instead of a
+  // hard sign-out when background silent refresh can't recover a token.
+  onReauthRequiredChange(handler: (required: boolean) => void): void {
+    this._reauthRequiredHandler = handler;
   }
 
   async ensureValidToken(): Promise<string> {
@@ -165,6 +175,8 @@ export class GoogleAuthService {
             } catch {
               // sessionStorage unavailable (private mode) — token stays in memory
             }
+            this._proactiveRetryCount = 0;
+            this._reauthRequiredHandler?.(false);
             this.scheduleProactiveRefresh();
             this.resolveSignIn?.();
           },
@@ -180,6 +192,7 @@ export class GoogleAuthService {
 
   signOut(): void {
     this.cancelProactiveRefresh();
+    this._reauthRequiredHandler?.(false);
     if (this._accessToken) {
       window.google?.accounts.oauth2.revoke(this._accessToken);
     }
@@ -212,14 +225,31 @@ export class GoogleAuthService {
 
   private scheduleProactiveRefresh(): void {
     this.cancelProactiveRefresh();
+    this._proactiveRetryCount = 0;
     const msUntilRefresh = this._expiresAt - Date.now() - PROACTIVE_REFRESH_BEFORE_MS;
     if (msUntilRefresh > 0) {
-      this._refreshTimer = setTimeout(() => {
-        this.signIn().catch(() => {
-          // Silent proactive refresh failed — token still valid for the remaining buffer window
-        });
-      }, msUntilRefresh);
+      this._refreshTimer = setTimeout(() => this.attemptProactiveRefresh(), msUntilRefresh);
     }
+  }
+
+  // Background renewal must stay silent (prompt: 'none') — signIn() with an
+  // empty prompt can still surface a real, visible Google popup, which is
+  // exactly the "flash" users see every ~55 min in a long session. On
+  // failure, retry a few times with backoff before asking for interaction;
+  // prompt: 'none' depends on the Google session cookie being reachable
+  // (third-party cookies, storage partitioning on an installed PWA), which
+  // is flaky enough to warrant more than one attempt.
+  private attemptProactiveRefresh(): void {
+    this.silentSignIn().catch(() => {
+      const delay = PROACTIVE_RETRY_DELAYS_MS[this._proactiveRetryCount];
+      if (delay !== undefined && Date.now() + delay < this._expiresAt) {
+        this._proactiveRetryCount += 1;
+        this._refreshTimer = setTimeout(() => this.attemptProactiveRefresh(), delay);
+        return;
+      }
+      this._proactiveRetryCount = 0;
+      this._reauthRequiredHandler?.(true);
+    });
   }
 
   private cancelProactiveRefresh(): void {

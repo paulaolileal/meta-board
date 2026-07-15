@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { HomePage } from "@/routes/HomePage";
 import { SpreadsheetPage } from "@/routes/SpreadsheetPage";
 import { SpreadsheetSetupPage } from "@/routes/SpreadsheetSetupPage";
@@ -58,6 +59,34 @@ function useAuthSync() {
       })
       .finally(() => setInitializing(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Background silent refresh can still fail (e.g. third-party cookies
+  // blocked, no reachable Google session) after exhausting its retries.
+  // Surface a dismissible prompt instead of yanking the user back to login
+  // mid-session — renewal only happens on an explicit tap, which is a real
+  // user gesture and won't get blocked as an unsolicited popup.
+  useEffect(() => {
+    let toastId: string | number | undefined;
+    googleAuthService.onReauthRequiredChange((required) => {
+      if (!required) {
+        if (toastId !== undefined) toast.dismiss(toastId);
+        toastId = undefined;
+        return;
+      }
+      toastId = toast.warning("Sua sessão com o Google expirou", {
+        description: "Toque em Renovar para continuar sem perder o que você estava fazendo.",
+        duration: Infinity,
+        action: {
+          label: "Renovar",
+          onClick: () => {
+            googleAuthService.signIn().catch(() => {
+              toast.error("Não foi possível renovar a sessão. Tente novamente.");
+            });
+          },
+        },
+      });
+    });
   }, []);
 }
 
