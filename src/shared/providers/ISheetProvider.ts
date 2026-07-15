@@ -1,4 +1,9 @@
-import type { BoardConfig, CardRecord, FieldDef } from "@/modules/project/domain/types";
+import type {
+  BoardConfig,
+  CardRecord,
+  FieldDef,
+  PendingItem,
+} from "@/modules/project/domain/types";
 
 export interface ISheetProvider {
   readonly mode: "google";
@@ -21,4 +26,9 @@ export interface ISheetProvider {
     config: Omit<BoardConfig, "id" | "createdAt" | "updatedAt">,
     fields: FieldDef[],
   ): Promise<BoardConfig>;
+  loadPendingItems(boardId: string): Promise<PendingItem[]>;
+  createPendingItem(boardId: string, description: string): Promise<PendingItem>;
+  togglePendingItemDone(id: string, done: boolean): Promise<void>;
+  deletePendingItem(id: string): Promise<void>;
+  clearCompletedPendingItems(boardId: string): Promise<void>;
 }

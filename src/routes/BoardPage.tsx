@@ -2,13 +2,16 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useBoardData } from "@/modules/board/useBoardData";
 import { useBoardStore } from "@/modules/board/store";
+import { usePendingMutations } from "@/modules/board/usePendingMutations";
 import { BoardTopBar } from "@/modules/board/ui/BoardTopBar";
 import { KanbanBoard } from "@/modules/board/ui/KanbanBoard";
 import { EditBoardModal } from "@/modules/board/ui/EditBoardModal";
 import { AiCardModal } from "@/modules/board/ui/AiCardModal";
 import { CreateCardModal } from "@/modules/board/ui/CreateCardModal";
 import { CreateCardSpeedDial } from "@/modules/board/ui/CreateCardSpeedDial";
+import { PendingListSheet } from "@/modules/board/ui/PendingListSheet";
 import type { AiImportNavigationState } from "@/modules/board/ui/ExtensionImportGate";
+import type { CardRecord, PendingItem } from "@/modules/project/domain/types";
 
 export function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
@@ -19,13 +22,38 @@ export function BoardPage() {
   const { isLoading, isError, error } = useBoardData(boardId!);
   const hydrated = useBoardStore((s) => s.hydrated);
   const storeBoardId = useBoardStore((s) => s.boardId);
+  const board = useBoardStore((s) => s.board);
   const isReady = hydrated && storeBoardId === boardId;
+  const { deletePendingItem } = usePendingMutations();
 
   const [editOpen, setEditOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [pendingOpen, setPendingOpen] = useState(false);
   const [aiInitialText, setAiInitialText] = useState<string | undefined>(undefined);
   const [aiInitialVideoUrl, setAiInitialVideoUrl] = useState<string | undefined>(undefined);
+  const [createInitialValues, setCreateInitialValues] = useState<Partial<CardRecord>>({});
+  const [convertingItemId, setConvertingItemId] = useState<string | null>(null);
+
+  function openCreateCard() {
+    setCreateInitialValues({});
+    setConvertingItemId(null);
+    setCreateOpen(true);
+  }
+
+  function convertPendingItem(item: PendingItem) {
+    setCreateInitialValues(board ? { [board.cardTitleField]: item.description } : {});
+    setConvertingItemId(item._id);
+    setPendingOpen(false);
+    setCreateOpen(true);
+  }
+
+  function handleCardCreated(_card: CardRecord) {
+    if (convertingItemId) {
+      deletePendingItem(convertingItemId);
+      setConvertingItemId(null);
+    }
+  }
 
   useEffect(() => {
     const state = location.state as AiImportNavigationState | null;
@@ -48,7 +76,10 @@ export function BoardPage() {
 
   return (
     <div className="h-screen w-full flex flex-col bg-background overflow-hidden">
-      <BoardTopBar onOpenSettings={() => setEditOpen(true)} />
+      <BoardTopBar
+        onOpenSettings={() => setEditOpen(true)}
+        onOpenPending={() => setPendingOpen(true)}
+      />
 
       <div className="flex-1 min-h-0 overflow-hidden relative">
         {!isReady ? (
@@ -63,10 +94,7 @@ export function BoardPage() {
           <KanbanBoard />
         )}
 
-        <CreateCardSpeedDial
-          onCreateCard={() => setCreateOpen(true)}
-          onCreateAi={() => setAiOpen(true)}
-        />
+        <CreateCardSpeedDial onCreateCard={openCreateCard} onCreateAi={() => setAiOpen(true)} />
       </div>
 
       <EditBoardModal
@@ -80,7 +108,17 @@ export function BoardPage() {
         initialText={aiInitialText}
         initialVideoUrl={aiInitialVideoUrl}
       />
-      <CreateCardModal open={createOpen} onClose={() => setCreateOpen(false)} initialValues={{}} />
+      <CreateCardModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        initialValues={createInitialValues}
+        onCreated={handleCardCreated}
+      />
+      <PendingListSheet
+        open={pendingOpen}
+        onClose={() => setPendingOpen(false)}
+        onConvert={convertPendingItem}
+      />
     </div>
   );
 }

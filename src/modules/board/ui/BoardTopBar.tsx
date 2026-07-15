@@ -10,6 +10,7 @@ import {
   Monitor,
   X,
   Filter,
+  ListTodo,
 } from "lucide-react";
 import {
   Select,
@@ -32,11 +33,13 @@ const THEME_LABELS = { light: "Claro", auto: "Auto", dark: "Escuro" } as const;
 
 interface Props {
   onOpenSettings: () => void;
+  onOpenPending: () => void;
 }
 
-export function BoardTopBar({ onOpenSettings }: Props) {
+export function BoardTopBar({ onOpenSettings, onOpenPending }: Props) {
   const board = useBoardStore((s) => s.board);
   const fields = useBoardStore((s) => s.fields);
+  const pendingCount = useBoardStore((s) => s.pendingItems.filter((p) => !p._done).length);
   const search = useBoardStore((s) => s.search);
   const setSearch = useBoardStore((s) => s.setSearch);
   const setBoard = useBoardStore((s) => s.setBoard);
@@ -216,6 +219,21 @@ export function BoardTopBar({ onOpenSettings }: Props) {
             title={`Tema: ${THEME_LABELS[mode]}`}
           >
             <ThemeIcon className="h-4 w-4" />
+          </button>
+
+          {/* Pending items */}
+          <button
+            onClick={onOpenPending}
+            className="relative h-9 w-9 rounded-lg flex items-center justify-center text-foreground hover:bg-accent transition"
+            aria-label="Pendentes"
+            title="Pendentes"
+          >
+            <ListTodo className="h-4 w-4" />
+            {pendingCount > 0 && (
+              <span className="absolute top-1 right-1 h-4 min-w-4 px-0.5 rounded-full bg-primary text-primary-foreground text-[10px] leading-4 text-center font-medium">
+                {pendingCount > 99 ? "99+" : pendingCount}
+              </span>
+            )}
           </button>
 
           {/* Settings */}

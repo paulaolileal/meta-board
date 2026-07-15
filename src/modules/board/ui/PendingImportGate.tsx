@@ -1,28 +1,24 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { initProvider, getSheetProvider } from "@/shared/providers/providerFactory";
 import { useAuthStore } from "@/store/authStore";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import type { BoardConfig } from "@/modules/project/domain/types";
 import { BoardPickerDialog } from "@/modules/board/ui/BoardPickerDialog";
 import {
-  EXTENSION_IMPORT_READY_EVENT,
-  readPendingExtensionImport,
-  clearPendingExtensionImport,
-  formatExtensionImportAsText,
-} from "@/modules/board/extensionImport";
-
-export interface AiImportNavigationState {
-  aiImportText: string;
-  aiImportVideoUrl?: string;
-}
+  SHARE_IMPORT_READY_EVENT,
+  readPendingShareImport,
+  clearPendingShareImport,
+  combineShareText,
+} from "@/modules/board/shareImport";
 
 /**
- * Watches for a post captured by the Chrome extension (from anywhere in the
- * app) and prompts the user to pick a board before opening the AI card
- * modal on that board's page.
+ * Watches for content sent to the app via the Android Web Share Target
+ * (from anywhere in the app) and prompts the user to pick a board, then adds
+ * it straight to that board's pending-items list.
  */
-export function ExtensionImportGate() {
+export function PendingImportGate() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const getSpreadsheetId = useSpreadsheetStore((s) => s.getSpreadsheetId);
@@ -34,11 +30,11 @@ export function ExtensionImportGate() {
 
   useEffect(() => {
     function checkPending() {
-      if (readPendingExtensionImport()) setOpen(true);
+      if (readPendingShareImport()) setOpen(true);
     }
     checkPending();
-    window.addEventListener(EXTENSION_IMPORT_READY_EVENT, checkPending);
-    return () => window.removeEventListener(EXTENSION_IMPORT_READY_EVENT, checkPending);
+    window.addEventListener(SHARE_IMPORT_READY_EVENT, checkPending);
+    return () => window.removeEventListener(SHARE_IMPORT_READY_EVENT, checkPending);
   }, []);
 
   useEffect(() => {
@@ -62,21 +58,27 @@ export function ExtensionImportGate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  function handleSelect(boardId: string) {
-    const payload = readPendingExtensionImport();
-    clearPendingExtensionImport();
+  async function handleSelect(boardId: string) {
+    const payload = readPendingShareImport();
+    clearPendingShareImport();
     setOpen(false);
     if (!payload) return;
 
-    const state: AiImportNavigationState = {
-      aiImportText: formatExtensionImportAsText(payload),
-      aiImportVideoUrl: payload.videoUrl,
-    };
-    navigate(`/boards/${boardId}`, { state });
+    const text = combineShareText(payload);
+    if (text) {
+      try {
+        await getSheetProvider().createPendingItem(boardId, text);
+        toast.success("Adicionado à lista de pendentes");
+      } catch (e) {
+        console.error(e);
+        toast.error("Falha ao adicionar pendente");
+      }
+    }
+    navigate(`/boards/${boardId}`);
   }
 
   function handleClose() {
-    clearPendingExtensionImport();
+    clearPendingShareImport();
     setOpen(false);
   }
 
@@ -84,7 +86,7 @@ export function ExtensionImportGate() {
     <BoardPickerDialog
       open={open}
       title="Enviar para qual board?"
-      description="Escolha o board onde o card extraído do Instagram será criado."
+      description="Escolha o board onde o item será adicionado à lista de pendentes."
       boards={boards}
       loading={loading}
       error={error}

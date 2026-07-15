@@ -6,7 +6,9 @@ import { SpreadsheetPage } from "@/routes/SpreadsheetPage";
 import { SpreadsheetSetupPage } from "@/routes/SpreadsheetSetupPage";
 import { BoardPage } from "@/routes/BoardPage";
 import { ExtensionInstructionsPage } from "@/routes/ExtensionInstructionsPage";
+import { ShareTargetPage } from "@/routes/ShareTargetPage";
 import { ExtensionImportGate } from "@/modules/board/ui/ExtensionImportGate";
+import { PendingImportGate } from "@/modules/board/ui/PendingImportGate";
 import { Link } from "react-router-dom";
 import { googleAuthService, initProvider } from "@/shared/providers/providerFactory";
 import { useAuthStore } from "@/store/authStore";
@@ -109,8 +111,10 @@ export function AppRouter() {
   return (
     <>
       <ExtensionImportGate />
+      <PendingImportGate />
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/share-target" element={<ShareTargetPage />} />
         <Route
           path="/setup"
           element={

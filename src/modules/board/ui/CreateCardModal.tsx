@@ -16,9 +16,10 @@ interface Props {
   open: boolean;
   onClose: () => void;
   initialValues: Partial<CardRecord>;
+  onCreated?: (card: CardRecord) => void;
 }
 
-export function CreateCardModal({ open, onClose, initialValues }: Props) {
+export function CreateCardModal({ open, onClose, initialValues, onCreated }: Props) {
   const fields = useBoardStore((s) => s.fields);
   const { createCard } = useCardMutations();
 
@@ -63,7 +64,8 @@ export function CreateCardModal({ open, onClose, initialValues }: Props) {
 
     setLoading(true);
     try {
-      await createCard(values);
+      const card = await createCard(values);
+      if (card) onCreated?.(card);
       onClose();
     } finally {
       setLoading(false);

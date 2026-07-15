@@ -9,6 +9,7 @@ import type {
   FieldValue,
   ChecklistItem,
   DurationValue,
+  PendingItem,
 } from "@/modules/project/domain/types";
 
 // snake_case ↔ camelCase helpers (preserve leading underscores)
@@ -71,6 +72,8 @@ const CARDS_FIXED_HEADERS = [
   "_updated_at",
   "values",
 ];
+
+const PENDING_HEADERS = ["_id", "board_id", "description", "_created_at", "_done"];
 
 export const DEFAULT_BOARD_FIELDS: Array<Omit<FieldDef, "boardId">> = [
   {
@@ -154,12 +157,30 @@ function now(): string {
 export class GoogleSheetProvider implements ISheetProvider {
   readonly mode = "google" as const;
   private readonly api: SheetsApiClient;
+  private pendingTabEnsured = false;
 
   constructor(
     private readonly sheetId: string,
     auth: GoogleAuthService,
   ) {
     this.api = new SheetsApiClient(auth);
+  }
+
+  // Spreadsheets set up before the pending-items feature existed never ran
+  // initializeSpreadsheet() with this tab, so it must be created lazily here.
+  private async ensurePendingTab(): Promise<void> {
+    if (this.pendingTabEnsured) return;
+    const meta = await this.api.getSpreadsheetMetadata(this.sheetId);
+    const exists = meta.sheets.some((s) => s.properties.title === "_pending");
+    if (!exists) {
+      await this.api.batchUpdate(this.sheetId, [
+        { addSheet: { properties: { title: "_pending" } } },
+      ]);
+      await this.api.setValues(this.sheetId, `_pending!A1:${colLetter(PENDING_HEADERS.length)}1`, [
+        PENDING_HEADERS,
+      ]);
+    }
+    this.pendingTabEnsured = true;
   }
 
   // Google Sheets' values:append endpoint auto-detects the target "table" shape,
@@ -274,6 +295,80 @@ export class GoogleSheetProvider implements ISheetProvider {
     ]);
   }
 
+  async loadPendingItems(boardId: string): Promise<PendingItem[]> {
+    await this.ensurePendingTab();
+    const values = await this.api.getValues(this.sheetId, "_pending");
+    if (values.length < 2) return [];
+    const [headers, ...rows] = values;
+    return rows
+      .filter((row) => row[0] && row[1] === boardId)
+      .map((row) => this.rowToPendingItem(headers, row));
+  }
+
+  async createPendingItem(boardId: string, description: string): Promise<PendingItem> {
+    await this.ensurePendingTab();
+    const item: PendingItem = {
+      _id: crypto.randomUUID(),
+      boardId,
+      description,
+      _createdAt: now(),
+      _done: false,
+    };
+    await this.appendRows("_pending", PENDING_HEADERS.length, [this.pendingItemToRow(item)]);
+    return item;
+  }
+
+  async togglePendingItemDone(id: string, done: boolean): Promise<void> {
+    const values = await this.api.getValues(this.sheetId, "_pending");
+    if (values.length < 2) return;
+    const [headers, ...rows] = values;
+    const rowIndex = rows.findIndex((row) => row[0] === id);
+    if (rowIndex < 0) return;
+    const doneIndex = headers.indexOf("_done");
+    if (doneIndex < 0) return;
+    const sheetRow = rowIndex + 2;
+    await this.api.setValues(this.sheetId, `_pending!${colLetter(doneIndex + 1)}${sheetRow}`, [
+      [String(done)],
+    ]);
+  }
+
+  async deletePendingItem(id: string): Promise<void> {
+    const values = await this.api.getValues(this.sheetId, "_pending");
+    if (values.length < 2) return;
+    const [headers, ...rows] = values;
+    const rowIndex = rows.findIndex((row) => row[0] === id);
+    if (rowIndex < 0) return;
+    const sheetRow = rowIndex + 2;
+    const emptyRow = Array(headers.length).fill("");
+    await this.api.setValues(
+      this.sheetId,
+      `_pending!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`,
+      [emptyRow],
+    );
+  }
+
+  async clearCompletedPendingItems(boardId: string): Promise<void> {
+    const values = await this.api.getValues(this.sheetId, "_pending");
+    if (values.length < 2) return;
+    const [headers, ...rows] = values;
+    const boardIdx = headers.indexOf("board_id");
+    const doneIdx = headers.indexOf("_done");
+    const emptyRow = Array(headers.length).fill("");
+
+    const data = rows
+      .map((row, i) => ({ row, sheetRow: i + 2 }))
+      .filter(
+        ({ row }) =>
+          row[boardIdx] === boardId && (row[doneIdx] === "true" || row[doneIdx] === "TRUE"),
+      )
+      .map(({ sheetRow }) => ({
+        range: `_pending!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`,
+        values: [emptyRow],
+      }));
+
+    if (data.length) await this.api.batchUpdateValues(this.sheetId, data);
+  }
+
   async deleteBoard(boardId: string): Promise<void> {
     const values = await this.api.getValues(this.sheetId, "_boards");
     if (values.length < 2) return;
@@ -384,7 +479,7 @@ export class GoogleSheetProvider implements ISheetProvider {
     const meta = await this.api.getSpreadsheetMetadata(this.sheetId);
     const existingTitles = meta.sheets.map((s) => s.properties.title);
 
-    const tabsToCreate = (["_boards", "_fields", "_cards"] as const).filter(
+    const tabsToCreate = (["_boards", "_fields", "_cards", "_pending"] as const).filter(
       (title) => !existingTitles.includes(title),
     );
 
@@ -396,10 +491,11 @@ export class GoogleSheetProvider implements ISheetProvider {
     }
 
     // Only write headers to tabs that have no data yet — never overwrite existing data
-    const [boardsRow, fieldsRow, cardsRow] = await Promise.all([
+    const [boardsRow, fieldsRow, cardsRow, pendingRow] = await Promise.all([
       this.api.getValues(this.sheetId, "_boards!A1:A1"),
       this.api.getValues(this.sheetId, "_fields!A1:A1"),
       this.api.getValues(this.sheetId, "_cards!A1:A1"),
+      this.api.getValues(this.sheetId, "_pending!A1:A1"),
     ]);
 
     await Promise.all([
@@ -416,6 +512,11 @@ export class GoogleSheetProvider implements ISheetProvider {
       !cardsRow[0]?.length
         ? this.api.setValues(this.sheetId, `_cards!A1:${colLetter(CARDS_FIXED_HEADERS.length)}1`, [
             CARDS_FIXED_HEADERS,
+          ])
+        : Promise.resolve(),
+      !pendingRow[0]?.length
+        ? this.api.setValues(this.sheetId, `_pending!A1:${colLetter(PENDING_HEADERS.length)}1`, [
+            PENDING_HEADERS,
           ])
         : Promise.resolve(),
     ]);
@@ -603,6 +704,31 @@ export class GoogleSheetProvider implements ISheetProvider {
         }
         return JSON.stringify(values);
       }
+      return "";
+    });
+  }
+
+  private rowToPendingItem(headers: string[], row: string[]): PendingItem {
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => {
+      obj[toCamel(h)] = row[i] ?? "";
+    });
+    return {
+      _id: obj._id,
+      boardId: obj.boardId,
+      description: obj.description,
+      _createdAt: obj._createdAt || now(),
+      _done: obj._done === "true" || obj._done === "TRUE",
+    };
+  }
+
+  private pendingItemToRow(item: PendingItem): string[] {
+    return PENDING_HEADERS.map((h) => {
+      if (h === "_id") return item._id;
+      if (h === "board_id") return item.boardId;
+      if (h === "description") return item.description;
+      if (h === "_created_at") return item._createdAt;
+      if (h === "_done") return String(item._done);
       return "";
     });
   }

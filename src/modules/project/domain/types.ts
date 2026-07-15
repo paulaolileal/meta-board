@@ -82,3 +82,11 @@ export interface CardRecord {
   _updatedAt: string;
   [key: string]: FieldValue | string | number | boolean;
 }
+
+export interface PendingItem {
+  _id: string;
+  boardId: string;
+  description: string;
+  _createdAt: string;
+  _done: boolean;
+}
