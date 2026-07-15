@@ -52,7 +52,7 @@ export function SpreadsheetPage() {
   const title = "Meus boards";
 
   return (
-    <div className="relative h-screen overflow-hidden flex flex-col bg-background">
+    <div className="relative h-dvh overflow-hidden flex flex-col bg-background">
       <div className="absolute inset-0 -z-10 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[400px] h-[400px] rounded-full bg-primary/8 blur-[100px]" />
       </div>
@@ -152,7 +152,7 @@ export function SpreadsheetPage() {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
         onClick={() => setCreateOpen(true)}
-        className="absolute bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-glow)] flex items-center justify-center hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-glow)] flex items-center justify-center hover:opacity-90 active:scale-95 transition-all cursor-pointer"
         aria-label="Novo board"
       >
         <Plus className="h-6 w-6" />
