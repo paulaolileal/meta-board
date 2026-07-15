@@ -30,6 +30,7 @@ export function PendingImportGate() {
   const [open, setOpen] = useState(false);
   const [boards, setBoards] = useState<BoardConfig[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -65,9 +66,16 @@ export function PendingImportGate() {
   async function handleSelect(boardId: string) {
     const payload = readPendingShareImport();
     clearPendingShareImport();
-    setOpen(false);
-    if (!payload) return;
+    if (!payload) {
+      setOpen(false);
+      return;
+    }
 
+    // Keep the dialog open (with a spinner) until everything settles — the
+    // write below can trigger an interactive token exchange, and closing the
+    // dialog earlier would expose the not-yet-authenticated HomePage
+    // underneath for that whole stretch.
+    setSubmitting(true);
     const text = combineShareText(payload);
     if (text) {
       try {
@@ -84,6 +92,8 @@ export function PendingImportGate() {
         toast.error("Falha ao adicionar pendente");
       }
     }
+    setSubmitting(false);
+    setOpen(false);
     navigate(`/boards/${boardId}`);
   }
 
@@ -98,7 +108,7 @@ export function PendingImportGate() {
       title="Enviar para qual board?"
       description="Escolha o board onde o item será adicionado à lista de pendentes."
       boards={boards}
-      loading={loading}
+      loading={loading || submitting}
       error={error}
       onSelect={handleSelect}
       onClose={handleClose}
