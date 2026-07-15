@@ -1,6 +1,7 @@
 import type { GoogleAuthService } from "@/shared/auth/GoogleAuthService";
 
 const SHEETS_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
+const REQUEST_TIMEOUT_MS = 15_000;
 
 export class SheetsApiError extends Error {
   constructor(
@@ -83,14 +84,28 @@ export class SheetsApiClient {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async request(method: string, url: string, body?: unknown): Promise<any> {
     const token = await this.auth.ensureValidToken();
-    const res = await fetch(url, {
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: body != null ? JSON.stringify(body) : undefined,
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: body != null ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") {
+        throw new SheetsApiError("Tempo de conexão esgotado. Tente novamente.", 0, null);
+      }
+      throw e;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     const data = await res.json().catch(() => ({}));
 

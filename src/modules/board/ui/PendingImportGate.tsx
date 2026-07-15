@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { initProvider, getSheetProvider } from "@/shared/providers/providerFactory";
 import { useAuthStore } from "@/store/authStore";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
+import { useBoardStore } from "@/modules/board/store";
 import type { BoardConfig } from "@/modules/project/domain/types";
 import { BoardPickerDialog } from "@/modules/board/ui/BoardPickerDialog";
 import {
@@ -20,6 +22,8 @@ import {
  */
 export function PendingImportGate() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const upsertPendingItem = useBoardStore((s) => s.upsertPendingItem);
   const user = useAuthStore((s) => s.user);
   const getSpreadsheetId = useSpreadsheetStore((s) => s.getSpreadsheetId);
 
@@ -67,7 +71,13 @@ export function PendingImportGate() {
     const text = combineShareText(payload);
     if (text) {
       try {
-        await getSheetProvider().createPendingItem(boardId, text);
+        const item = await getSheetProvider().createPendingItem(boardId, text);
+        // Board data is cached by React Query with a staleTime, so a board
+        // visited moments ago would otherwise keep serving its pre-share
+        // snapshot and never show this item. Update the live store directly
+        // (if already on this board) and force a refetch for any other case.
+        if (useBoardStore.getState().boardId === boardId) upsertPendingItem(item);
+        await queryClient.invalidateQueries({ queryKey: ["board", boardId] });
         toast.success("Adicionado à lista de pendentes");
       } catch (e) {
         console.error(e);
