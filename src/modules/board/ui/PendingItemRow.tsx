@@ -21,7 +21,7 @@ export function PendingItemRow({ item, onToggleDone, onConvert }: Props) {
         type="checkbox"
         checked={item._done}
         onChange={(e) => onToggleDone(item._id, e.target.checked)}
-        className="h-4 w-4 mt-1 shrink-0 accent-[var(--primary)]"
+        className="h-4 w-4 mt-1 shrink-0 accent-[var(--primary)] cursor-pointer"
       />
 
       <div className="flex-1 min-w-0">
