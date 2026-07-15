@@ -11,6 +11,7 @@ import { ExtensionImportGate } from "@/modules/board/ui/ExtensionImportGate";
 import { PendingImportGate } from "@/modules/board/ui/PendingImportGate";
 import { Link } from "react-router-dom";
 import { googleAuthService, initProvider } from "@/shared/providers/providerFactory";
+import { TOKEN_REQUEST_SUPERSEDED } from "@/shared/auth/GoogleAuthService";
 import { useAuthStore } from "@/store/authStore";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 
@@ -44,20 +45,18 @@ function useAuthSync() {
     }
     googleAuthService
       .silentSignIn()
-      .catch(() => {
-        // Rejection here doesn't necessarily mean the session is invalid —
-        // it can also mean this request got superseded by a concurrent
-        // interactive sign-in (e.g. the user picking a board from the
-        // Android share-target flow) that already succeeded. Only sign out
-        // if there's still no usable token once this settles.
-      })
-      .finally(() => {
+      .catch((err) => {
+        // A superseded request means another sign-in (e.g. the user picking
+        // a board mid share-target flow) is now in flight and owns the
+        // outcome — bail out without touching auth state so it can finish
+        // uninterrupted. Only a real failure should sign the user out.
+        if (err === TOKEN_REQUEST_SUPERSEDED) return;
         if (!googleAuthService.isAuthenticated()) {
           googleAuthService.signOut();
           clearUser();
         }
-        setInitializing(false);
-      });
+      })
+      .finally(() => setInitializing(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

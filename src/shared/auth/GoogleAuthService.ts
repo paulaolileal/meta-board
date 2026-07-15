@@ -35,6 +35,10 @@ export interface UserInfo {
   picture: string;
 }
 
+// Distinguishes "this request got superseded by a newer one" from a real
+// auth failure — callers must not treat supersession as a lost session.
+export const TOKEN_REQUEST_SUPERSEDED = "token-request-superseded";
+
 const STORAGE_KEY_TOKEN = "mb:gis:token";
 const STORAGE_KEY_EXPIRY = "mb:gis:expiry";
 const STORAGE_KEY_CONSENTED = "mb:gis:consented";
@@ -118,7 +122,7 @@ export class GoogleAuthService {
     // when another one starts (e.g. a user tapping a board mid-share-target
     // flow), overwriting resolveSignIn/rejectSignIn below would silently
     // orphan the first caller's promise forever. Settle it explicitly first.
-    this.rejectSignIn?.("Superseded by a newer token request");
+    this.rejectSignIn?.(TOKEN_REQUEST_SUPERSEDED);
 
     return new Promise((resolve, reject) => {
       let settled = false;
