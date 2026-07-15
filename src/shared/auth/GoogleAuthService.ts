@@ -112,10 +112,34 @@ export class GoogleAuthService {
 
   private _silentRefreshPromise: Promise<void> | null = null;
 
-  private _requestToken(prompt: string): Promise<void> {
+  private _requestToken(prompt: string, timeoutMs = 15_000): Promise<void> {
+    // The GIS tokenClient's callback is a single global closure, not per-call.
+    // If a request is already in flight (e.g. a mount-time silent refresh)
+    // when another one starts (e.g. a user tapping a board mid-share-target
+    // flow), overwriting resolveSignIn/rejectSignIn below would silently
+    // orphan the first caller's promise forever. Settle it explicitly first.
+    this.rejectSignIn?.("Superseded by a newer token request");
+
     return new Promise((resolve, reject) => {
-      this.resolveSignIn = resolve;
-      this.rejectSignIn = reject;
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        reject("Tempo de autenticação esgotado.");
+      }, timeoutMs);
+
+      this.resolveSignIn = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve();
+      };
+      this.rejectSignIn = (err: string) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(err);
+      };
 
       if (!this.tokenClient) {
         this.tokenClient = window.google!.accounts.oauth2.initTokenClient({

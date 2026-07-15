@@ -45,10 +45,19 @@ function useAuthSync() {
     googleAuthService
       .silentSignIn()
       .catch(() => {
-        googleAuthService.signOut();
-        clearUser();
+        // Rejection here doesn't necessarily mean the session is invalid —
+        // it can also mean this request got superseded by a concurrent
+        // interactive sign-in (e.g. the user picking a board from the
+        // Android share-target flow) that already succeeded. Only sign out
+        // if there's still no usable token once this settles.
       })
-      .finally(() => setInitializing(false));
+      .finally(() => {
+        if (!googleAuthService.isAuthenticated()) {
+          googleAuthService.signOut();
+          clearUser();
+        }
+        setInitializing(false);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
