@@ -37,9 +37,10 @@ O bridge (`bridge-content-script.js`) e o destino padrão em `background.js` apo
   são best-effort e podem quebrar quando o Instagram alterar sua marcação.
 - A extração de comentários fixados depende de o Instagram exibir um indicador textual de "fixado"
   ou de reconhecer o autor do post pelo link do perfil na lista de comentários.
-- Em sites fora do Instagram, o fallback `pageText` é um dump bruto de `document.body.innerText`
-  (truncado em 20.000 caracteres) — inclui ruído de UI (menu, rodapé, etc.) porque não há parsing
-  específico por site; a qualidade da extração final depende inteiramente da IA conseguir separar
-  o conteúdo relevante desse texto.
+- O campo `extra` é um dump bruto de `document.body.innerText` (truncado em 20.000 caracteres),
+  sempre incluído no payload como catch-all. Em sites fora do Instagram é a única fonte de
+  conteúdo — inclui ruído de UI (menu, rodapé, etc.) porque não há parsing específico por site;
+  a qualidade da extração final depende inteiramente da IA conseguir separar o conteúdo relevante
+  desse texto.
 - Extensões Chrome só funcionam no Chrome desktop — por isso o link de instalação fica escondido
   no menu quando o app é acessado pelo celular (`src/components/UserAccountMenu.tsx`).

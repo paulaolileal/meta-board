@@ -1,4 +1,4 @@
-(function scrapePage() {
+(async function scrapePage() {
   const MAX_PAGE_TEXT_LENGTH = 20000;
 
   function text(el) {
@@ -75,7 +75,11 @@
     }
     // Reels shown inline in a feed link to "/<user>/reels/" rather than
     // "/<user>/", since that tab is where the avatar/name click lands.
-    if (segments.length === 2 && segments[1] === "reels" && !RESERVED_PATH_SEGMENTS.has(segments[0])) {
+    if (
+      segments.length === 2 &&
+      segments[1] === "reels" &&
+      !RESERVED_PATH_SEGMENTS.has(segments[0])
+    ) {
       return segments[0];
     }
     return undefined;
@@ -155,6 +159,32 @@
     return undefined;
   }
 
+  // Long captions/comments are rendered truncated behind a "… mais"/"… more"
+  // toggle. Its visible label sits in an aria-hidden span right next to the
+  // truncated text, and — critically — that truncated span lacks the
+  // dir="auto" attribute the rest of this scraper relies on to find text (only
+  // its parent div has it), so without expanding it first, captionText (and
+  // everything derived from it, like @mentions) silently comes back partial.
+  const EXPAND_LABEL_PATTERN = /^(?:\.{3}|…)?\s*(mais|more|m[áa]s)$/i;
+
+  function expandTruncatedText() {
+    let expanded = false;
+    for (const span of document.querySelectorAll("span[aria-hidden='true']")) {
+      const label = (span.textContent || "").trim();
+      if (!EXPAND_LABEL_PATTERN.test(label)) continue;
+      const trigger = span.closest("[role='button']");
+      if (trigger) {
+        trigger.click();
+        expanded = true;
+      }
+    }
+    return expanded;
+  }
+
+  function waitForNextPaint() {
+    return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  }
+
   // Instagram streams <video> through MediaSource Extensions, so
   // currentSrc/src is a page-local "blob:" URL that can't be fetched
   // server-side (e.g. for transcription). The real CDN mp4 URL instead
@@ -170,9 +200,13 @@
     return undefined;
   }
 
-  function scrapeInstagramPost() {
+  async function scrapeInstagramPost() {
     const isPostOrReelPage = /\/(p|reel|reels)\/[^/]+\/?/.test(window.location.pathname);
     if (!isPostOrReelPage) return undefined;
+
+    if (expandTruncatedText()) {
+      await waitForNextPaint();
+    }
 
     const timeEls = Array.from(document.querySelectorAll("time[datetime]"));
     const captionTimeEl = timeEls.find((t) => !t.closest("a"));
@@ -210,7 +244,9 @@
       .slice(0, 5)
       .filter((entry) => !!profileUsername && entry.username === profileUsername);
 
-    const pinnedAuthorComments = [...new Set([...pinnedComments, ...authorCommentsInFirst5].map((entry) => entry.body))];
+    const pinnedAuthorComments = [
+      ...new Set([...pinnedComments, ...authorCommentsInFirst5].map((entry) => entry.body)),
+    ];
 
     const videoUrl = videoUrlFromEmbeddedJson() || videoUrlFromMeta() || videoUrlFromElement();
 
@@ -225,17 +261,19 @@
   }
 
   const isInstagram = window.location.hostname.includes("instagram.com");
-  const instagramResult = isInstagram ? scrapeInstagramPost() : undefined;
+  const instagramResult = isInstagram ? await scrapeInstagramPost() : undefined;
 
   const base = {
     postUrl: window.location.href,
-    pageText: collectPageText(),
+    // Always included, alongside whatever structured fields were parsed
+    // above — a catch-all so any visible text the site-specific extraction
+    // doesn't categorize (captions included) is never silently lost.
+    extra: collectPageText(),
   };
 
-  // Instagram pages get the fully structured payload (plus pageText as a
-  // supplementary fallback); every other site — Shopee, TikTok, a news
-  // article, anything — gets whatever the browser can render as text, with
-  // no site-specific parsing at all.
+  // Instagram pages get the fully structured payload on top of the extra
+  // catch-all; every other site — Shopee, TikTok, a news article, anything —
+  // gets only the catch-all, with no site-specific parsing at all.
   return instagramResult
     ? { ...base, ...instagramResult }
     : { ...base, videoUrl: videoUrlFromMeta() || videoUrlFromElement() };
