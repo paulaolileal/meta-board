@@ -95,41 +95,55 @@
     return undefined;
   }
 
-  function isPostPermalinkAnchor(anchor) {
-    return /^\/(?:p|reel|reels)\/[^/]+\/?$/.test(anchor.pathname);
-  }
-
-  function currentPostShortcode() {
-    const match = window.location.pathname.match(/^\/(?:p|reel|reels)\/([^/]+)/);
-    return match ? match[1] : undefined;
+  // Instagram always renders <meta name="description"> server-side for the
+  // exact post at the current URL, following the pattern "<likes>, <comments>
+  // - <username> <word...>: "<caption>"" (translated per locale, but always
+  // "- <username> <single word>" before the rest). Unlike anything in the
+  // DOM below, this reflects the URL's own shortcode and nothing else, which
+  // makes it immune to the Reels feed's stacked-post pollution.
+  function metaDescriptionEntry() {
+    const meta =
+      document.querySelector("meta[name='description']") ||
+      document.querySelector("meta[property='og:description']");
+    const content = meta?.getAttribute("content");
+    if (!content) return undefined;
+    const match = content.match(/-\s*(\S+)\s+\S+[\s\S]*?:\s*"([\s\S]*)"[^"]*$/);
+    return match ? { username: match[1], caption: match[2] } : undefined;
   }
 
   // The Reels feed (`/reels/`) — unlike a single-post `/p/` page — keeps
-  // every post the user has scrolled past mounted in the DOM at once,
-  // stacked as siblings. Any document-wide query on that page bleeds in
-  // captions/comments/video from posts the user never opened. This starts
-  // at the open post's own permalink anchor and walks up only as long as
-  // the subtree still refers to that one shortcode, stopping the instant a
-  // parent would start covering a second post — landing on the largest
-  // container that is still exclusively about the open post.
+  // every post the user has scrolled past mounted in the DOM at once, stacked
+  // as siblings. Any document-wide query on that page bleeds in
+  // captions/comments/video from posts the user never opened. Grouping by
+  // permalink shortcode doesn't work here: every stacked card's own
+  // "permalink" anchor points at the CURRENTLY OPEN reel's URL rather than
+  // its own post, so they're all indistinguishable by href. Each card wraps
+  // exactly one <video> though, so this instead anchors on the caption whose
+  // (username, text) matches the URL's own post — found via
+  // metaDescriptionEntry(), which is immune to the stacking above — and
+  // walks up only as long as the subtree still contains a single <video>,
+  // stopping the instant a parent would start covering a second card.
   function activePostContainer() {
-    const shortcode = currentPostShortcode();
-    if (!shortcode) return document.body;
+    const metaEntry = metaDescriptionEntry();
+    if (!metaEntry) return document.body;
 
-    const permalinkAnchors = Array.from(document.querySelectorAll("a[href]")).filter(
-      isPostPermalinkAnchor,
+    const timeEls = Array.from(document.querySelectorAll("time[datetime]")).filter(
+      (t) => !t.closest("a"),
     );
-    const shortcodeOf = (anchor) => anchor.pathname.split("/").filter(Boolean)[1];
-    const ownAnchor = permalinkAnchors.find((anchor) => shortcodeOf(anchor) === shortcode);
-    if (!ownAnchor) return document.body;
-
-    let container = ownAnchor;
-    let candidate = ownAnchor.parentElement;
-    while (candidate && candidate !== document.body) {
-      const shortcodesInside = new Set(
-        permalinkAnchors.filter((anchor) => candidate.contains(anchor)).map(shortcodeOf),
+    const captionTimeEl = timeEls.find((t) => {
+      const entry = entryFromTime(t, document.body);
+      return (
+        !!entry?.body &&
+        entry.username === metaEntry.username &&
+        metaEntry.caption.startsWith(entry.body.slice(0, 40))
       );
-      if (shortcodesInside.size > 1) break;
+    });
+    if (!captionTimeEl) return document.body;
+
+    let container = captionTimeEl;
+    let candidate = captionTimeEl.parentElement;
+    while (candidate && candidate !== document.body) {
+      if (candidate.querySelectorAll("video").length > 1) break;
       container = candidate;
       candidate = candidate.parentElement;
     }
