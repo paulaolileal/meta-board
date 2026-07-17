@@ -215,6 +215,13 @@ function sanitizeCard(
   return result;
 }
 
+function toTitleCase(text: string): string {
+  return text
+    .split(" ")
+    .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : word))
+    .join(" ");
+}
+
 function extractJsonFromText(text: string): Record<string, unknown> {
   const codeBlock = text.match(/```json\s*([\s\S]*?)```/);
   if (codeBlock) return JSON.parse(codeBlock[1]) as Record<string, unknown>;
@@ -268,7 +275,11 @@ export function useAiCardExtraction() {
 
       for (const field of extractableFields) {
         if (!(field.id in rawCardData)) continue;
-        values[field.id] = rawCardData[field.id] as CardRecord[string];
+        let value = rawCardData[field.id];
+        if (field.id === board.cardTitleField && typeof value === "string") {
+          value = toTitleCase(value);
+        }
+        values[field.id] = value as CardRecord[string];
         sources[field.id] = "extracted";
         if (cardReasonData[field.id]) {
           reasons[field.id] = String(cardReasonData[field.id]);
@@ -316,7 +327,11 @@ export function useAiCardExtraction() {
 
           for (const field of missingFields) {
             if (!(field.id in searchValues)) continue;
-            enrichedValues[field.id] = searchValues[field.id] as CardRecord[string];
+            let value = searchValues[field.id];
+            if (field.id === board.cardTitleField && typeof value === "string") {
+              value = toTitleCase(value);
+            }
+            enrichedValues[field.id] = value as CardRecord[string];
             enrichedSources[field.id] = "searched";
             if (searchReasons[field.id]) {
               enrichedReasons[field.id] = String(searchReasons[field.id]);
