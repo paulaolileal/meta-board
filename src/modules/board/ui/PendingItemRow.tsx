@@ -1,6 +1,17 @@
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { LayoutGrid } from "lucide-react";
+import { Check, LayoutGrid, Undo2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { PendingItem } from "@/modules/project/domain/types";
 
 const URL_PATTERN = /(https?:\/\/[^\s]+)/;
@@ -17,13 +28,6 @@ export function PendingItemRow({ item, onToggleDone, onConvert }: Props) {
 
   return (
     <div className="flex items-start gap-3 py-3 border-b border-border last:border-0">
-      <input
-        type="checkbox"
-        checked={item._done}
-        onChange={(e) => onToggleDone(item._id, e.target.checked)}
-        className="h-4 w-4 mt-1 shrink-0 accent-[var(--primary)] cursor-pointer"
-      />
-
       <div className="flex-1 min-w-0">
         <p
           className={`text-sm whitespace-pre-wrap break-words ${
@@ -49,13 +53,63 @@ export function PendingItemRow({ item, onToggleDone, onConvert }: Props) {
         </div>
       </div>
 
-      <button
-        onClick={() => onConvert(item)}
-        title="Converter em card"
-        className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center border border-border hover:bg-accent transition"
-      >
-        <LayoutGrid className="h-4 w-4" />
-      </button>
+      <div className="flex items-center gap-2 shrink-0">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              title={item._done ? "Reabrir item" : "Marcar como concluído"}
+              className={`h-8 w-8 rounded-lg flex items-center justify-center border transition ${
+                item._done
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border hover:bg-accent"
+              }`}
+            >
+              {item._done ? <Undo2 className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {item._done ? "Reabrir item?" : "Marcar como concluído?"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {item._done
+                  ? "Este item voltará para a lista de pendentes."
+                  : "Este item será marcado como concluído."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => onToggleDone(item._id, !item._done)}>
+                Confirmar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button
+              title="Converter em card"
+              className="h-8 w-8 rounded-lg flex items-center justify-center border border-border hover:bg-accent transition"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Converter em card?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Um novo card será criado a partir deste item pendente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => onConvert(item)}>Confirmar</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </div>
   );
 }

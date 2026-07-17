@@ -6,6 +6,17 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useBoardStore } from "@/modules/board/store";
 import { usePendingMutations } from "@/modules/board/usePendingMutations";
 import { PendingItemRow } from "@/modules/board/ui/PendingItemRow";
@@ -58,13 +69,31 @@ export function PendingListSheet({ open, onClose, onConvert }: Props) {
         </div>
 
         <div className="flex justify-end pt-3 border-t border-border">
-          <button
-            onClick={() => clearCompleted()}
-            disabled={!hasCompleted}
-            className="px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-accent transition disabled:opacity-40 disabled:pointer-events-none"
-          >
-            Limpar concluídos
-          </button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                disabled={!hasCompleted}
+                className="px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-accent transition disabled:opacity-40 disabled:pointer-events-none"
+              >
+                Limpar concluídos
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Limpar concluídos?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Todos os itens concluídos serão removidos permanentemente da lista de
+                  pendentes.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => clearCompleted()}>
+                  Confirmar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </SheetContent>
     </Sheet>
