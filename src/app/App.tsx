@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -12,9 +12,11 @@ import { ExtensionImportGate } from "@/modules/board/ui/ExtensionImportGate";
 import { PendingImportGate } from "@/modules/board/ui/PendingImportGate";
 import { Link } from "react-router-dom";
 import { googleAuthService, initProvider } from "@/shared/providers/providerFactory";
-import { TOKEN_REQUEST_SUPERSEDED } from "@/shared/auth/GoogleAuthService";
+import { TOKEN_REQUEST_SUPERSEDED, type UserInfo } from "@/shared/auth/GoogleAuthService";
 import { useAuthStore } from "@/store/authStore";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
+
+const REAUTH_TOAST_ID = "gis-reauth-required";
 
 function useAuthSync() {
   const user = useAuthStore((s) => s.user);
@@ -67,14 +69,16 @@ function useAuthSync() {
   // mid-session — renewal only happens on an explicit tap, which is a real
   // user gesture and won't get blocked as an unsolicited popup.
   useEffect(() => {
-    let toastId: string | number | undefined;
     googleAuthService.onReauthRequiredChange((required) => {
       if (!required) {
-        if (toastId !== undefined) toast.dismiss(toastId);
-        toastId = undefined;
+        toast.dismiss(REAUTH_TOAST_ID);
         return;
       }
-      toastId = toast.warning("Sua sessão com o Google expirou", {
+      // Fixed id: both the proactive refresh scheduler and any API client
+      // that hits a hard 401 mid-request report through this same handler —
+      // dedupe them into one toast instead of stacking duplicates.
+      toast.warning("Sua sessão com o Google expirou", {
+        id: REAUTH_TOAST_ID,
         description: "Toque em Renovar para continuar sem perder o que você estava fazendo.",
         duration: Infinity,
         action: {
@@ -90,6 +94,46 @@ function useAuthSync() {
   }, []);
 }
 
+// Recovers from a token that expired between renders (e.g. the proactive
+// scheduler's silent retry is still mid-backoff) before deciding a protected
+// route is truly unreachable. Without this, a route guard's synchronous
+// isAuthenticated() check would bounce the user back to "/" — losing their
+// place — during a window the background refresh would have closed on its
+// own moments later.
+function useAuthRecovery(user: UserInfo | null): "ready" | "checking" | "unauthenticated" {
+  const [status, setStatus] = useState<"ready" | "checking" | "unauthenticated">(() =>
+    googleAuthService.isAuthenticated() ? "ready" : user ? "checking" : "unauthenticated",
+  );
+
+  useEffect(() => {
+    if (googleAuthService.isAuthenticated()) {
+      setStatus("ready");
+      return;
+    }
+    if (!user) {
+      setStatus("unauthenticated");
+      return;
+    }
+    setStatus("checking");
+    let cancelled = false;
+    googleAuthService
+      .silentSignIn()
+      .catch(() => {
+        // Swallowed: the fallback status check right below reflects reality
+        // regardless of why the silent attempt failed.
+      })
+      .finally(() => {
+        if (!cancelled)
+          setStatus(googleAuthService.isAuthenticated() ? "ready" : "unauthenticated");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  return status;
+}
+
 function AuthSplash() {
   return (
     <div className="flex h-screen items-center justify-center bg-background">
@@ -101,8 +145,9 @@ function AuthSplash() {
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const isInitializing = useAuthStore((s) => s.isInitializing);
-  if (isInitializing) return <AuthSplash />;
-  if (!user || !googleAuthService.isAuthenticated()) {
+  const authStatus = useAuthRecovery(user);
+  if (isInitializing || authStatus === "checking") return <AuthSplash />;
+  if (!user || authStatus === "unauthenticated") {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;
@@ -111,11 +156,12 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 function SpreadsheetRoute({ children }: { children: ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const isInitializing = useAuthStore((s) => s.isInitializing);
+  const authStatus = useAuthRecovery(user);
   const getSpreadsheetId = useSpreadsheetStore((s) => s.getSpreadsheetId);
 
-  if (isInitializing) return <AuthSplash />;
+  if (isInitializing || authStatus === "checking") return <AuthSplash />;
 
-  if (!user || !googleAuthService.isAuthenticated()) {
+  if (!user || authStatus === "unauthenticated") {
     return <Navigate to="/" replace />;
   }
 

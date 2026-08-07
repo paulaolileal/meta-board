@@ -39,6 +39,17 @@ export interface UserInfo {
 // auth failure — callers must not treat supersession as a lost session.
 export const TOKEN_REQUEST_SUPERSEDED = "token-request-superseded";
 
+// Thrown by ensureValidToken()/googleApiFetch() when no valid token could be
+// obtained without user interaction. Distinguishable via `instanceof` so
+// callers (API clients, mutation hooks, the global query cache) can route it
+// to the non-destructive "Renovar" prompt instead of a generic failure toast.
+export class GoogleAuthError extends Error {
+  constructor(message = "Sua sessão com o Google expirou. Toque em Renovar para continuar.") {
+    super(message);
+    this.name = "GoogleAuthError";
+  }
+}
+
 const STORAGE_KEY_TOKEN = "mb:gis:token";
 const STORAGE_KEY_EXPIRY = "mb:gis:expiry";
 const STORAGE_KEY_CONSENTED = "mb:gis:consented";
@@ -69,6 +80,14 @@ export class GoogleAuthService {
     this.loadFromSession();
     if (this.isAuthenticated()) {
       this.scheduleProactiveRefresh();
+    }
+    // setTimeout is throttled/suspended for backgrounded tabs and sleeping
+    // laptops, so the scheduled refresh above can simply never fire while
+    // away. Re-check the moment the tab is usable again instead of waiting
+    // for the next API call to discover the token is dead.
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", () => this.revalidateOnResume());
+      window.addEventListener("focus", () => this.revalidateOnResume());
     }
   }
 
@@ -103,10 +122,37 @@ export class GoogleAuthService {
     this._reauthRequiredHandler = handler;
   }
 
-  async ensureValidToken(): Promise<string> {
-    if (this.isAuthenticated()) return this.getAccessToken()!;
-    await this.signIn();
+  // Used by every API client before a request. Deliberately never falls
+  // back to an interactive signIn(): that would pop a real Google window
+  // from inside a background fetch/mutation with no user gesture behind it
+  // (silently blocked by most browsers, or worse, a surprise popup). Instead
+  // it makes one best-effort silent attempt and, if that fails, throws
+  // GoogleAuthError so the caller can surface the non-destructive reconnect
+  // prompt instead. Pass forceRefresh to bypass the local expiry cache when
+  // the server itself just rejected a token we believed was still valid.
+  async ensureValidToken(opts?: { forceRefresh?: boolean }): Promise<string> {
+    if (!opts?.forceRefresh && this.isAuthenticated()) return this.getAccessToken()!;
+    try {
+      await this.silentSignIn();
+    } catch (err) {
+      // A superseded request means some other sign-in (interactive or
+      // silent) already owns the outcome — don't also flash the reconnect
+      // toast on top of it.
+      if (err !== TOKEN_REQUEST_SUPERSEDED) this._reauthRequiredHandler?.(true);
+      throw new GoogleAuthError();
+    }
+    if (!this.isAuthenticated()) {
+      this._reauthRequiredHandler?.(true);
+      throw new GoogleAuthError();
+    }
     return this.getAccessToken()!;
+  }
+
+  // Lets a request wrapper report a hard auth failure discovered mid-flight
+  // (e.g. a 401 from the API despite a locally "valid" token) through the
+  // same non-destructive prompt used by the proactive refresh scheduler.
+  notifyReauthRequired(): void {
+    this._reauthRequiredHandler?.(true);
   }
 
   async signIn(): Promise<void> {
@@ -250,6 +296,21 @@ export class GoogleAuthService {
       this._proactiveRetryCount = 0;
       this._reauthRequiredHandler?.(true);
     });
+  }
+
+  // Runs on visibilitychange/focus. If the token is still locally valid, this
+  // just re-arms the timer against the real remaining time (a suspended tab
+  // can leave the old setTimeout wildly late). If it already expired outright
+  // while we were away, recover immediately instead of waiting for the next
+  // API call to hit a dead token.
+  private revalidateOnResume(): void {
+    if (document.visibilityState === "hidden") return;
+    if (!this._hasConsented) return;
+    if (this.isAuthenticated()) {
+      this.scheduleProactiveRefresh();
+    } else {
+      this.attemptProactiveRefresh();
+    }
   }
 
   private cancelProactiveRefresh(): void {

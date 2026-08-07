@@ -1,4 +1,5 @@
 import { googleAuthService } from "@/shared/providers/providerFactory";
+import { googleApiFetch } from "@/shared/api/googleApiFetch";
 
 interface LinkPreviewResult {
   image: string | null;
@@ -7,15 +8,11 @@ interface LinkPreviewResult {
 
 const previewCache = new Map<string, Promise<LinkPreviewResult>>();
 
-async function authHeaders(): Promise<Record<string, string>> {
-  const token = await googleAuthService.ensureValidToken();
-  return { Authorization: `Bearer ${token}` };
-}
-
 async function fetchLinkPreview(url: string): Promise<LinkPreviewResult> {
-  const response = await fetch(`/api/link/preview?url=${encodeURIComponent(url)}`, {
-    headers: await authHeaders(),
-  });
+  const response = await googleApiFetch(
+    googleAuthService,
+    `/api/link/preview?url=${encodeURIComponent(url)}`,
+  );
 
   if (!response.ok) {
     return { image: null };

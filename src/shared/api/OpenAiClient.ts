@@ -1,22 +1,18 @@
 import { googleAuthService } from "@/shared/providers/providerFactory";
+import { googleApiFetch } from "@/shared/api/googleApiFetch";
 
 export interface OpenAiMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
 
-async function authHeaders(): Promise<Record<string, string>> {
-  const token = await googleAuthService.ensureValidToken();
-  return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
-}
-
 export async function chatComplete(
   messages: OpenAiMessage[],
   model = "gpt-4o-mini",
 ): Promise<string> {
-  const response = await fetch("/api/openai/chat", {
+  const response = await googleApiFetch(googleAuthService, "/api/openai/chat", {
     method: "POST",
-    headers: await authHeaders(),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model, messages, response_format: { type: "json_object" } }),
   });
 
@@ -39,9 +35,9 @@ export async function chatCompleteWithWebSearch(
   input: string,
   model = "gpt-4o-mini",
 ): Promise<string> {
-  const response = await fetch("/api/openai/responses", {
+  const response = await googleApiFetch(googleAuthService, "/api/openai/responses", {
     method: "POST",
-    headers: await authHeaders(),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model, tools: [{ type: "web_search_preview" }], instructions, input }),
   });
 
@@ -67,9 +63,9 @@ export async function chatCompleteWithWebSearch(
 }
 
 export async function transcribeVideo(videoUrl: string): Promise<string> {
-  const response = await fetch("/api/openai/transcribe", {
+  const response = await googleApiFetch(googleAuthService, "/api/openai/transcribe", {
     method: "POST",
-    headers: await authHeaders(),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ videoUrl }),
   });
 

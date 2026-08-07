@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { getSheetProvider } from "@/shared/providers/providerFactory";
 import { useBoardStore } from "@/modules/board/store";
 import { cacheSet } from "@/shared/cache/localCache";
+import { GoogleAuthError } from "@/shared/auth/GoogleAuthService";
 
 export function usePendingMutations() {
   const upsertPendingItem = useBoardStore((s) => s.upsertPendingItem);
@@ -29,7 +30,7 @@ export function usePendingMutations() {
         return item;
       } catch (e) {
         console.error(e);
-        toast.error("Falha ao adicionar pendente");
+        if (!(e instanceof GoogleAuthError)) toast.error("Falha ao adicionar pendente");
       }
     },
     [boardId, provider, upsertPendingItem, flushPersist],
@@ -46,7 +47,7 @@ export function usePendingMutations() {
       } catch (e) {
         console.error(e);
         upsertPendingItem(prev);
-        toast.error("Falha ao atualizar pendente");
+        if (!(e instanceof GoogleAuthError)) toast.error("Falha ao atualizar pendente");
       }
     },
     [provider, upsertPendingItem, flushPersist],
@@ -62,7 +63,7 @@ export function usePendingMutations() {
       } catch (e) {
         console.error(e);
         if (prev) upsertPendingItem(prev);
-        toast.error("Falha ao remover pendente");
+        if (!(e instanceof GoogleAuthError)) toast.error("Falha ao remover pendente");
       }
     },
     [provider, removePendingItem, upsertPendingItem, flushPersist],
@@ -78,7 +79,7 @@ export function usePendingMutations() {
     } catch (e) {
       console.error(e);
       setPendingItems(prev);
-      toast.error("Falha ao limpar concluídos");
+      if (!(e instanceof GoogleAuthError)) toast.error("Falha ao limpar concluídos");
     }
   }, [boardId, provider, setPendingItems, flushPersist]);
 

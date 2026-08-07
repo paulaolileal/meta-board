@@ -4,6 +4,7 @@ import { getSheetProvider } from "@/shared/providers/providerFactory";
 import { useBoardStore } from "@/modules/board/store";
 import type { CardRecord } from "@/modules/project/domain/types";
 import { cacheSet } from "@/shared/cache/localCache";
+import { GoogleAuthError } from "@/shared/auth/GoogleAuthService";
 
 const WRITE_DEBOUNCE_MS = 2000;
 
@@ -34,7 +35,10 @@ export function useCardMutations() {
           await flushPersist();
         } catch (e) {
           console.error(e);
-          toast.error("Falha ao sincronizar card");
+          // The card's local state is untouched (it was already optimistic),
+          // so nothing is lost — just skip the generic toast when a session
+          // expiry already triggered the app-wide reconnect prompt.
+          if (!(e instanceof GoogleAuthError)) toast.error("Falha ao sincronizar card");
         } finally {
           map.delete(card._id);
         }
@@ -63,7 +67,7 @@ export function useCardMutations() {
         return c;
       } catch (e) {
         console.error(e);
-        toast.error("Falha ao criar card");
+        if (!(e instanceof GoogleAuthError)) toast.error("Falha ao criar card");
       }
     },
     [boardId, provider, upsertCard, flushPersist],
@@ -91,7 +95,7 @@ export function useCardMutations() {
         });
       } catch (e) {
         console.error(e);
-        toast.error("Falha ao remover");
+        if (!(e instanceof GoogleAuthError)) toast.error("Falha ao remover");
       }
     },
     [boardId, provider, removeCard, upsertCard, flushPersist],

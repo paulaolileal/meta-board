@@ -1,4 +1,5 @@
 import type { GoogleAuthService } from "@/shared/auth/GoogleAuthService";
+import { googleApiFetch } from "@/shared/api/googleApiFetch";
 
 const DRIVE_BASE = "https://www.googleapis.com/drive/v3";
 
@@ -53,13 +54,9 @@ export class DriveApiClient {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async request(method: string, url: string, body?: unknown): Promise<any> {
-    const token = await this.auth.ensureValidToken();
-    const res = await fetch(url, {
+    const res = await googleApiFetch(this.auth, url, {
       method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(body != null ? { "Content-Type": "application/json" } : {}),
-      },
+      headers: body != null ? { "Content-Type": "application/json" } : undefined,
       body: body != null ? JSON.stringify(body) : undefined,
     });
     const data = await res.json().catch(() => ({}));
