@@ -1,5 +1,6 @@
 import { googleAuthService } from "@/shared/providers/providerFactory";
 import { googleApiFetch } from "@/shared/api/googleApiFetch";
+import { LEALTEK_API_URL } from "@/shared/config";
 
 interface LinkPreviewResult {
   image: string | null;
@@ -11,7 +12,7 @@ const previewCache = new Map<string, Promise<LinkPreviewResult>>();
 async function fetchLinkPreview(url: string): Promise<LinkPreviewResult> {
   const response = await googleApiFetch(
     googleAuthService,
-    `/api/link/preview?url=${encodeURIComponent(url)}`,
+    `${LEALTEK_API_URL}/api/tools/link-preview?url=${encodeURIComponent(url)}`,
   );
 
   if (!response.ok) {

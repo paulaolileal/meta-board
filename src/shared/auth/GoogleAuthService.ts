@@ -1,43 +1,8 @@
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        oauth2: {
-          initTokenClient(config: TokenClientConfig): TokenClient;
-          revoke(token: string, callback?: () => void): void;
-        };
-      };
-    };
-  }
-}
-
-interface TokenClientConfig {
-  client_id: string;
-  scope: string;
-  callback: (response: TokenResponse) => void;
-  error_callback?: (error: { type: string }) => void;
-}
-
-interface TokenClient {
-  requestAccessToken(opts?: { prompt?: string }): void;
-}
-
-interface TokenResponse {
-  access_token: string;
-  expires_in: number;
-  error?: string;
-  error_description?: string;
-}
-
 export interface UserInfo {
   name: string;
   email: string;
   picture: string;
 }
-
-// Distinguishes "this request got superseded by a newer one" from a real
-// auth failure — callers must not treat supersession as a lost session.
-export const TOKEN_REQUEST_SUPERSEDED = "token-request-superseded";
 
 // Thrown by ensureValidToken()/googleApiFetch() when no valid token could be
 // obtained without user interaction. Distinguishable via `instanceof` so
@@ -50,33 +15,33 @@ export class GoogleAuthError extends Error {
   }
 }
 
-const STORAGE_KEY_TOKEN = "mb:gis:token";
-const STORAGE_KEY_EXPIRY = "mb:gis:expiry";
-const STORAGE_KEY_CONSENTED = "mb:gis:consented";
-const SCOPE = "https://www.googleapis.com/auth/drive.file openid email profile";
+const STORAGE_KEY_TOKEN = "mb:auth:token";
+const STORAGE_KEY_EXPIRY = "mb:auth:expiry";
 const EXPIRY_BUFFER_MS = 30_000;
 const PROACTIVE_REFRESH_BEFORE_MS = 5 * 60 * 1000;
 // Backoff schedule for retrying a failed silent proactive refresh before
 // giving up and asking the user to re-authenticate interactively.
 const PROACTIVE_RETRY_DELAYS_MS = [30_000, 60_000, 120_000];
 
+// Talks to lealtek-api's Authorization Code + PKCE flow instead of Google
+// Identity Services directly. The token exchange and the refresh_token
+// itself live server-side (httpOnly cookie on the shared root domain) — this
+// class only ever holds the short-lived access_token, in memory + a
+// sessionStorage mirror, exactly as before.
 export class GoogleAuthService {
-  private clientId: string;
-  private tokenClient: TokenClient | null = null;
-  private resolveSignIn: (() => void) | null = null;
-  private rejectSignIn: ((err: string) => void) | null = null;
+  private apiBaseUrl: string;
   private _refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private _proactiveRetryCount = 0;
   private _reauthRequiredHandler: ((required: boolean) => void) | null = null;
+  private _silentRefreshPromise: Promise<void> | null = null;
 
   // Primary storage: memory (never persisted, cleared on tab close)
   private _accessToken: string | null = null;
   private _expiresAt = 0;
-  private _hasConsented = false;
 
-  constructor(clientId: string) {
-    this.clientId = clientId;
-    this._hasConsented = localStorage.getItem(STORAGE_KEY_CONSENTED) === "true";
+  constructor(apiBaseUrl: string) {
+    this.apiBaseUrl = apiBaseUrl;
+    this.consumeRedirectResult();
     this.loadFromSession();
     if (this.isAuthenticated()) {
       this.scheduleProactiveRefresh();
@@ -123,22 +88,19 @@ export class GoogleAuthService {
   }
 
   // Used by every API client before a request. Deliberately never falls
-  // back to an interactive signIn(): that would pop a real Google window
-  // from inside a background fetch/mutation with no user gesture behind it
-  // (silently blocked by most browsers, or worse, a surprise popup). Instead
-  // it makes one best-effort silent attempt and, if that fails, throws
-  // GoogleAuthError so the caller can surface the non-destructive reconnect
-  // prompt instead. Pass forceRefresh to bypass the local expiry cache when
-  // the server itself just rejected a token we believed was still valid.
+  // back to an interactive signIn(): that would navigate the whole tab away
+  // from inside a background fetch/mutation with no user gesture behind it.
+  // Instead it makes one best-effort silent attempt and, if that fails,
+  // throws GoogleAuthError so the caller can surface the non-destructive
+  // reconnect prompt instead. Pass forceRefresh to bypass the local expiry
+  // cache when the server itself just rejected a token we believed was
+  // still valid.
   async ensureValidToken(opts?: { forceRefresh?: boolean }): Promise<string> {
     if (!opts?.forceRefresh && this.isAuthenticated()) return this.getAccessToken()!;
     try {
       await this.silentSignIn();
-    } catch (err) {
-      // A superseded request means some other sign-in (interactive or
-      // silent) already owns the outcome — don't also flash the reconnect
-      // toast on top of it.
-      if (err !== TOKEN_REQUEST_SUPERSEDED) this._reauthRequiredHandler?.(true);
+    } catch {
+      this._reauthRequiredHandler?.(true);
       throw new GoogleAuthError();
     }
     if (!this.isAuthenticated()) {
@@ -155,103 +117,89 @@ export class GoogleAuthService {
     this._reauthRequiredHandler?.(true);
   }
 
-  async signIn(): Promise<void> {
-    await this.waitForGis();
-    return this._requestToken(this._hasConsented ? "" : "consent");
+  // Interactive sign-in navigates the whole tab to lealtek-api's login
+  // endpoint (full-page redirect, not a popup) — more robust in installed
+  // PWAs and mobile browsers than window.open(), and it's what lets
+  // lealtek-api detect and block in-app browsers before ever reaching
+  // Google. Control returns to this app only when the browser lands back
+  // here with #access_token=... in the URL, picked up by
+  // consumeRedirectResult() on the next boot.
+  signIn(): void {
+    const returnTo = window.location.href;
+    window.location.href = `${this.apiBaseUrl}/api/auth/login?return_to=${encodeURIComponent(returnTo)}`;
   }
 
+  // Background renewal: calls lealtek-api's /api/auth/refresh, which reads
+  // the httpOnly refresh_token cookie server-side. Never opens any UI —
+  // failure just rejects, same contract as before.
   silentSignIn(): Promise<void> {
     if (this._silentRefreshPromise) return this._silentRefreshPromise;
-    this._silentRefreshPromise = this.waitForGis()
-      .then(() => this._requestToken("none"))
-      .finally(() => {
-        this._silentRefreshPromise = null;
-      });
+    this._silentRefreshPromise = this.refreshFromServer().finally(() => {
+      this._silentRefreshPromise = null;
+    });
     return this._silentRefreshPromise;
   }
 
-  private _silentRefreshPromise: Promise<void> | null = null;
-
-  private _requestToken(prompt: string, timeoutMs = 15_000): Promise<void> {
-    // The GIS tokenClient's callback is a single global closure, not per-call.
-    // If a request is already in flight (e.g. a mount-time silent refresh)
-    // when another one starts (e.g. a user tapping a board mid-share-target
-    // flow), overwriting resolveSignIn/rejectSignIn below would silently
-    // orphan the first caller's promise forever. Settle it explicitly first.
-    this.rejectSignIn?.(TOKEN_REQUEST_SUPERSEDED);
-
-    return new Promise((resolve, reject) => {
-      let settled = false;
-      const timer = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        reject("Tempo de autenticação esgotado.");
-      }, timeoutMs);
-
-      this.resolveSignIn = () => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        resolve();
-      };
-      this.rejectSignIn = (err: string) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        reject(err);
-      };
-
-      if (!this.tokenClient) {
-        this.tokenClient = window.google!.accounts.oauth2.initTokenClient({
-          client_id: this.clientId,
-          scope: SCOPE,
-          callback: (response) => {
-            if (response.error) {
-              this.rejectSignIn?.(response.error_description ?? response.error);
-              return;
-            }
-            const expiresAt = Date.now() + response.expires_in * 1000;
-            this._accessToken = response.access_token;
-            this._expiresAt = expiresAt;
-            this._hasConsented = true;
-            try {
-              sessionStorage.setItem(STORAGE_KEY_TOKEN, response.access_token);
-              sessionStorage.setItem(STORAGE_KEY_EXPIRY, String(expiresAt));
-              localStorage.setItem(STORAGE_KEY_CONSENTED, "true");
-            } catch {
-              // sessionStorage unavailable (private mode) — token stays in memory
-            }
-            this._proactiveRetryCount = 0;
-            this._reauthRequiredHandler?.(false);
-            this.scheduleProactiveRefresh();
-            this.resolveSignIn?.();
-          },
-          error_callback: ({ type }) => {
-            this.rejectSignIn?.(type);
-          },
-        });
-      }
-
-      this.tokenClient.requestAccessToken({ prompt });
-    });
-  }
-
-  signOut(): void {
+  async signOut(): Promise<void> {
     this.cancelProactiveRefresh();
     this._reauthRequiredHandler?.(false);
-    if (this._accessToken) {
-      window.google?.accounts.oauth2.revoke(this._accessToken);
-    }
     this._accessToken = null;
     this._expiresAt = 0;
-    this._hasConsented = false;
     try {
       sessionStorage.removeItem(STORAGE_KEY_TOKEN);
       sessionStorage.removeItem(STORAGE_KEY_EXPIRY);
-      localStorage.removeItem(STORAGE_KEY_CONSENTED);
     } catch {
       // ignore
     }
+    // Best-effort: local state is already cleared regardless of whether the
+    // network call succeeds.
+    await fetch(`${this.apiBaseUrl}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => {});
+  }
+
+  // Reads #access_token=...&expires_in=... left in the URL by
+  // lealtek-api's /api/auth/callback redirect, applies it, and strips the
+  // fragment so the token doesn't linger in the address bar/history.
+  private consumeRedirectResult(): void {
+    if (typeof window === "undefined" || !window.location.hash) return;
+    const params = new URLSearchParams(window.location.hash.slice(1));
+    const accessToken = params.get("access_token");
+    const expiresIn = params.get("expires_in");
+    if (!accessToken || !expiresIn) return;
+    this.setToken(accessToken, Number(expiresIn));
+    const url = new URL(window.location.href);
+    url.hash = "";
+    window.history.replaceState({}, "", url.toString());
+  }
+
+  private setToken(token: string, expiresIn: number): void {
+    const expiresAt = Date.now() + expiresIn * 1000;
+    this._accessToken = token;
+    this._expiresAt = expiresAt;
+    try {
+      sessionStorage.setItem(STORAGE_KEY_TOKEN, token);
+      sessionStorage.setItem(STORAGE_KEY_EXPIRY, String(expiresAt));
+    } catch {
+      // sessionStorage unavailable (private mode) — token stays in memory
+    }
+    this._proactiveRetryCount = 0;
+    this._reauthRequiredHandler?.(false);
+    this.scheduleProactiveRefresh();
+  }
+
+  private async refreshFromServer(): Promise<void> {
+    const res = await fetch(`${this.apiBaseUrl}/api/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!res.ok) throw new Error(`refresh_failed_${res.status}`);
+
+    const data = (await res.json()) as { access_token?: string; expires_in?: number };
+    if (!data.access_token || !data.expires_in) throw new Error("refresh_failed_invalid_response");
+
+    this.setToken(data.access_token, data.expires_in);
   }
 
   private loadFromSession(): boolean {
@@ -278,13 +226,11 @@ export class GoogleAuthService {
     }
   }
 
-  // Background renewal must stay silent (prompt: 'none') — signIn() with an
-  // empty prompt can still surface a real, visible Google popup, which is
-  // exactly the "flash" users see every ~55 min in a long session. On
-  // failure, retry a few times with backoff before asking for interaction;
-  // prompt: 'none' depends on the Google session cookie being reachable
-  // (third-party cookies, storage partitioning on an installed PWA), which
-  // is flaky enough to warrant more than one attempt.
+  // Background renewal must stay silent — signIn() now navigates the whole
+  // tab away, which would be a jarring "flash" if triggered automatically
+  // every ~55 min. On failure, retry a few times with backoff before asking
+  // for interaction; the refresh_token cookie is generally reliable, but
+  // still worth more than one attempt against transient network errors.
   private attemptProactiveRefresh(): void {
     this.silentSignIn().catch(() => {
       const delay = PROACTIVE_RETRY_DELAYS_MS[this._proactiveRetryCount];
@@ -302,10 +248,12 @@ export class GoogleAuthService {
   // just re-arms the timer against the real remaining time (a suspended tab
   // can leave the old setTimeout wildly late). If it already expired outright
   // while we were away, recover immediately instead of waiting for the next
-  // API call to hit a dead token.
+  // API call to hit a dead token. Only bothers retrying if this tab had a
+  // token at some point — no point silently refreshing for a visitor who
+  // never signed in here.
   private revalidateOnResume(): void {
     if (document.visibilityState === "hidden") return;
-    if (!this._hasConsented) return;
+    if (this._expiresAt === 0) return;
     if (this.isAuthenticated()) {
       this.scheduleProactiveRefresh();
     } else {
@@ -318,32 +266,5 @@ export class GoogleAuthService {
       clearTimeout(this._refreshTimer);
       this._refreshTimer = null;
     }
-  }
-
-  private waitForGis(timeout = 30_000): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (window.google?.accounts?.oauth2) {
-        resolve();
-        return;
-      }
-      const start = Date.now();
-      let retried = false;
-      const interval = setInterval(() => {
-        if (window.google?.accounts?.oauth2) {
-          clearInterval(interval);
-          resolve();
-        } else if (Date.now() - start > timeout) {
-          clearInterval(interval);
-          reject(new Error("Google Identity Services não carregou. Verifique a conexão."));
-        } else if (!retried && Date.now() - start > 5_000) {
-          // After 5 s, inject a fresh script tag in case the original failed silently
-          retried = true;
-          const s = document.createElement("script");
-          s.src = "https://accounts.google.com/gsi/client";
-          s.async = true;
-          document.head.appendChild(s);
-        }
-      }, 100);
-    });
   }
 }

@@ -1,5 +1,6 @@
 import { googleAuthService } from "@/shared/providers/providerFactory";
 import { googleApiFetch } from "@/shared/api/googleApiFetch";
+import { LEALTEK_API_URL } from "@/shared/config";
 
 export interface OpenAiMessage {
   role: "system" | "user" | "assistant";
@@ -10,7 +11,7 @@ export async function chatComplete(
   messages: OpenAiMessage[],
   model = "gpt-4o-mini",
 ): Promise<string> {
-  const response = await googleApiFetch(googleAuthService, "/api/openai/chat", {
+  const response = await googleApiFetch(googleAuthService, `${LEALTEK_API_URL}/api/ai/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model, messages, response_format: { type: "json_object" } }),
@@ -35,7 +36,7 @@ export async function chatCompleteWithWebSearch(
   input: string,
   model = "gpt-4o-mini",
 ): Promise<string> {
-  const response = await googleApiFetch(googleAuthService, "/api/openai/responses", {
+  const response = await googleApiFetch(googleAuthService, `${LEALTEK_API_URL}/api/ai/responses`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model, tools: [{ type: "web_search_preview" }], instructions, input }),
@@ -63,7 +64,7 @@ export async function chatCompleteWithWebSearch(
 }
 
 export async function transcribeVideo(videoUrl: string): Promise<string> {
-  const response = await googleApiFetch(googleAuthService, "/api/openai/transcribe", {
+  const response = await googleApiFetch(googleAuthService, `${LEALTEK_API_URL}/api/ai/transcribe`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ videoUrl }),

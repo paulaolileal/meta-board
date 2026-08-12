@@ -30,7 +30,7 @@ export function UserAccountMenu() {
     .toUpperCase();
 
   function handleSignOut() {
-    googleAuthService.signOut();
+    void googleAuthService.signOut();
     clearUser();
     toast.success("Desconectado do Google");
     navigate("/", { replace: true });

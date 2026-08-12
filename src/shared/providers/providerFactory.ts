@@ -3,11 +3,9 @@ import { GoogleSheetProvider } from "./GoogleSheetProvider";
 import { GoogleAuthService } from "@/shared/auth/GoogleAuthService";
 import { SheetsApiClient } from "@/shared/api/SheetsApiClient";
 import { DriveApiClient } from "@/shared/api/DriveApiClient";
+import { LEALTEK_API_URL } from "@/shared/config";
 
-const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-if (!clientId) throw new Error("VITE_GOOGLE_CLIENT_ID is required");
-
-export const googleAuthService = new GoogleAuthService(clientId);
+export const googleAuthService = new GoogleAuthService(LEALTEK_API_URL);
 export const sheetsApiClient = new SheetsApiClient(googleAuthService);
 export const driveApiClient = new DriveApiClient(googleAuthService);
 

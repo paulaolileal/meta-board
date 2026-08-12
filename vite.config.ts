@@ -37,13 +37,15 @@ export default defineConfig({
         },
       },
       workbox: {
-        // Precache the static app shell only — Sheets/OpenAI data must never
-        // be served stale from cache.
-        navigateFallbackDenylist: [/^\/api\//, /^\/share-target/],
+        // Precache the static app shell only — Sheets/OpenAI/lealtek-api
+        // data must never be served stale from cache. There's no local
+        // /api/* anymore (moved to lealtek-api), so this only needs to
+        // exempt /share-target and the cross-origin backends.
+        navigateFallbackDenylist: [/^\/share-target/],
         runtimeCaching: [
           {
             urlPattern: ({ url }: { url: URL }) =>
-              url.pathname.startsWith("/api/") || url.hostname.endsWith("googleapis.com"),
+              url.hostname === "api.lealtek.com" || url.hostname.endsWith("googleapis.com"),
             handler: "NetworkOnly",
           },
         ],

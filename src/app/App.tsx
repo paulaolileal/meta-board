@@ -12,7 +12,7 @@ import { ExtensionImportGate } from "@/modules/board/ui/ExtensionImportGate";
 import { PendingImportGate } from "@/modules/board/ui/PendingImportGate";
 import { Link } from "react-router-dom";
 import { googleAuthService, initProvider } from "@/shared/providers/providerFactory";
-import { TOKEN_REQUEST_SUPERSEDED, type UserInfo } from "@/shared/auth/GoogleAuthService";
+import type { UserInfo } from "@/shared/auth/GoogleAuthService";
 import { useAuthStore } from "@/store/authStore";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 
@@ -20,6 +20,7 @@ const REAUTH_TOAST_ID = "gis-reauth-required";
 
 function useAuthSync() {
   const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
   const clearUser = useAuthStore((s) => s.clearUser);
   const setInitializing = useAuthStore((s) => s.setInitializing);
 
@@ -37,7 +38,31 @@ function useAuthSync() {
     return () => window.removeEventListener("storage", handleStorage);
   }, [clearUser]);
 
+  // lealtek-api reports a failed OAuth round-trip via ?auth_error= on the
+  // return_to redirect (e.g. the user closed Google's consent screen).
   useEffect(() => {
+    const url = new URL(window.location.href);
+    const authError = url.searchParams.get("auth_error");
+    if (!authError) return;
+    toast.error(authError);
+    url.searchParams.delete("auth_error");
+    window.history.replaceState({}, "", url.toString());
+  }, []);
+
+  useEffect(() => {
+    if (googleAuthService.isAuthenticated() && !user) {
+      // A valid access_token exists locally but the profile store doesn't —
+      // this is the moment right after landing back from a redirect-based
+      // sign-in. Hydrate the profile once so ProtectedRoute/SpreadsheetRoute
+      // can proceed.
+      googleAuthService
+        .fetchUserInfo()
+        .then((info) => {
+          if (info) setUser(info);
+        })
+        .finally(() => setInitializing(false));
+      return;
+    }
     if (!user) {
       setInitializing(false);
       return;
@@ -48,14 +73,9 @@ function useAuthSync() {
     }
     googleAuthService
       .silentSignIn()
-      .catch((err) => {
-        // A superseded request means another sign-in (e.g. the user picking
-        // a board mid share-target flow) is now in flight and owns the
-        // outcome — bail out without touching auth state so it can finish
-        // uninterrupted. Only a real failure should sign the user out.
-        if (err === TOKEN_REQUEST_SUPERSEDED) return;
+      .catch(() => {
         if (!googleAuthService.isAuthenticated()) {
-          googleAuthService.signOut();
+          void googleAuthService.signOut();
           clearUser();
         }
       })
@@ -83,11 +103,10 @@ function useAuthSync() {
         duration: Infinity,
         action: {
           label: "Renovar",
-          onClick: () => {
-            googleAuthService.signIn().catch(() => {
-              toast.error("Não foi possível renovar a sessão. Tente novamente.");
-            });
-          },
+          // signIn() now navigates the whole tab away (full-page redirect
+          // to lealtek-api), so there's nothing to await/catch here — it
+          // either starts the navigation or it doesn't run at all.
+          onClick: () => googleAuthService.signIn(),
         },
       });
     });
