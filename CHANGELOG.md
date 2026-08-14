@@ -6,16 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Board card background no longer leaves an uncolored gap at the bottom
+  when the description is a single line: the inner flex row wrapping the
+  colored icon strip and the title/description column now stretches to
+  the card's full height (`h-full`), instead of only sizing to its own
+  content while the CSS grid stretched the outer card to match the
+  tallest sibling in the row.
+
+## [2026-08-14]
+
 ### Changed
 
 - Footer LealTEK credit (board list and login screen) now matches Splitout's
   treatment: full-opacity logo (was dimmed to 40% by default), "Conheça a
   LealTEK" hover title, and a "© {year} MetaBoard. Todos os direitos
   reservados." line underneath instead of just the bare logo link.
-
-## [2026-08-14]
-
-### Changed
 
 - Migrated Google authentication from Google Identity Services' implicit
   OAuth2 flow to the shared `lealtek-api` backend (Authorization Code +

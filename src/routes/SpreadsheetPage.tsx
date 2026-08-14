@@ -232,7 +232,7 @@ function BoardGrid({
                 <Settings className="h-4 w-4" />
               </button>
 
-              <div className="flex pointer-events-none">
+              <div className="flex h-full pointer-events-none">
                 {/* Left strip: full-height colored with centered icon */}
                 <div
                   className="shrink-0 w-28 flex items-center justify-center"
