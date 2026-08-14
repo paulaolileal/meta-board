@@ -172,16 +172,19 @@ function LoginPage({ onSignIn, isSigningIn }: { onSignIn: () => void; isSigningI
             .
           </p>
 
-          <div className="flex justify-center mt-10">
+          <div className="flex flex-col items-center gap-1.5 mt-10">
             <a
               href="https://lealtek.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="opacity-40 hover:opacity-70 transition-opacity"
-              title="Desenvolvido por LealTEK"
+              title="Conheça a LealTEK"
+              className="transition-opacity hover:opacity-80"
             >
               <img src="/lealtek-full.png" alt="LealTEK" className="h-12 object-contain" />
             </a>
+            <p className="text-xs text-muted-foreground">
+              © {new Date().getFullYear()} MetaBoard. Todos os direitos reservados.
+            </p>
           </div>
         </div>
       </motion.div>

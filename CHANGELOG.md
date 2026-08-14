@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Footer LealTEK credit (board list and login screen) now matches Splitout's
+  treatment: full-opacity logo (was dimmed to 40% by default), "Conheça a
+  LealTEK" hover title, and a "© {year} MetaBoard. Todos os direitos
+  reservados." line underneath instead of just the bare logo link.
+
+## [2026-08-14]
+
+### Changed
+
 - Migrated Google authentication from Google Identity Services' implicit
   OAuth2 flow to the shared `lealtek-api` backend (Authorization Code +
   PKCE). Silent renewal now calls `POST /api/auth/refresh` on

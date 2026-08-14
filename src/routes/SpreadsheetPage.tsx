@@ -50,6 +50,7 @@ export function SpreadsheetPage() {
   }
 
   const title = "Meus boards";
+  const year = new Date().getFullYear();
 
   return (
     <div className="relative h-dvh overflow-hidden flex flex-col bg-background">
@@ -135,16 +136,19 @@ export function SpreadsheetPage() {
 
       </div>
 
-      <footer className="shrink-0 border-t border-border/30 py-3 flex justify-center">
+      <footer className="shrink-0 border-t border-border/70 bg-muted/40 py-4 flex flex-col items-center gap-1.5">
         <a
           href="https://lealtek.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="opacity-40 hover:opacity-70 transition-opacity"
-          title="Desenvolvido por LealTEK"
+          title="Conheça a LealTEK"
+          className="transition-opacity hover:opacity-80"
         >
-          <img src="/lealtek-full.png" alt="LealTEK" className="h-12 object-contain" />
+          <img src="/lealtek-full.png" alt="LealTEK" className="h-10 object-contain" />
         </a>
+        <p className="text-xs text-muted-foreground">
+          © {year} MetaBoard. Todos os direitos reservados.
+        </p>
       </footer>
 
       <motion.button
