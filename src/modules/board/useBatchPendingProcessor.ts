@@ -40,16 +40,21 @@ function sleep(ms: number): Promise<void> {
 /** Drives the "process pending queue automatically" flow: for each pending
  * item with an extractable URL, asks the extension to scrape it
  * (extensionBridge), runs the same AI field extraction as the manual
- * AiCardModal flow, creates the resulting card(s) flagged as `_autoCreated`,
- * and removes the pending item once its card(s) exist. One failure never
- * aborts the whole batch — it's recorded and the loop moves on — except when
- * failures start repeating, which auto-stops the batch instead of grinding
- * through a queue that's clearly not going to succeed. */
+ * AiCardModal flow, then tries to complete the card via the same web-search
+ * enrichment step the modal's "buscar" button uses — filling fields the
+ * extraction missed and re-checking any field it extracted with low
+ * confidence, without ever touching a field it's already confident about
+ * (see LOW_CONFIDENCE_THRESHOLD in useAiCardExtraction.ts). Creates the
+ * resulting card(s) flagged as `_autoCreated`, and removes the pending item
+ * once its card(s) exist. One failure never aborts the whole batch — it's
+ * recorded and the loop moves on — except when failures start repeating,
+ * which auto-stops the batch instead of grinding through a queue that's
+ * clearly not going to succeed. */
 export function useBatchPendingProcessor() {
   const pendingItems = useBoardStore((s) => s.pendingItems);
   const { deletePendingItem } = usePendingMutations();
   const { createCard } = useCardMutations();
-  const { extractFromText } = useAiCardExtraction();
+  const { extractFromText, enrichMissingFields } = useAiCardExtraction();
 
   const [status, setStatus] = useState<BatchProcessorStatus>("idle");
   const [progress, setProgress] = useState({ current: 0, total: 0 });
@@ -94,9 +99,10 @@ export function useBatchPendingProcessor() {
           const payload = await requestExtensionScrape(url);
           const text = formatExtensionImportAsText(payload);
           const extracted = await extractFromText(text);
+          const enriched = await enrichMissingFields(extracted);
 
           let cardsCreated = 0;
-          for (const result of extracted) {
+          for (const result of enriched) {
             const card = await createCard({ ...result.values, _autoCreated: true });
             if (card) cardsCreated++;
           }
@@ -140,7 +146,7 @@ export function useBatchPendingProcessor() {
 
       setStatus("done");
     },
-    [pendingItems, createCard, deletePendingItem, extractFromText],
+    [pendingItems, createCard, deletePendingItem, extractFromText, enrichMissingFields],
   );
 
   return { status, progress, results, stopReason, start, cancel };

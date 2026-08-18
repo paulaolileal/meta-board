@@ -6,10 +6,21 @@ const OPTION_TYPES = new Set(["select", "chip", "multiselect"]);
 
 export type FieldSource = "extracted" | "searched";
 
+/** Confidence threshold (0-100) below which an already-extracted field is
+ * still considered eligible for web-search enrichment/correction. At or
+ * above this threshold, an extracted value is treated as final and is never
+ * sent to search, let alone overwritten. */
+const LOW_CONFIDENCE_THRESHOLD = 50;
+
 export interface ExtractionResult {
   values: Partial<CardRecord>;
   sources: Record<string, FieldSource>;
   reasons: Record<string, string>;
+  /** 0-100 per field id, how certain the extraction step was about the
+   * value. Fields without an explicit confidence from the model default to
+   * 100 (treated as certain) so missing model output never triggers
+   * unwanted re-search. */
+  confidences: Record<string, number>;
 }
 
 function buildSystemPrompt(
@@ -83,6 +94,12 @@ STRICT RULES — violating these produces useless data:
    from the text. If you truly cannot find it, still include the card in the response and simply
    omit that field — never guess, infer from external knowledge, or drop the whole card.
 
+8. For every field you include, also report your confidence (0-100) that the value is correct
+   and complete, based solely on the source text. Use a low confidence (below 50) when the value
+   is partial, ambiguous, inferred indirectly, or only loosely implied — a downstream step may
+   use a low confidence to try to confirm or correct the value via web search. Use a high
+   confidence (80+) when the value is stated plainly and unambiguously in the text.
+
 SOCIAL MEDIA EXTRACTION HINTS:
 - @username mentions (e.g. "@anciaculinaria") very often indicate the name of the featured
   place or business. Normalize to a human-readable name: "@anciaculinaria" → "Anciã Culinária",
@@ -93,17 +110,21 @@ SOCIAL MEDIA EXTRACTION HINTS:
 - JSON input fields like "Author Username", "Caption", and "Tagged Users" may all contain
   clues about the featured entity's name.
 
-RESPONSE FORMAT — return a single JSON object with two parallel arrays:
+RESPONSE FORMAT — return a single JSON object with three parallel arrays:
 {
   "cards": [
     { "<fieldId>": <value>, ... }
   ],
   "reasons": [
     { "<fieldId>": "exact quote or short sentence from the text that proves this value" }
+  ],
+  "confidences": [
+    { "<fieldId>": <number 0-100> }
   ]
 }
 
-Both arrays must have the same length. Each reasons[i] corresponds to cards[i].
+All three arrays must have the same length. Each reasons[i]/confidences[i] corresponds to cards[i],
+and both must have an entry for every field key present in cards[i].
 The reason strings must directly cite or paraphrase the source text.`;
 }
 
@@ -112,35 +133,62 @@ function buildSearchInstructions(
   boardDescription: string | undefined,
   extractedFields: FieldDef[],
   extractedValues: Partial<CardRecord>,
+  confidences: Record<string, number>,
   missingFields: FieldDef[],
   videoTranscript?: string,
 ): string {
-  const extractedLines = extractedFields
-    .filter((f) => f.id in extractedValues)
+  // missingFields is a superset: fields never extracted at all, plus fields
+  // that do have a value but with confidence below the threshold. Confirmed
+  // (high-confidence) fields are shown separately as immutable context —
+  // they must never be re-searched or overwritten.
+  const missingFieldIds = new Set(missingFields.map((f) => f.id));
+
+  const confirmedLines = extractedFields
+    .filter((f) => f.id in extractedValues && !missingFieldIds.has(f.id))
     .map((f) => `- ${f.label}: ${String(extractedValues[f.id])}`)
     .join("\n");
 
+  const fieldLine = (f: FieldDef) => {
+    const opts =
+      OPTION_TYPES.has(f.type) && f.options?.length ? `, options: [${f.options.join(", ")}]` : "";
+    return `- ${f.label} (id: ${f.id}, type: ${f.type}${opts})`;
+  };
+
+  const uncertainLines = missingFields
+    .filter((f) => f.id in extractedValues)
+    .map(
+      (f) =>
+        `${fieldLine(f)} — tentative value from the text: ${String(extractedValues[f.id])} (confidence ${confidences[f.id] ?? 0}%, below the ${LOW_CONFIDENCE_THRESHOLD}% threshold)`,
+    )
+    .join("\n");
+
   const missingLines = missingFields
-    .map((f) => {
-      const opts =
-        OPTION_TYPES.has(f.type) && f.options?.length ? `, options: [${f.options.join(", ")}]` : "";
-      return `- ${f.label} (id: ${f.id}, type: ${f.type}${opts})`;
-    })
+    .filter((f) => !(f.id in extractedValues))
+    .map(fieldLine)
     .join("\n");
 
   const videoTranscriptBlock = videoTranscript
-    ? `\nVideo transcript (additional context, also a valid source for the missing fields):\n${videoTranscript}\n`
+    ? `\nVideo transcript (additional context, also a valid source for the fields below):\n${videoTranscript}\n`
     : "";
 
   return `You are a data enrichment assistant for a board called "${boardName}"${boardDescription ? ` (${boardDescription})` : ""}.
 
-Already extracted from the user's text:
-${extractedLines}
+Already extracted from the user's text WITH HIGH CONFIDENCE (FINAL — do not suggest alternative
+or conflicting values for any of these under any circumstances, do not include them in your
+response at all):
+${confirmedLines || "(none)"}
 ${videoTranscriptBlock}
-Search the web to find the missing fields below. Use the extracted fields as search context.
+Search the web for the fields below. Use the confirmed fields above as search context to identify
+the correct entity.
 
-Missing fields:
-${missingLines}
+Fields with a LOW-CONFIDENCE tentative value (found in the text, but uncertain) — try to confirm
+or correct them via web search. Only return a value for one of these if you find a reliable source
+that clearly confirms a value (same as the tentative one, or a better one); otherwise omit the
+field and the tentative value will be kept as-is:
+${uncertainLines || "(none)"}
+
+Missing fields — not found anywhere in the source text, search the web for them:
+${missingLines || "(none)"}
 
 STRICT RULES:
 - Only include fields you found with HIGH CONFIDENCE from a reliable source.
@@ -170,8 +218,11 @@ CRITICAL CONSTRAINTS:
   EXACTLY matches (or is a clear alternate name/abbreviation of) the entity you are searching for.
   If the names do not match — even slightly (e.g. "A Obra" ≠ "A ONIR") — discard that result entirely
   and try a different source. NEVER use data from a page about a different entity.
-- The already-extracted fields listed above come directly from the source text and are FINAL.
+- The high-confidence fields listed above come directly from the source text and are FINAL.
   Do NOT suggest alternative or conflicting values for any of them under any circumstances.
+  A low-confidence field may be corrected ONLY if you find a reliable source that clearly
+  contradicts the tentative value with a better one — never change it just because you have a
+  different guess with no stronger evidence.
 - You are enriching supplementary details about a specific entity already identified from
   the source text. NEVER substitute or replace that entity with a different one found on the web.
   Example: if the text is about "Anciã Culinária", do not return data about "Belô Café" or
@@ -265,13 +316,18 @@ export function useAiCardExtraction() {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     const rawCards = Array.isArray(parsed.cards) ? (parsed.cards as unknown[]) : [parsed];
     const rawReasons = Array.isArray(parsed.reasons) ? (parsed.reasons as unknown[]) : [];
+    const rawConfidences = Array.isArray(parsed.confidences)
+      ? (parsed.confidences as unknown[])
+      : [];
 
     const phase1Results: ExtractionResult[] = rawCards.map((rawCard, cardIdx) => {
       const rawCardData = sanitizeCard(rawCard as Record<string, unknown>, extractableFields);
       const cardReasonData = (rawReasons[cardIdx] ?? {}) as Record<string, unknown>;
+      const cardConfidenceData = (rawConfidences[cardIdx] ?? {}) as Record<string, unknown>;
       const values: Partial<CardRecord> = {};
       const sources: Record<string, FieldSource> = {};
       const reasons: Record<string, string> = {};
+      const confidences: Record<string, number> = {};
 
       for (const field of extractableFields) {
         if (!(field.id in rawCardData)) continue;
@@ -284,9 +340,13 @@ export function useAiCardExtraction() {
         if (cardReasonData[field.id]) {
           reasons[field.id] = String(cardReasonData[field.id]);
         }
+        // Default to full confidence when the model omits it, so missing
+        // model output never triggers unwanted re-search of a field.
+        const rawConfidence = cardConfidenceData[field.id];
+        confidences[field.id] = typeof rawConfidence === "number" ? rawConfidence : 100;
       }
 
-      return { values, sources, reasons };
+      return { values, sources, reasons, confidences };
     });
 
     return phase1Results;
@@ -300,7 +360,15 @@ export function useAiCardExtraction() {
 
     const enriched = await Promise.allSettled(
       results.map(async (result) => {
-        const missingFields = extractableFields.filter((f) => !(f.id in result.values));
+        // Eligible for search = never extracted at all, OR extracted but
+        // below the confidence threshold. A field at/above the threshold is
+        // never included here, so it's never sent to search and therefore
+        // never overwritten.
+        const missingFields = extractableFields.filter(
+          (f) =>
+            !(f.id in result.values) ||
+            (result.confidences[f.id] ?? 100) < LOW_CONFIDENCE_THRESHOLD,
+        );
         const hasSearchContext = Object.keys(result.values).length > 0 || !!videoTranscript;
 
         if (missingFields.length === 0 || !hasSearchContext) return result;
@@ -311,6 +379,7 @@ export function useAiCardExtraction() {
             board.description,
             extractableFields,
             result.values,
+            result.confidences,
             missingFields,
             videoTranscript,
           );
@@ -324,6 +393,7 @@ export function useAiCardExtraction() {
           const enrichedValues = { ...result.values };
           const enrichedSources = { ...result.sources };
           const enrichedReasons = { ...result.reasons };
+          const enrichedConfidences = { ...result.confidences };
 
           for (const field of missingFields) {
             if (!(field.id in searchValues)) continue;
@@ -333,12 +403,20 @@ export function useAiCardExtraction() {
             }
             enrichedValues[field.id] = value as CardRecord[string];
             enrichedSources[field.id] = "searched";
+            // The search prompt requires high-confidence-only results, so a
+            // returned value is treated as confirmed.
+            enrichedConfidences[field.id] = 100;
             if (searchReasons[field.id]) {
               enrichedReasons[field.id] = String(searchReasons[field.id]);
             }
           }
 
-          return { values: enrichedValues, sources: enrichedSources, reasons: enrichedReasons };
+          return {
+            values: enrichedValues,
+            sources: enrichedSources,
+            reasons: enrichedReasons,
+            confidences: enrichedConfidences,
+          };
         } catch {
           return result;
         }

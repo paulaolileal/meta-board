@@ -18,6 +18,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   processable pending item now has a checkbox (defaulting to selected) so
   specific links can be excluded from a run instead of always processing
   the entire queue, plus a "Selecionar todos"/"Limpar seleção" shortcut.
+  After extraction, it now also runs the same web-search enrichment step as
+  the manual flow's "buscar" button, filling fields the text extraction
+  missed. Extraction now reports a 0-100 confidence per field; a field is
+  only sent to search (and potentially overwritten) when it's missing or
+  its confidence is below 50 — fields extracted with confidence at or above
+  that threshold are never re-searched or changed.
 - `_autoCreated` card field: cards created by the batch flow are flagged and
   show a badge ("Automático") until the user opens the card and clicks the
   new "Aprovar" button in the drawer header.
