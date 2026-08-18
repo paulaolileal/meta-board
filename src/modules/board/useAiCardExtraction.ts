@@ -4,6 +4,14 @@ import type { CardRecord, FieldDef } from "@/modules/project/domain/types";
 
 const OPTION_TYPES = new Set(["select", "chip", "multiselect"]);
 
+/** Thrown by extractFromText when the model judges the source content to have
+ * no plausible connection to the board's subject (e.g. a 3D-printing
+ * tutorial submitted to a tabletop-RPG board). Callers should surface
+ * `.message` to the user instead of treating it as a generic extraction
+ * failure — the pending item is left untouched so it can be routed to the
+ * right board manually. */
+export class IrrelevantContentError extends Error {}
+
 export type FieldSource = "extracted" | "searched";
 
 /** Confidence threshold (0-100) below which an already-extracted field is
@@ -43,6 +51,16 @@ Board: ${boardName}${boardDescription ? `\nDescription: ${boardDescription}` : "
 
 Available fields:
 ${fieldLines}
+
+RELEVANCE CHECK — decide this before extracting anything:
+This board is specifically about "${boardName}"${boardDescription ? ` (${boardDescription})` : ""}.
+If the source text's subject matter has no plausible connection to that topic — a different hobby,
+domain, or type of entity entirely (e.g. a 3D-printing tutorial submitted to a tabletop-RPG board,
+a recipe submitted to a board about cars) — it must be REJECTED instead of extracted, even if some
+individual field could technically be filled in from it.
+Do NOT reject merely because the text is incomplete, informal, low-quality, or only loosely related
+in a plausible way — only reject when the subject itself clearly belongs to a different topic than
+the board. When genuinely unsure, prefer extracting over rejecting.
 
 VALUE FORMAT per field type:
 - text / url / email / icon / color → string
@@ -110,8 +128,11 @@ SOCIAL MEDIA EXTRACTION HINTS:
 - JSON input fields like "Author Username", "Caption", and "Tagged Users" may all contain
   clues about the featured entity's name.
 
-RESPONSE FORMAT — return a single JSON object with three parallel arrays:
+RESPONSE FORMAT — return a single JSON object:
 {
+  "irrelevant": <true if rejected per the RELEVANCE CHECK above, false otherwise>,
+  "irrelevantReason": <if irrelevant is true, one short sentence in Portuguese explaining why the
+    content is unrelated to the board; otherwise null>,
   "cards": [
     { "<fieldId>": <value>, ... }
   ],
@@ -123,8 +144,9 @@ RESPONSE FORMAT — return a single JSON object with three parallel arrays:
   ]
 }
 
-All three arrays must have the same length. Each reasons[i]/confidences[i] corresponds to cards[i],
-and both must have an entry for every field key present in cards[i].
+When "irrelevant" is true, "cards", "reasons", and "confidences" must all be empty arrays.
+Otherwise, all three arrays must have the same length. Each reasons[i]/confidences[i] corresponds
+to cards[i], and both must have an entry for every field key present in cards[i].
 The reason strings must directly cite or paraphrase the source text.`;
 }
 
@@ -314,6 +336,15 @@ export function useAiCardExtraction() {
     ]);
 
     const parsed = JSON.parse(raw) as Record<string, unknown>;
+
+    if (parsed.irrelevant === true) {
+      const reason =
+        typeof parsed.irrelevantReason === "string" && parsed.irrelevantReason.trim()
+          ? parsed.irrelevantReason
+          : "O conteúdo não parece ter relação com o assunto deste board.";
+      throw new IrrelevantContentError(reason);
+    }
+
     const rawCards = Array.isArray(parsed.cards) ? (parsed.cards as unknown[]) : [parsed];
     const rawReasons = Array.isArray(parsed.reasons) ? (parsed.reasons as unknown[]) : [];
     const rawConfidences = Array.isArray(parsed.confidences)

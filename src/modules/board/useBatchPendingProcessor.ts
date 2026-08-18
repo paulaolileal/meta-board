@@ -2,11 +2,11 @@ import { useCallback, useRef, useState } from "react";
 import { useBoardStore } from "@/modules/board/store";
 import { usePendingMutations } from "@/modules/board/usePendingMutations";
 import { useCardMutations } from "@/modules/board/useCardMutations";
-import { useAiCardExtraction } from "@/modules/board/useAiCardExtraction";
+import { IrrelevantContentError, useAiCardExtraction } from "@/modules/board/useAiCardExtraction";
 import { ExtensionScrapeError, requestExtensionScrape } from "@/modules/board/extensionBridge";
 import { formatExtensionImportAsText } from "@/modules/board/extensionImport";
 import { extractUrlFromPendingItem } from "@/modules/board/pendingUrl";
-import type { PendingItem } from "@/modules/project/domain/types";
+import type { CardRecord, PendingItem } from "@/modules/project/domain/types";
 
 // Sequential, not parallel: these tabs share the user's own Instagram
 // session cookies, so hammering it with concurrent requests risks flagging
@@ -18,12 +18,14 @@ const MIN_DELAY_MS = 3000;
 const MAX_DELAY_MS = 6000;
 const MAX_CONSECUTIVE_FAILURES = 3;
 
-export type BatchItemStatus = "success" | "error";
+export type BatchItemStatus = "success" | "error" | "rejected";
 
 export interface BatchItemResult {
   item: PendingItem;
   status: BatchItemStatus;
-  cardsCreated: number;
+  /** The card(s) actually created for this item. Empty for "error" and
+   * "rejected" results. */
+  cards: CardRecord[];
   reason?: string;
 }
 
@@ -46,10 +48,14 @@ function sleep(ms: number): Promise<void> {
  * confidence, without ever touching a field it's already confident about
  * (see LOW_CONFIDENCE_THRESHOLD in useAiCardExtraction.ts). Creates the
  * resulting card(s) flagged as `_autoCreated`, and removes the pending item
- * once its card(s) exist. One failure never aborts the whole batch — it's
- * recorded and the loop moves on — except when failures start repeating,
- * which auto-stops the batch instead of grinding through a queue that's
- * clearly not going to succeed. */
+ * once its card(s) exist. If the extraction step judges the source content
+ * unrelated to the board's subject (see IrrelevantContentError), the item is
+ * marked "rejected" instead of "error" and left in the pending queue for
+ * manual handling — this doesn't count toward MAX_CONSECUTIVE_FAILURES since
+ * it isn't a sign that Instagram/the extension is failing. One failure never
+ * aborts the whole batch — it's recorded and the loop moves on — except when
+ * failures start repeating, which auto-stops the batch instead of grinding
+ * through a queue that's clearly not going to succeed. */
 export function useBatchPendingProcessor() {
   const pendingItems = useBoardStore((s) => s.pendingItems);
   const { deletePendingItem } = usePendingMutations();
@@ -101,41 +107,50 @@ export function useBatchPendingProcessor() {
           const extracted = await extractFromText(text);
           const enriched = await enrichMissingFields(extracted);
 
-          let cardsCreated = 0;
+          const createdCards: CardRecord[] = [];
           for (const result of enriched) {
             const card = await createCard({ ...result.values, _autoCreated: true });
-            if (card) cardsCreated++;
+            if (card) createdCards.push(card);
           }
-          if (cardsCreated === 0) {
+          if (createdCards.length === 0) {
             throw new Error("Nenhum card foi criado a partir do conteúdo extraído");
           }
 
           await deletePendingItem(item._id);
-          setResults((prev) => [...prev, { item, status: "success", cardsCreated }]);
+          setResults((prev) => [...prev, { item, status: "success", cards: createdCards }]);
           consecutiveFailures = 0;
         } catch (e) {
           const reason = e instanceof Error ? e.message : String(e);
-          setResults((prev) => [...prev, { item, status: "error", cardsCreated: 0, reason }]);
 
-          // The extension was reloaded/updated mid-batch — every remaining
-          // item would fail the exact same way until the page itself
-          // reloads to get a fresh content script, so there's no point
-          // waiting for MAX_CONSECUTIVE_FAILURES to give up.
-          if (e instanceof ExtensionScrapeError && e.code === "EXTENSION_CONTEXT_INVALIDATED") {
-            setStatus("stopped");
-            setStopReason(
-              "A extensão foi atualizada durante o processamento — recarregue a página do MetaBoard e tente novamente.",
-            );
-            return;
-          }
+          if (e instanceof IrrelevantContentError) {
+            // A content/board mismatch is a legitimate signal from the
+            // extraction step, not a sign that Instagram or the extension is
+            // failing — record it as a rejection (item stays pending for
+            // manual routing) without touching the failure-streak counter.
+            setResults((prev) => [...prev, { item, status: "rejected", cards: [], reason }]);
+          } else {
+            setResults((prev) => [...prev, { item, status: "error", cards: [], reason }]);
 
-          consecutiveFailures++;
-          if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-            setStatus("stopped");
-            setStopReason(
-              `Interrompido após ${MAX_CONSECUTIVE_FAILURES} falhas seguidas — o Instagram pode estar bloqueando o acesso.`,
-            );
-            return;
+            // The extension was reloaded/updated mid-batch — every remaining
+            // item would fail the exact same way until the page itself
+            // reloads to get a fresh content script, so there's no point
+            // waiting for MAX_CONSECUTIVE_FAILURES to give up.
+            if (e instanceof ExtensionScrapeError && e.code === "EXTENSION_CONTEXT_INVALIDATED") {
+              setStatus("stopped");
+              setStopReason(
+                "A extensão foi atualizada durante o processamento — recarregue a página do MetaBoard e tente novamente.",
+              );
+              return;
+            }
+
+            consecutiveFailures++;
+            if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+              setStatus("stopped");
+              setStopReason(
+                `Interrompido após ${MAX_CONSECUTIVE_FAILURES} falhas seguidas — o Instagram pode estar bloqueando o acesso.`,
+              );
+              return;
+            }
           }
         }
 

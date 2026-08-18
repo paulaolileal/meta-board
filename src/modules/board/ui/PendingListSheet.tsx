@@ -35,6 +35,7 @@ interface Props {
 
 export function PendingListSheet({ open, onClose, onConvert }: Props) {
   const pendingItems = useBoardStore((s) => s.pendingItems);
+  const openCard = useBoardStore((s) => s.openCard);
   const { toggleDone, clearCompleted } = usePendingMutations();
   const batch = useBatchPendingProcessor();
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
@@ -101,6 +102,12 @@ export function PendingListSheet({ open, onClose, onConvert }: Props) {
   function handleStartBatch() {
     setBatchDialogOpen(true);
     batch.start(Array.from(selectedIds));
+  }
+
+  function handleOpenCard(cardId: string) {
+    setBatchDialogOpen(false);
+    onClose();
+    openCard(cardId);
   }
 
   return (
@@ -221,6 +228,7 @@ export function PendingListSheet({ open, onClose, onConvert }: Props) {
         results={batch.results}
         stopReason={batch.stopReason}
         onCancel={batch.cancel}
+        onOpenCard={handleOpenCard}
       />
     </>
   );

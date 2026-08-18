@@ -23,7 +23,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   missed. Extraction now reports a 0-100 confidence per field; a field is
   only sent to search (and potentially overwritten) when it's missing or
   its confidence is below 50 — fields extracted with confidence at or above
-  that threshold are never re-searched or changed.
+  that threshold are never re-searched or changed. The "Processamento
+  concluído" dialog now lists the actual name of each card created (via the
+  board's title field) instead of the original pending item's link/text, and
+  clicking a name opens that card directly. The AI extraction step now also
+  judges whether the source content has any plausible connection to the
+  target board's subject before extracting anything (e.g. a 3D-printing
+  tutorial submitted to a tabletop-RPG board) — unrelated items are rejected
+  instead of turned into an out-of-place card, left in the pending queue for
+  manual review, and shown in the dialog with the AI's stated reason.
 - `_autoCreated` card field: cards created by the batch flow are flagged and
   show a badge ("Automático") until the user opens the card and clicks the
   new "Aprovar" button in the drawer header.
