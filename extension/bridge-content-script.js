@@ -36,7 +36,18 @@
     const { type, id, url } = event.data;
 
     if (type === "MB_PING") {
-      window.postMessage({ source: EXTENSION_SOURCE, type: "MB_PONG", id }, window.location.origin);
+      // chrome.runtime.id reads back undefined (without throwing) once this
+      // content script's connection to the extension is invalidated — e.g.
+      // the extension was reloaded/updated after this script was injected
+      // into an already-open tab. Staying silent here (instead of ponging)
+      // lets the app's own ping timeout correctly report "not available"
+      // rather than a stale "yes" from before the reload.
+      if (chrome.runtime?.id) {
+        window.postMessage(
+          { source: EXTENSION_SOURCE, type: "MB_PONG", id },
+          window.location.origin,
+        );
+      }
       return;
     }
 
@@ -47,16 +58,32 @@
     // chrome.permissions isn't available to content scripts at all (only to
     // extension pages/the background service worker), so there is no way to
     // check or request it from this file.
-    chrome.runtime.sendMessage({ type: "SCRAPE_URL", url }, (result) => {
-      if (chrome.runtime.lastError) {
-        respond(id, {
-          ok: false,
-          error: { code: "EXTENSION_ERROR", message: chrome.runtime.lastError.message },
-        });
-        return;
-      }
-      respond(id, result);
-    });
+    try {
+      chrome.runtime.sendMessage({ type: "SCRAPE_URL", url }, (result) => {
+        if (chrome.runtime.lastError) {
+          respond(id, {
+            ok: false,
+            error: { code: "EXTENSION_ERROR", message: chrome.runtime.lastError.message },
+          });
+          return;
+        }
+        respond(id, result);
+      });
+    } catch (e) {
+      // Thrown synchronously (chrome.runtime becomes undefined) when the
+      // extension was reloaded/updated after this content script was
+      // injected into the page — every content script already running in
+      // an open tab loses its connection to the extension at that point.
+      // There's no way to recover from inside this script; the page itself
+      // needs a reload to get a fresh one.
+      respond(id, {
+        ok: false,
+        error: {
+          code: "EXTENSION_CONTEXT_INVALIDATED",
+          message: String(e?.message || e),
+        },
+      });
+    }
   });
 
   // Lets the app detect the extension is installed without a round trip:

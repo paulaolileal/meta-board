@@ -38,6 +38,30 @@ devolve a resposta pela mesma via. Três partes, cada uma só fala com a vizinha
 app (React)  <-- postMessage -->  bridge-content-script.js  <-- runtime.sendMessage -->  background.js
 ```
 
+### "Extension context invalidated" — reload da extensão não afeta abas já abertas
+
+Recarregar a extensão em `chrome://extensions` (ex.: depois de editar `background.js` ou o
+manifest) **não** reinjeta o content script em abas que já estavam abertas. Aquele
+`bridge-content-script.js` antigo continua rodando ali, mas perde a conexão com a extensão — é o
+comportamento documentado do Chrome conhecido como "extension context invalidated". Na prática,
+`chrome.runtime.id` passa a ler `undefined` (sem lançar exceção), e chamar
+`chrome.runtime.sendMessage(...)` a partir desse contexto lança `TypeError: Cannot read
+properties of undefined (reading 'sendMessage')`.
+
+Duas consequências no código:
+
+- `chrome.runtime.sendMessage` em `bridge-content-script.js` fica dentro de um `try/catch` —
+  responde `EXTENSION_CONTEXT_INVALIDATED` em vez de deixar o erro subir sem tratamento.
+- `isExtensionAvailable()` (`extensionBridge.ts`) **nunca cacheia** um "sim" anterior — sempre
+  faz um PING de verdade a cada chamada, e o bridge só responde ao PING se `chrome.runtime.id`
+  ainda for válido. Um cache teria escondido justamente o caso em que a extensão foi recarregada
+  no meio de uma sessão: o botão continuaria habilitado mesmo sem conseguir mais falar com a
+  extensão.
+
+Não tem como recuperar disso de dentro do content script — a aba precisa de um reload (F5) para
+receber uma cópia nova e válida do script. Ao editar `background.js`/`manifest.json` durante o
+desenvolvimento: recarregue a extensão **e depois** dê F5 na aba do MetaBoard, nessa ordem.
+
 ### Por que a extensão fica "burra" e o app orquestra o lote
 
 `background.js` só sabe processar **uma URL por chamada** — abre aba em background, espera

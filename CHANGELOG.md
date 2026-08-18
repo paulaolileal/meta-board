@@ -70,6 +70,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   finished loading" once out of budget) since a background tab may be
   exactly the case Instagram's own visibility-based lazy hydration delays
   the most, and increased the timeouts to give background tabs more room.
+- Uncaught `TypeError: Cannot read properties of undefined (reading 'sendMessage')` when the
+  extension gets reloaded/updated while a MetaBoard tab stays open: the tab's already-injected
+  `bridge-content-script.js` loses its connection to the extension (a
+  normal Chrome behavior — "extension context invalidated"), and
+  `chrome.runtime` reads back `undefined` from then on. The scrape
+  request is now wrapped in a `try/catch` that reports a clear
+  `EXTENSION_CONTEXT_INVALIDATED` error instead of throwing uncaught, the
+  batch loop stops immediately on that error instead of burning through
+  `MAX_CONSECUTIVE_FAILURES` retries that would all fail the same way, and
+  `isExtensionAvailable()` no longer caches a past "yes" — it always does
+  a live ping, so a mid-session invalidation is reflected in the button's
+  enabled state on the next check instead of only surfacing once the user
+  tries to actually process something.
 
 ## [2026-08-18]
 

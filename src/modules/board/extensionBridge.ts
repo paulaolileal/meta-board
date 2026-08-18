@@ -15,7 +15,8 @@ export type ExtensionScrapeErrorCode =
   | "SCRIPT_ERROR"
   | "PERMISSION_DENIED"
   | "PERMISSION_ERROR"
-  | "EXTENSION_ERROR";
+  | "EXTENSION_ERROR"
+  | "EXTENSION_CONTEXT_INVALIDATED";
 
 export class ExtensionScrapeError extends Error {
   code: ExtensionScrapeErrorCode;
@@ -34,19 +35,13 @@ interface PendingEntry {
 
 const pending = new Map<string, PendingEntry>();
 
-// Set as soon as the bridge's initial "I'm here" ping is observed, so a
-// later isExtensionAvailable() call can skip the round trip entirely.
-let extensionSeen = false;
-
 function handleExtensionMessage(event: MessageEvent) {
   if (event.source !== window || event.data?.source !== EXTENSION_SOURCE) return;
   const data = event.data as Record<string, unknown>;
 
-  if (data.type === "MB_EXTENSION_READY") {
-    extensionSeen = true;
-    return;
-  }
-
+  // MB_EXTENSION_READY (posted once when the bridge loads) is intentionally
+  // not tracked here — see isExtensionAvailable() for why availability is
+  // never cached.
   const id = data.id as string | undefined;
   if (!id) return;
   const entry = pending.get(id);
@@ -125,9 +120,14 @@ export function requestExtensionScrape(
 /** Resolves `true` only if the MetaBoard Capture extension is installed and
  * its bridge content script responded — used to disable the batch-processing
  * button (with an explanatory message) rather than let every request in a
- * batch fail with a timeout. */
+ * batch fail with a timeout.
+ *
+ * Always does a live round trip rather than caching a past "yes": the
+ * content script's connection to the extension can be invalidated at any
+ * time (e.g. the extension gets reloaded while this tab stays open), and a
+ * stale cached answer would let the button stay enabled for a scrape that's
+ * guaranteed to fail. */
 export async function isExtensionAvailable(pingTimeoutMs = 1500): Promise<boolean> {
-  if (extensionSeen) return true;
   try {
     await correlatedRequest<boolean>((id) => {
       window.postMessage({ source: APP_SOURCE, type: "MB_PING", id }, window.location.origin);

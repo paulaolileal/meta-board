@@ -3,7 +3,7 @@ import { useBoardStore } from "@/modules/board/store";
 import { usePendingMutations } from "@/modules/board/usePendingMutations";
 import { useCardMutations } from "@/modules/board/useCardMutations";
 import { useAiCardExtraction } from "@/modules/board/useAiCardExtraction";
-import { requestExtensionScrape } from "@/modules/board/extensionBridge";
+import { ExtensionScrapeError, requestExtensionScrape } from "@/modules/board/extensionBridge";
 import { formatExtensionImportAsText } from "@/modules/board/extensionImport";
 import { extractUrlFromPendingItem } from "@/modules/board/pendingUrl";
 import type { PendingItem } from "@/modules/project/domain/types";
@@ -110,8 +110,20 @@ export function useBatchPendingProcessor() {
         } catch (e) {
           const reason = e instanceof Error ? e.message : String(e);
           setResults((prev) => [...prev, { item, status: "error", cardsCreated: 0, reason }]);
-          consecutiveFailures++;
 
+          // The extension was reloaded/updated mid-batch — every remaining
+          // item would fail the exact same way until the page itself
+          // reloads to get a fresh content script, so there's no point
+          // waiting for MAX_CONSECUTIVE_FAILURES to give up.
+          if (e instanceof ExtensionScrapeError && e.code === "EXTENSION_CONTEXT_INVALIDATED") {
+            setStatus("stopped");
+            setStopReason(
+              "A extensão foi atualizada durante o processamento — recarregue a página do MetaBoard e tente novamente.",
+            );
+            return;
+          }
+
+          consecutiveFailures++;
           if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
             setStatus("stopped");
             setStopReason(
