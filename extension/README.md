@@ -30,8 +30,11 @@ O passo a passo de instalação para o usuário final fica na própria aplicaç�
 ## Domínio
 
 O bridge (`bridge-content-script.js`) e o destino padrão em `background.js` apontam para
-`board.lealtek.com`. Para desenvolvimento local, `localhost:5173` (Vite) e `localhost:3000`
-(`vercel dev`) também estão liberados em `manifest.json`.
+`board.lealtek.com`. Para desenvolvimento local, `localhost:8080` (porta configurada em
+`vite.config.ts` para `npm run dev`), além de `localhost:5173` e `localhost:3000` (portas Vite
+padrão/`vercel dev`, mantidas por compatibilidade), também estão liberados em `manifest.json`. Se
+o dev server subir em outra porta, adicione-a aos `matches` de `content_scripts` e recarregue a
+extensão — sem isso, o bridge não é injetado e a extensão parece "não instalada" para o app.
 
 ## Processamento em lote da fila de pendentes
 

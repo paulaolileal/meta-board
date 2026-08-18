@@ -41,6 +41,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   directly. Existing unpacked installs need a manual reload in
   `chrome://extensions` to pick this up.
 
+### Fixed
+
+- `extension/manifest.json`'s `content_scripts.matches` was missing
+  `http://localhost:8080/*`, the actual dev server port configured in
+  `vite.config.ts` (only 5173/3000 were listed) — the bridge content script
+  was never injected during local dev, so `isExtensionAvailable()` always
+  timed out and the batch-processing button stayed disabled even with the
+  extension installed and up to date.
+
 ## [2026-08-18]
 
 ### Fixed

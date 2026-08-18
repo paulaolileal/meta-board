@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MetaBoard Capture",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Envie posts e reels do Instagram direto para o MetaBoard, sem copiar e colar.",
   "permissions": ["activeTab", "scripting", "storage", "tabs"],
   "optional_host_permissions": ["https://www.instagram.com/*"],
@@ -25,7 +25,12 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://board.lealtek.com/*", "http://localhost:5173/*", "http://localhost:3000/*"],
+      "matches": [
+        "https://board.lealtek.com/*",
+        "http://localhost:8080/*",
+        "http://localhost:5173/*",
+        "http://localhost:3000/*"
+      ],
       "js": ["bridge-content-script.js"],
       "run_at": "document_idle"
     }

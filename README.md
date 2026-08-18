@@ -348,7 +348,7 @@ src/
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
+npm run dev        # http://localhost:8080
 ```
 
 ### Scripts disponíveis
@@ -393,7 +393,7 @@ https://docs.google.com/spreadsheets/d/<SPREADSHEET_ID>/edit
 3. Nome: ex. `MetaBoard Web`
 4. **Authorized JavaScript origins** — adicione:
    ```
-   http://localhost:5173
+   http://localhost:8080
    https://seudominio.com
    ```
 5. Criar → copie o **Client ID** (formato: `xxxxx.apps.googleusercontent.com`)
