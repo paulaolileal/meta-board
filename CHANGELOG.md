@@ -34,12 +34,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- Extension now requests the `https://www.instagram.com/*` host permission
-  at runtime (`optional_host_permissions`), on the user's first click of
-  "Processar automaticamente", instead of relying solely on `activeTab` —
-  required to open and scrape background tabs the user didn't click into
-  directly. Existing unpacked installs need a manual reload in
-  `chrome://extensions` to pick this up.
+- Extension now declares the `https://www.instagram.com/*` host permission
+  (`host_permissions`, granted at install time) instead of relying solely
+  on `activeTab` — required to open and scrape background tabs the user
+  didn't click into directly. Existing unpacked installs need a manual
+  reload in `chrome://extensions` to pick this up.
 
 ### Fixed
 
@@ -49,6 +48,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   was never injected during local dev, so `isExtensionAvailable()` always
   timed out and the batch-processing button stayed disabled even with the
   extension installed and up to date.
+- Batch scraping crashed with "Cannot read properties of undefined
+  (reading 'contains')": the first version of the Instagram host
+  permission requested it at runtime (`optional_host_permissions` +
+  `chrome.permissions.request()`) from `bridge-content-script.js`, but
+  `chrome.permissions` isn't available to content scripts at all — only
+  to extension pages and the background service worker. Switched to a
+  static `host_permissions` grant instead of trying to relocate the
+  runtime request (moving it to the background script would have lost
+  the user-gesture context `chrome.permissions.request()` requires).
 
 ## [2026-08-18]
 

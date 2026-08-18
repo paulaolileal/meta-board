@@ -23,7 +23,6 @@
 
   const APP_SOURCE = "metaboard-app";
   const EXTENSION_SOURCE = "metaboard-extension";
-  const SCRAPE_PERMISSION_ORIGINS = ["https://www.instagram.com/*"];
 
   function respond(id, body) {
     window.postMessage(
@@ -43,46 +42,21 @@
 
     if (type !== "MB_SCRAPE_REQUEST") return;
 
-    (async () => {
-      // chrome.permissions.request() only succeeds inside a user-gesture
-      // call stack. This listener fires from a same-document postMessage
-      // sent synchronously from the "process pending" button's click
-      // handler — the closest a content script can stay to that gesture.
-      // Routing the request through the background service worker first
-      // would lose it, so the permission check/request happens right here.
-      try {
-        const hasPermission = await chrome.permissions.contains({
-          origins: SCRAPE_PERMISSION_ORIGINS,
-        });
-        if (!hasPermission) {
-          const granted = await chrome.permissions.request({ origins: SCRAPE_PERMISSION_ORIGINS });
-          if (!granted) {
-            respond(id, {
-              ok: false,
-              error: { code: "PERMISSION_DENIED", message: "Instagram access not granted" },
-            });
-            return;
-          }
-        }
-      } catch (e) {
+    // Host permission for Instagram is granted statically at install time
+    // (manifest.json's host_permissions), not requested here at runtime —
+    // chrome.permissions isn't available to content scripts at all (only to
+    // extension pages/the background service worker), so there is no way to
+    // check or request it from this file.
+    chrome.runtime.sendMessage({ type: "SCRAPE_URL", url }, (result) => {
+      if (chrome.runtime.lastError) {
         respond(id, {
           ok: false,
-          error: { code: "PERMISSION_ERROR", message: String(e?.message || e) },
+          error: { code: "EXTENSION_ERROR", message: chrome.runtime.lastError.message },
         });
         return;
       }
-
-      chrome.runtime.sendMessage({ type: "SCRAPE_URL", url }, (result) => {
-        if (chrome.runtime.lastError) {
-          respond(id, {
-            ok: false,
-            error: { code: "EXTENSION_ERROR", message: chrome.runtime.lastError.message },
-          });
-          return;
-        }
-        respond(id, result);
-      });
-    })();
+      respond(id, result);
+    });
   });
 
   // Lets the app detect the extension is installed without a round trip:

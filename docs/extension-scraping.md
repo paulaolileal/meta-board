@@ -51,21 +51,23 @@ no meio sem nenhum progresso salvo. Mantendo cada chamada `SCRAPE_URL` curta (um
 um `chrome.tabs.remove`), esse risco fica isolado por item — se o service worker for encerrado
 entre uma chamada e outra, o pior caso é o app perceber via timeout e seguir para o próximo.
 
-### Permissão do Instagram é pedida em runtime, não declarada no manifest
+### Permissão do Instagram é fixa no manifest, não pedida em runtime
 
 Abrir abas em segundo plano exige host permission — `activeTab` só cobre a aba que o usuário tem
-ativa no momento do clique na extensão, não abas criadas programaticamente depois. Em vez de
-declarar `https://www.instagram.com/*` como permissão fixa do manifest (que assusta mais na tela
-de instalação e é concedida mesmo para quem nunca vai usar o lote), o manifest declara em
-`optional_host_permissions` e `bridge-content-script.js` chama `chrome.permissions.request()` na
-hora do primeiro clique em "Processar automaticamente".
+ativa no momento do clique na extensão, não abas criadas programaticamente depois. O manifest
+declara `host_permissions: ["https://www.instagram.com/*"]` fixa, concedida na instalação.
 
-Isso só funciona porque `chrome.permissions.request()` precisa rodar dentro de uma pilha de
-execução iniciada por um gesto do usuário — e o `postMessage` do clique do botão chega ao content
-script ainda dentro dessa janela. Se esse pedido de permissão fosse feito depois de um salto pelo
-`background.js` (outro contexto de execução), o gesto do usuário já teria se perdido e o Chrome
-recusaria a permissão silenciosamente. Por isso o pedido de permissão acontece no
-**content script**, antes de repassar a mensagem para o background — nunca no background.
+**Isso já foi tentado como permissão opcional** (`optional_host_permissions` +
+`chrome.permissions.request()` disparado do clique em "Processar automaticamente") e não
+funciona: `chrome.permissions` não existe em content scripts — só está disponível em páginas da
+extensão (popup/options) e no service worker. Chamar `chrome.permissions.contains()`/`.request()`
+de dentro de `bridge-content-script.js` falha com `Cannot read properties of undefined (reading
+'contains')`, porque `chrome.permissions` é `undefined` nesse contexto. E mesmo movendo a
+chamada para `background.js` (onde a API existe), o "user gesture" do clique original não
+sobrevive ao salto por `chrome.runtime.sendMessage()` — `chrome.permissions.request()` exige
+rodar dentro da pilha de execução de um gesto do usuário, e uma mensagem assíncrona não conta
+como isso. Não há um jeito correto de pedir essa permissão sob demanda no fluxo atual (o clique
+acontece no app React, não numa página da própria extensão), então ela é declarada fixa.
 
 ## Scraping do Instagram: heurísticas por tipo de conteúdo
 

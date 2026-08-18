@@ -46,9 +46,7 @@ diferente do fluxo unidirecional do popup:
 1. O app (`src/modules/board/extensionBridge.ts`) manda `window.postMessage({type:
    "MB_SCRAPE_REQUEST", id, url})`, correlacionado por `id`.
 2. `bridge-content-script.js` (já injetado no domínio do app) repassa via
-   `chrome.runtime.sendMessage({type: "SCRAPE_URL", url})` — e, antes disso, garante a permissão
-   de host necessária (ver "Permissões" abaixo), pois esse é o único ponto da cadeia que ainda
-   roda dentro do gesto de clique do usuário.
+   `chrome.runtime.sendMessage({type: "SCRAPE_URL", url})`.
 3. `background.js` abre uma aba em **segundo plano** (`active: false`), espera o conteúdo carregar
    (não só o evento `load` do Chrome — o Instagram é um SPA pesado que hidrata bem depois disso),
    injeta `scraper.js`, captura o resultado e fecha a aba.
@@ -65,12 +63,16 @@ A extensão usa `activeTab` para o fluxo manual (funciona só na aba que o usuá
 momento do clique). Abrir abas em segundo plano para o processamento em lote exige acesso
 declarado ao domínio de destino, que `activeTab` não cobre.
 
-Por isso o `manifest.json` declara `optional_host_permissions: ["https://www.instagram.com/*"]` e
-a extensão só solicita essa permissão em runtime (`chrome.permissions.request`), no primeiro clique
-do usuário em "Processar automaticamente" — não na instalação. **Instalações já existentes
-(modo desenvolvedor/unpacked) precisam de um reload manual em `chrome://extensions` após atualizar
-o código** para que essa permissão opcional passe a existir; o Chrome não aplica mudanças de
-manifest a quente.
+Por isso o `manifest.json` declara `host_permissions: ["https://www.instagram.com/*"]` **de forma
+fixa**, concedida na instalação — não em runtime. Uma primeira versão tentou pedir essa permissão
+sob demanda (`chrome.permissions.request()`) a partir de `bridge-content-script.js`, no clique de
+"Processar automaticamente", mas isso não funciona: `chrome.permissions` **não existe em content
+scripts**, só em páginas da extensão (popup/options) e no service worker — a chamada falhava com
+`Cannot read properties of undefined (reading 'contains')`. Como o scraper só tem parsing
+estruturado para o Instagram (é o único domínio realmente necessário), a permissão fixa é mais
+simples e não tem trade-off prático aqui. **Instalações já existentes (modo
+desenvolvedor/unpacked) precisam de um reload manual em `chrome://extensions` após atualizar o
+código** para que a permissão passe a existir; o Chrome não aplica mudanças de manifest a quente.
 
 ## Limitações conhecidas
 
