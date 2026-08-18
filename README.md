@@ -130,6 +130,24 @@ Dois modos de criação acessíveis via Speed Dial (FAB no canto inferior direit
 
 ![Criação de card com IA](docs/images/mb-criar-com-ia.png)
 
+### Fila de Pendentes e Importação em Lote
+
+Links compartilhados pelo Android (Web Share Target) caem numa fila de pendentes por board
+(`PendingListSheet`, acessível pelo ícone de lista na barra superior). Cada item pode ser:
+
+- **Marcado como concluído** ou reaberto
+- **Convertido em card** manualmente (abre o modal de criação padrão com o texto no título)
+- **Processado em lote** — botão "Processar automaticamente", disponível quando a
+  [extensão do Chrome](extension/README.md) está instalada: abre cada link pendente
+  em segundo plano, faz o scrape (mesma extração usada no fluxo manual da extensão), roda a
+  extração de campos por IA e cria os cards automaticamente, um de cada vez, sem precisar abrir
+  cada link manualmente. Uma falha isolada não interrompe o lote; falhas repetidas param o
+  processamento automaticamente (provável bloqueio do Instagram por excesso de requisições).
+
+Cards criados por esse fluxo ficam marcados com um badge "Automático" até serem revisados — ver
+"Drawer de Card" abaixo. Detalhes de implementação do protocolo app↔extensão e das heurísticas de
+scraping por tipo de conteúdo ficam em `docs/extension-scraping.md`.
+
 ### Drawer de Card
 
 Ao clicar em um card, um drawer lateral abre com todos os campos do board:
@@ -137,6 +155,8 @@ Ao clicar em um card, um drawer lateral abre com todos os campos do board:
 - Visualização e edição inline de todos os campos (`cardOpenLayout`)
 - Cada tipo de campo renderiza seu editor especializado (date picker, color picker, checklist interativo, etc.)
 - Salvamento automático ao sair do campo
+- Cards criados pelo processamento em lote (`_autoCreated`) mostram um botão **"Aprovar"** no
+  cabeçalho — clicar remove a marcação de "criado automaticamente" do card
 - Botão de exclusão do card
 
 ### Configuração de Board
@@ -208,7 +228,7 @@ Modal de edição completa acessível pelo botão ⚙ de cada board:
 - **Zustand** (estado global: board + auth + spreadsheet)
 - **Google Identity Services** (OAuth implícito, token em memória)
 - **Google Drive API v3** (listagem e criação de planilhas)
-- **OpenAI API** via **Vercel Edge Functions** (extração de campos com IA — chave nunca exposta no bundle)
+- **OpenAI API** via **lealtek-api** (backend externo compartilhado — extração de campos com IA, chave nunca exposta no bundle)
 
 ---
 
@@ -263,7 +283,7 @@ src/
     api/
       SheetsApiClient.ts    HTTP client para Sheets API v4
       DriveApiClient.ts     Listagem e criação de planilhas via Drive API v3
-      OpenAiClient.ts       Client OpenAI — chama proxy Vercel, nunca OpenAI diretamente
+      OpenAiClient.ts       Client OpenAI — chama lealtek-api, nunca OpenAI diretamente
     cache/
       localCache.ts         Cache local com IndexedDB (idb)
     icons/
@@ -298,9 +318,9 @@ src/
 | `src/modules/board/store.ts`                  | Zustand: board ativo, fields, cards, busca e filtros                     |
 | `src/modules/board/useBoardData.ts`           | TanStack Query — carrega e sincroniza dados do board                     |
 | `src/modules/board/useCardMutations.ts`       | Mutações de card com reordenação otimista                                |
-| `src/modules/board/useAiCardExtraction.ts`    | Extração de campos via OpenAI (chama proxy Vercel, não OpenAI diretamente)|
-| `api/openai/chat.ts`                          | Vercel Edge Function — proxy seguro para OpenAI `/v1/chat/completions`   |
-| `api/openai/responses.ts`                     | Vercel Edge Function — proxy seguro para OpenAI `/v1/responses`          |
+| `src/modules/board/useAiCardExtraction.ts`    | Extração de campos via OpenAI (chama `lealtek-api`, não OpenAI diretamente) |
+| `src/modules/board/useBatchPendingProcessor.ts` | Loop de processamento em lote da fila de pendentes via extensão + IA   |
+| `src/modules/board/extensionBridge.ts`        | Canal bidirecional app ↔ extensão Chrome (scrape sob demanda de uma URL) |
 
 ### Entidades e convenções de dados
 
@@ -383,14 +403,14 @@ https://docs.google.com/spreadsheets/d/<SPREADSHEET_ID>/edit
 Crie `.env.local` na raiz do projeto:
 
 ```env
-VITE_GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
-GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com   # mesmo valor acima, sem prefixo VITE_ (usado server-side)
-OPENAI_API_KEY=sk-...               # Opcional — habilita criação de cards com IA (server-side)
+VITE_LEALTEK_API_URL=https://api.lealtek.com   # obrigatória — backend externo (auth + IA)
 ```
 
 > `VITE_SPREADSHEET_ID` foi removido — cada usuário seleciona ou cria sua própria planilha no primeiro login.
-> `OPENAI_API_KEY` **não usa o prefixo `VITE_`** — ela vive apenas nas Vercel Edge Functions e nunca é injetada no bundle do browser.
-> `GOOGLE_CLIENT_ID` (sem prefixo `VITE_`) é usado pelas Edge Functions em `api/openai/` para validar o token Google do chamador — sem ele, essas rotas respondem `403` para qualquer requisição.
+> `VITE_GOOGLE_CLIENT_ID` e `OPENAI_API_KEY` também foram removidos deste projeto — autenticação
+> Google e chamadas à OpenAI passaram a ser responsabilidade do backend externo `lealtek-api`
+> (Authorization Code + PKCE; ver `src/shared/auth/GoogleAuthService.ts`), que não faz parte deste
+> repositório.
 
 Reinicie o dev server.
 
@@ -407,11 +427,15 @@ A escolha fica salva em `localStorage` associada ao e-mail do usuário. É poss�
 
 ### Segurança — o que NÃO fazemos
 
-- Não armazenamos `client_secret`, service account ou private keys
-- Não persistimos o `access_token` entre sessões — ele vive apenas em closure; `silentSignIn()` recupera um novo token sem interação do usuário em novas abas
+- Não armazenamos `client_secret`, service account ou private keys neste repositório
 - `spreadsheetId` é salvo em `localStorage` associado ao e-mail do usuário — o usuário controla qual planilha usar
-- `OPENAI_API_KEY` nunca chega ao browser — todas as chamadas à OpenAI passam pelas Vercel Edge Functions em `api/openai/`
-- Todas as rotas em `api/openai/` (incluindo transcrição de vídeo) exigem um `Authorization: Bearer <token>` Google válido, verificado server-side via `api/_lib/verifyGoogleAuth.ts` contra o endpoint `tokeninfo` do Google — sem isso, a rota responde `401`/`403` antes de gastar cota da OpenAI
+- A chave da OpenAI nunca chega a este app — todas as chamadas à OpenAI (extração de campos,
+  transcrição de vídeo) passam pelo backend externo `lealtek-api` (`/api/ai/*`), autenticado via
+  o mesmo fluxo OAuth do login
+
+> O fluxo de autenticação (OAuth Authorization Code + PKCE, refresh de sessão, cookies) é
+> implementado no `lealtek-api`, fora deste repositório — `src/shared/auth/GoogleAuthService.ts`
+> é o cliente desse fluxo, não a implementação dele.
 
 ---
 
@@ -433,15 +457,13 @@ A escolha fica salva em `localStorage` associada ao e-mail do usuário. É poss�
 
 Em **Settings → Environment Variables**, adicione:
 
-| Variável                | Valor                                 | Visibilidade    |
-| ----------------------- | -------------------------------------- | --------------- |
-| `VITE_GOOGLE_CLIENT_ID` | `xxxxx.apps.googleusercontent.com`    | Build (VITE_)   |
-| `GOOGLE_CLIENT_ID`      | mesmo valor acima, sem prefixo `VITE_` | Server (seguro) |
-| `OPENAI_API_KEY`        | `sk-...` (opcional)                   | Server (seguro) |
+| Variável                | Valor                        | Visibilidade  |
+| ----------------------- | ----------------------------- | -------------- |
+| `VITE_LEALTEK_API_URL`  | `https://api.lealtek.com`    | Build (VITE_) |
 
 > `VITE_SPREADSHEET_ID` foi removido — cada usuário conecta sua própria planilha pelo app.
-> `OPENAI_API_KEY` **não usa o prefixo `VITE_`** — ela só é acessível pelas Edge Functions e nunca aparece no bundle público.
-> `GOOGLE_CLIENT_ID` (sem prefixo `VITE_`) é obrigatória — sem ela, as rotas de IA em `api/openai/` rejeitam todas as requisições com `403`.
+> `VITE_GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_ID`/`OPENAI_API_KEY` também foram removidos — auth e IA
+> são responsabilidade do `lealtek-api`, configurado separadamente (fora deste repositório).
 
 **Passo 3 — Configurar roteamento SPA**
 

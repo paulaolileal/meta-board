@@ -1,6 +1,13 @@
 export const EXTENSION_IMPORT_STORAGE_KEY = "mb:ai-import";
 export const EXTENSION_IMPORT_READY_EVENT = "mb:ai-import-ready";
 
+export type InstagramPostType = "post" | "reel" | "tv";
+
+export interface InstagramMediaItem {
+  type: "image" | "video";
+  url: string;
+}
+
 export interface ExtensionImportPayload {
   captionText?: string;
   pinnedAuthorComments?: string[];
@@ -9,6 +16,12 @@ export interface ExtensionImportPayload {
   profileUsername?: string;
   videoUrl?: string;
   postUrl?: string;
+  /** Instagram content type detected from the URL — absent on non-Instagram
+   * pages, where there's no dedicated extraction to distinguish. */
+  postType?: InstagramPostType;
+  /** Ordered carousel media (post type only); a single-item array for a
+   * non-carousel post with one photo/video. */
+  media?: InstagramMediaItem[];
   /** Raw, unparsed text collected from the page. Always present as a
    * catch-all for anything the site-specific extraction above doesn't
    * categorize — the sole source of content on sites without dedicated
@@ -39,10 +52,12 @@ export function formatExtensionImportAsText(payload: ExtensionImportPayload): st
   return JSON.stringify(
     {
       "Author Username": authorProfileUrl,
+      "Post Type": payload.postType,
       Caption: payload.captionText,
       "Tagged Users": payload.mentions,
       "Pinned Comments": payload.pinnedAuthorComments,
       Links: payload.links,
+      Media: payload.media,
       "Post URL": payload.postUrl,
       extra: payload.extra,
     },

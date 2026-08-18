@@ -6,6 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Batch processing of the pending queue via the Chrome extension: a new
+  "Processar automaticamente" button in the pending list opens each pending
+  link in a background tab, scrapes it, runs the same AI field extraction
+  as the manual import flow, and creates the resulting card(s) — no more
+  opening each link by hand and clicking the extension one at a time.
+  Failures are skipped without aborting the batch, and the batch auto-stops
+  after 3 consecutive failures (likely Instagram rate-limiting).
+- `_autoCreated` card field: cards created by the batch flow are flagged and
+  show a badge ("Automático") until the user opens the card and clicks the
+  new "Aprovar" button in the drawer header.
+- Per-content-type Instagram extraction in the extension's scraper: posts,
+  reels and IGTV now go through dedicated flows instead of one generic one,
+  and carousel posts are extracted as an ordered `media` array instead of
+  only the first slide.
+- Bidirectional app ↔ extension messaging channel
+  (`src/modules/board/extensionBridge.ts` +
+  `extension/bridge-content-script.js` +
+  `extension/background.js`'s new `SCRAPE_URL` handler) — lets the app ask
+  the extension to scrape an arbitrary URL and await the result, instead of
+  the extension only ever pushing data to the app.
+
+### Changed
+
+- Extension now requests the `https://www.instagram.com/*` host permission
+  at runtime (`optional_host_permissions`), on the user's first click of
+  "Processar automaticamente", instead of relying solely on `activeTab` —
+  required to open and scrape background tabs the user didn't click into
+  directly. Existing unpacked installs need a manual reload in
+  `chrome://extensions` to pick this up.
+
+## [2026-08-18]
+
 ### Fixed
 
 - Board card background no longer leaves an uncolored gap at the bottom

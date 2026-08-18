@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { CardRecord, FieldDef, FieldType, FieldValue } from "@/modules/project/domain/types";
@@ -100,6 +100,15 @@ export function CardItem({ card, fields, layout, onClick, dragging }: Props) {
       </AnimatePresence>
 
       <div className="p-3 flex flex-col gap-2">
+        {card._autoCreated && (
+          <div
+            className="inline-flex items-center gap-1 self-start rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
+            title="Criado automaticamente — aguardando revisão"
+          >
+            <Sparkles className="h-3 w-3" />
+            Automático
+          </div>
+        )}
         <div className="flex items-start justify-between gap-1.5">
           {titleField && titleValue != null && titleValue !== "" && (
             <div className="flex-1 min-w-0 text-sm font-semibold leading-snug">

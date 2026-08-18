@@ -241,8 +241,12 @@
     return expanded;
   }
 
+  // A plain timeout, not double-rAF: Chrome throttles requestAnimationFrame
+  // heavily (or stops firing it altogether) on hidden/background tabs, which
+  // is exactly where this runs during batch pending-queue processing — a
+  // rAF-based wait could stall far longer than intended there.
   function waitForNextPaint() {
-    return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return new Promise((resolve) => setTimeout(resolve, 200));
   }
 
   // Instagram streams <video> through MediaSource Extensions, so
@@ -260,10 +264,25 @@
     return undefined;
   }
 
-  async function scrapeInstagramPost(root) {
-    const isPostOrReelPage = /\/(p|reel|reels)\/[^/]+\/?/.test(window.location.pathname);
-    if (!isPostOrReelPage) return undefined;
+  // URL path decides which dedicated flow runs — each Instagram content type
+  // exposes its media differently (single video vs. swipeable carousel vs.
+  // legacy IGTV player), so a single generic flow can't extract any of them
+  // accurately. Stories are intentionally left out: they're ephemeral and
+  // gated behind login, so they fall through to the generic
+  // collectPageText() fallback like any unmatched site.
+  function detectPostType(pathname) {
+    const match = pathname.match(/^\/(p|reel|reels|tv)\//);
+    if (!match) return undefined;
+    if (match[1] === "p") return "post";
+    if (match[1] === "tv") return "tv";
+    return "reel";
+  }
 
+  // Fields shared by every Instagram content type — caption, author,
+  // mentions/links and pinned/author comments don't depend on whether the
+  // post is a photo, a carousel or a reel, so this is the one piece of logic
+  // every scrapeXxx() below delegates to instead of duplicating it.
+  async function scrapeInstagramCommon(root) {
     if (expandTruncatedText(root)) {
       await waitForNextPaint();
     }
@@ -274,9 +293,7 @@
 
     // Fallback for page variants where the time-based heuristic above doesn't
     // apply (older markup still using semantic tags).
-    const legacyCaptionEl = root.querySelector(
-      "h1, div[data-testid='post-caption'], ul li span",
-    );
+    const legacyCaptionEl = root.querySelector("h1, div[data-testid='post-caption'], ul li span");
 
     const captionText =
       captionEntry?.body || text(legacyCaptionEl) || captionFromLongTextSpan(root);
@@ -309,16 +326,110 @@
       ...new Set([...pinnedComments, ...authorCommentsInFirst5].map((entry) => entry.body)),
     ];
 
-    const videoUrl = videoUrlFromEmbeddedJson() || videoUrlFromMeta() || videoUrlFromElement(root);
-
     return {
       captionText,
       pinnedAuthorComments,
       mentions: extractMentions(captionText),
       links: extractLinks(captionText),
       profileUsername,
-      videoUrl,
     };
+  }
+
+  // Whatever <video>/<img> is currently visible in `root` — used both for a
+  // single-media post and, called repeatedly, for each slide of a carousel.
+  function currentSlideMedia(root) {
+    const video = root.querySelector("video");
+    if (video) {
+      const src = videoUrlFromEmbeddedJson() || videoUrlFromMeta() || videoUrlFromElement(root);
+      return src ? { type: "video", url: src } : undefined;
+    }
+    // Several <img> in `root` are UI chrome (avatar, like/comment icons);
+    // the actual slide is reliably the largest one rendered.
+    const images = Array.from(root.querySelectorAll("img"));
+    const biggest = images.reduce((best, img) => {
+      const area = (img.naturalWidth || 0) * (img.naturalHeight || 0);
+      const bestArea = best ? (best.naturalWidth || 0) * (best.naturalHeight || 0) : -1;
+      return area > bestArea ? img : best;
+    }, undefined);
+    const src = biggest?.getAttribute("src");
+    return src ? { type: "image", url: src } : undefined;
+  }
+
+  const CAROUSEL_NEXT_LABEL_PATTERN = /^(next|pr[óo]ximo)$/i;
+
+  function findCarouselNextButton(root) {
+    for (const btn of root.querySelectorAll("[role='button']")) {
+      const label = (btn.getAttribute("aria-label") || "").trim();
+      if (CAROUSEL_NEXT_LABEL_PATTERN.test(label)) return btn;
+    }
+    return undefined;
+  }
+
+  // Carousel posts advance in place — clicking "Next" swaps the current
+  // slide's <img>/<video> for the next one rather than mounting all slides
+  // at once, so multi-image posts require clicking through and re-reading
+  // the media element after each click (same pattern as
+  // expandTruncatedText()/waitForNextPaint() above). Bounded to
+  // MAX_CAROUSEL_SLIDES so a stuck "Next" button (selector drift) can't loop
+  // forever; returns whatever was collected before that, single slide
+  // included, so a broken carousel heuristic degrades instead of failing.
+  const MAX_CAROUSEL_SLIDES = 10;
+
+  async function extractCarouselMedia(root) {
+    const media = [];
+    const seen = new Set();
+    for (let i = 0; i < MAX_CAROUSEL_SLIDES; i++) {
+      const item = currentSlideMedia(root);
+      if (item && !seen.has(item.url)) {
+        seen.add(item.url);
+        media.push(item);
+      }
+      const nextBtn = findCarouselNextButton(root);
+      if (!nextBtn) break;
+      nextBtn.click();
+      await waitForNextPaint();
+    }
+    return media;
+  }
+
+  async function scrapeReel(root) {
+    const common = await scrapeInstagramCommon(root);
+    const videoUrl = videoUrlFromEmbeddedJson() || videoUrlFromMeta() || videoUrlFromElement(root);
+    return { ...common, postType: "reel", videoUrl };
+  }
+
+  // IGTV shares the reel player, so the same video-extraction logic applies;
+  // kept as its own function (rather than an alias) so a future divergence
+  // doesn't require re-splitting scrapeReel().
+  async function scrapeTv(root) {
+    const result = await scrapeReel(root);
+    return { ...result, postType: "tv" };
+  }
+
+  async function scrapePost(root) {
+    const common = await scrapeInstagramCommon(root);
+    const media = await extractCarouselMedia(root);
+    const result = { ...common, postType: "post" };
+    if (media.length > 0) {
+      result.media = media;
+      if (media.length === 1 && media[0].type === "video") result.videoUrl = media[0].url;
+    } else {
+      // Carousel detection found nothing (selector drift) — fall back to the
+      // original single-media lookup so a broken heuristic never means an
+      // empty payload.
+      const videoUrl =
+        videoUrlFromEmbeddedJson() || videoUrlFromMeta() || videoUrlFromElement(root);
+      if (videoUrl) result.videoUrl = videoUrl;
+    }
+    return result;
+  }
+
+  async function scrapeInstagram(root) {
+    const postType = detectPostType(window.location.pathname);
+    if (!postType) return undefined;
+    if (postType === "post") return scrapePost(root);
+    if (postType === "tv") return scrapeTv(root);
+    return scrapeReel(root);
   }
 
   const isInstagram = window.location.hostname.includes("instagram.com");
@@ -326,7 +437,7 @@
   // container (see activePostContainer), keeping both the structured fields
   // below and the "extra" catch-all scoped to the same single post.
   const instagramRoot = isInstagram ? activePostContainer() : undefined;
-  const instagramResult = isInstagram ? await scrapeInstagramPost(instagramRoot) : undefined;
+  const instagramResult = isInstagram ? await scrapeInstagram(instagramRoot) : undefined;
 
   const base = {
     postUrl: window.location.href,

@@ -68,6 +68,7 @@ const CARDS_FIXED_HEADERS = [
   "board_id",
   "_sort",
   "_archived",
+  "_auto_created",
   "_created_at",
   "_updated_at",
   "values",
@@ -269,6 +270,7 @@ export class GoogleSheetProvider implements ISheetProvider {
       boardId,
       _sort: Math.max(0, values.length - 1),
       _archived: false,
+      _autoCreated: false,
       _createdAt: now(),
       _updatedAt: now(),
       ...partial,
@@ -531,6 +533,17 @@ export class GoogleSheetProvider implements ISheetProvider {
         ]);
       }
     }
+
+    // Migrate _cards: append "_auto_created" column header if missing
+    if (cardsRow[0]?.length && !cardsRow[0].includes("_auto_created")) {
+      const currentHeaders = await this.api.getValues(this.sheetId, "_cards!A1:Z1");
+      const headerRow = currentHeaders[0] ?? [];
+      if (headerRow.length > 0 && !headerRow.includes("_auto_created")) {
+        await this.api.setValues(this.sheetId, `_cards!${colLetter(headerRow.length + 1)}1`, [
+          ["_auto_created"],
+        ]);
+      }
+    }
   }
 
   async createBoard(
@@ -646,6 +659,7 @@ export class GoogleSheetProvider implements ISheetProvider {
       boardId: "",
       _sort: 0,
       _archived: false,
+      _autoCreated: false,
       _createdAt: "",
       _updatedAt: "",
     };
@@ -666,6 +680,10 @@ export class GoogleSheetProvider implements ISheetProvider {
       }
       if (h === "_archived") {
         record._archived = raw === "true" || raw === "TRUE";
+        return;
+      }
+      if (h === "_auto_created") {
+        record._autoCreated = raw === "true" || raw === "TRUE";
         return;
       }
       if (h === "_created_at") {
@@ -694,6 +712,7 @@ export class GoogleSheetProvider implements ISheetProvider {
       if (h === "board_id") return card.boardId as string;
       if (h === "_sort") return String(card._sort);
       if (h === "_archived") return String(card._archived);
+      if (h === "_auto_created") return String(card._autoCreated);
       if (h === "_created_at") return card._createdAt;
       if (h === "_updated_at") return card._updatedAt;
       if (h === "values") {

@@ -4,6 +4,7 @@ import {
   X,
   Trash2,
   Copy,
+  CheckCircle2,
   Calendar,
   Link as LinkIcon,
   Type,
@@ -385,6 +386,17 @@ function CardDrawerContent({
           Card · atualizado {new Date(draft._updatedAt).toLocaleTimeString("pt-BR")}
         </div>
         <div className="flex items-center gap-1">
+          {draft._autoCreated && (
+            <button
+              onClick={() => patch("_autoCreated", false)}
+              className="h-11 px-3 min-h-[44px] rounded-md flex items-center gap-1.5 text-xs font-medium text-primary hover:bg-primary/10"
+              aria-label="Aprovar card criado automaticamente"
+              title="Criado automaticamente — clique para aprovar"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Aprovar
+            </button>
+          )}
           <button
             onClick={onDuplicate}
             className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent"

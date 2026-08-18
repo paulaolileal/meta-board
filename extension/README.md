@@ -3,8 +3,10 @@
 Extrai o conteúdo da página aberta e envia direto para o MetaBoard (`board.lealtek.com`), sem
 copiar/colar manual. Funciona em qualquer site:
 
-- **Instagram (post/reel)**: extração estruturada — legenda, comentários fixados/do autor,
-  menções, links e URL do vídeo (`scrapeInstagramPost()` em `scraper.js`).
+- **Instagram (post/reel/IGTV)**: extração estruturada por tipo de conteúdo — legenda, autor,
+  comentários fixados/do autor, menções, links e mídia (vídeo único, ou carrossel de
+  imagens/vídeos para posts). Ver `detectPostType()`/`scrapePost()`/`scrapeReel()`/`scrapeTv()`
+  em `scraper.js`.
 - **Qualquer outro site** (Shopee, TikTok, artigos, etc.): não há parsing dedicado, então a
   extensão coleta todo o texto visível da página (`collectPageText()`) e deixa a IA do MetaBoard
   extrair os campos a partir desse texto bruto.
@@ -31,10 +33,49 @@ O bridge (`bridge-content-script.js`) e o destino padrão em `background.js` apo
 `board.lealtek.com`. Para desenvolvimento local, `localhost:5173` (Vite) e `localhost:3000`
 (`vercel dev`) também estão liberados em `manifest.json`.
 
+## Processamento em lote da fila de pendentes
+
+Além do fluxo manual acima (um link por vez, iniciado pelo popup), o botão "Processar
+automaticamente" na lista de pendentes do app pede à extensão que abra e faça scrape de vários
+links em sequência, sem intervenção do usuário a cada um. Isso usa um canal **bidirecional**
+diferente do fluxo unidirecional do popup:
+
+1. O app (`src/modules/board/extensionBridge.ts`) manda `window.postMessage({type:
+   "MB_SCRAPE_REQUEST", id, url})`, correlacionado por `id`.
+2. `bridge-content-script.js` (já injetado no domínio do app) repassa via
+   `chrome.runtime.sendMessage({type: "SCRAPE_URL", url})` — e, antes disso, garante a permissão
+   de host necessária (ver "Permissões" abaixo), pois esse é o único ponto da cadeia que ainda
+   roda dentro do gesto de clique do usuário.
+3. `background.js` abre uma aba em **segundo plano** (`active: false`), espera o conteúdo carregar
+   (não só o evento `load` do Chrome — o Instagram é um SPA pesado que hidrata bem depois disso),
+   injeta `scraper.js`, captura o resultado e fecha a aba.
+4. A resposta volta pela mesma cadeia até o app resolver a Promise correspondente ao `id`.
+
+O loop em si (iterar os pendentes, delay entre eles, cancelamento, progresso) vive inteiramente no
+app (`useBatchPendingProcessor.ts`) — a extensão só sabe "abra esta URL, faça scrape, devolva o
+resultado", uma chamada de cada vez. Isso evita depender de um loop de longa duração dentro do
+service worker (Manifest V3 pode encerrá-lo a qualquer momento sem aviso).
+
+## Permissões
+
+A extensão usa `activeTab` para o fluxo manual (funciona só na aba que o usuário tem ativa no
+momento do clique). Abrir abas em segundo plano para o processamento em lote exige acesso
+declarado ao domínio de destino, que `activeTab` não cobre.
+
+Por isso o `manifest.json` declara `optional_host_permissions: ["https://www.instagram.com/*"]` e
+a extensão só solicita essa permissão em runtime (`chrome.permissions.request`), no primeiro clique
+do usuário em "Processar automaticamente" — não na instalação. **Instalações já existentes
+(modo desenvolvedor/unpacked) precisam de um reload manual em `chrome://extensions` após atualizar
+o código** para que essa permissão opcional passe a existir; o Chrome não aplica mudanças de
+manifest a quente.
+
 ## Limitações conhecidas
 
 - O DOM do Instagram muda sem aviso e não há API pública para isso — os seletores em `scraper.js`
-  são best-effort e podem quebrar quando o Instagram alterar sua marcação.
+  são best-effort e podem quebrar quando o Instagram alterar sua marcação. A extração de carrossel
+  (`extractCarouselMedia()`) é a heurística mais nova e arriscada nesse sentido — se o botão
+  "Próximo" mudar de seletor, ela degrada para o comportamento anterior (só o primeiro slide) em
+  vez de falhar.
 - A extração de comentários fixados depende de o Instagram exibir um indicador textual de "fixado"
   ou de reconhecer o autor do post pelo link do perfil na lista de comentários.
 - O campo `extra` é um dump bruto de `document.body.innerText` (truncado em 20.000 caracteres),
@@ -44,3 +85,6 @@ O bridge (`bridge-content-script.js`) e o destino padrão em `background.js` apo
   desse texto.
 - Extensões Chrome só funcionam no Chrome desktop — por isso o link de instalação fica escondido
   no menu quando o app é acessado pelo celular (`src/components/UserAccountMenu.tsx`).
+- O processamento em lote roda sequencialmente com um delay aleatório entre itens, e para
+  automaticamente após falhas consecutivas — as abas usam a sessão real do Instagram do usuário, e
+  navegação rápida demais pode parecer abuso e arriscar um bloqueio temporário da própria conta.

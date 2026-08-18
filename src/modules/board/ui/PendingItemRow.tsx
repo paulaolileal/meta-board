@@ -13,8 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import type { PendingItem } from "@/modules/project/domain/types";
-
-const URL_PATTERN = /(https?:\/\/[^\s]+)/;
+import { extractUrlFromPendingItem } from "@/modules/board/pendingUrl";
 
 interface Props {
   item: PendingItem;
@@ -23,8 +22,7 @@ interface Props {
 }
 
 export function PendingItemRow({ item, onToggleDone, onConvert }: Props) {
-  const urlMatch = item.description.match(URL_PATTERN);
-  const url = urlMatch?.[0];
+  const url = extractUrlFromPendingItem(item);
 
   return (
     <div className="flex items-start gap-3 py-3 border-b border-border last:border-0">

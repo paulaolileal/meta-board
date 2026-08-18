@@ -78,6 +78,10 @@ export interface CardRecord {
   boardId: string;
   _sort: number;
   _archived: boolean;
+  /** True when the card was created by the automatic batch-import flow
+   * (extension scraping the pending queue) and hasn't been reviewed yet.
+   * Drives the "auto-created" badge until the user approves it. */
+  _autoCreated: boolean;
   _createdAt: string;
   _updatedAt: string;
   [key: string]: FieldValue | string | number | boolean;
