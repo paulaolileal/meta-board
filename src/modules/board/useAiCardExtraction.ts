@@ -41,7 +41,8 @@ function buildSystemPrompt(
       const opts =
         OPTION_TYPES.has(f.type) && f.options?.length ? `, options: [${f.options.join(", ")}]` : "";
       const req = f.required ? " [REQUIRED]" : "";
-      return `- ${f.label} (id: ${f.id}, type: ${f.type}${opts})${req}`;
+      const hint = f.instruction ? ` — hint: ${f.instruction}` : "";
+      return `- ${f.label} (id: ${f.id}, type: ${f.type}${opts})${req}${hint}`;
     })
     .join("\n");
 
@@ -173,7 +174,8 @@ function buildSearchInstructions(
   const fieldLine = (f: FieldDef) => {
     const opts =
       OPTION_TYPES.has(f.type) && f.options?.length ? `, options: [${f.options.join(", ")}]` : "";
-    return `- ${f.label} (id: ${f.id}, type: ${f.type}${opts})`;
+    const hint = f.instruction ? ` — hint: ${f.instruction}` : "";
+    return `- ${f.label} (id: ${f.id}, type: ${f.type}${opts})${hint}`;
   };
 
   const uncertainLines = missingFields

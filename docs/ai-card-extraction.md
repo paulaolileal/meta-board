@@ -42,6 +42,14 @@ resposta do modelo recebe `100` por padrão (nunca dispara busca por omissão do
 Campos encontrados pela busca recebem `sources[fieldId] = "searched"` e `confidences[fieldId] = 100`
 (o prompt de busca já exige "HIGH CONFIDENCE" para incluir qualquer valor).
 
+## Instrução do campo vira "hint" no prompt
+
+Quando um `FieldDef` tem `instruction` preenchida (ver [sheets-schema.md](sheets-schema.md)),
+tanto `buildSystemPrompt()` quanto `buildSearchInstructions()` anexam
+`— hint: <instruction>` à linha do campo, ajudando o modelo a entender o que exatamente deve
+ir naquele campo (útil sobretudo em campos ambíguos, tipo "Observações"). Campo sem instrução
+não ganha nada a mais na linha — comportamento idêntico ao anterior.
+
 ## Onde mexer
 
 - Mudar o limiar de confiança → `LOW_CONFIDENCE_THRESHOLD` em `useAiCardExtraction.ts`.

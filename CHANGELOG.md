@@ -13,7 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   selectable ones) explaining what should be filled in — shown as a help
   icon with a tooltip next to the field label when opening a card. Existing
   spreadsheets are migrated automatically the first time a board is opened
-  (self-healing `_fields` header), no manual action required.
+  (self-healing `_fields` header), no manual action required. The
+  instruction is also passed to the AI extraction prompts (manual import and
+  automatic batch flow) as a per-field hint, helping the model understand
+  what belongs in ambiguous fields.
 - Batch processing of the pending queue via the Chrome extension: a new
   "Processar automaticamente" button in the pending list opens each pending
   link in a background tab, scrapes it, runs the same AI field extraction
