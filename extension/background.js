@@ -34,8 +34,42 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 // and progress UI; this only opens one background tab, scrapes it, and
 // closes it.
 
-const SCRAPE_READY_TIMEOUT_MS = 15000;
-const SCRAPE_OVERALL_TIMEOUT_MS = 25000;
+const TAB_LOAD_TIMEOUT_MS = 20000;
+const SCRAPE_READY_TIMEOUT_MS = 20000;
+const SCRAPE_OVERALL_TIMEOUT_MS = 45000;
+
+// chrome.tabs.create()'s promise resolves as soon as the tab exists, not
+// once it has navigated to the requested URL — the tab briefly shows
+// about:blank first. Injecting a script right after create() can land in
+// that intermediate document; when the real navigation follows, that JS
+// context is torn down and any pending work in it (including a Promise
+// waitUntilReady() is still polling inside) never resolves, so every scrape
+// silently timed out instead of running against the actual page. Waiting
+// for chrome.tabs.onUpdated's "complete" status first ensures scripts are
+// only injected into the final, navigated document.
+function waitForTabLoad(tabId, timeoutMs) {
+  return new Promise((resolve) => {
+    let settled = false;
+    function finish(loaded) {
+      if (settled) return;
+      settled = true;
+      chrome.tabs.onUpdated.removeListener(listener);
+      clearTimeout(timer);
+      resolve(loaded);
+    }
+    function listener(updatedTabId, changeInfo) {
+      if (updatedTabId === tabId && changeInfo.status === "complete") finish(true);
+    }
+    chrome.tabs.onUpdated.addListener(listener);
+    const timer = setTimeout(() => finish(false), timeoutMs);
+
+    // Covers the case where the tab already finished loading (e.g. an
+    // instant/cached navigation) before this listener got attached.
+    chrome.tabs.get(tabId, (tab) => {
+      if (tab?.status === "complete") finish(true);
+    });
+  });
+}
 
 // Injected into the target tab. Polls internally (a single executeScript
 // call awaiting its own loop) instead of the service worker re-injecting a
@@ -49,15 +83,28 @@ function waitUntilReady(maxWaitMs) {
         resolve("login_required");
         return;
       }
+      // Any of these means the SPA has hydrated real content, not just the
+      // initial HTML shell. Several alternatives are accepted (not just
+      // og:title/time) because a background tab may be exactly the case
+      // Instagram's own performance optimizations (Page Visibility-based
+      // lazy hydration) delay the most — the goal here is "enough to hand
+      // off to scraper.js", not a guarantee every field will be present.
       const hasContentSignal =
         document.querySelector("meta[property='og:title']")?.getAttribute("content") ||
-        document.querySelector("time[datetime]");
+        document.querySelector("time[datetime]") ||
+        document.querySelector("article") ||
+        document.querySelector("video");
+      const elapsed = Date.now() - start;
       if (document.readyState === "complete" && hasContentSignal) {
         resolve(true);
         return;
       }
-      if (Date.now() - start >= maxWaitMs) {
-        resolve(false);
+      if (elapsed >= maxWaitMs) {
+        // Out of budget: still hand off to scraper.js if the document at
+        // least finished loading, instead of failing outright — its own
+        // per-content-type extraction already degrades gracefully when a
+        // specific element isn't there yet.
+        resolve(document.readyState === "complete");
         return;
       }
       setTimeout(check, 250);
@@ -73,15 +120,23 @@ function withTimeout(promise, ms, fallbackValue) {
   ]);
 }
 
-// The timeout below only races the *readiness* wait, not the whole function
-// — it stays inside this same try/finally so chrome.tabs.remove() always
-// runs once the function returns, whichever branch wins. Racing the tab's
-// entire lifecycle from the outside (e.g. in the message listener) would let
-// a losing race abandon the tab open, since its own cleanup would never get
-// to run.
+// The timeouts below only race their own step, not the whole function — they
+// stay inside this same try/finally so chrome.tabs.remove() always runs once
+// the function returns, whichever branch wins. Racing the tab's entire
+// lifecycle from the outside (e.g. in the message listener) would let a
+// losing race abandon the tab open, since its own cleanup would never get to
+// run.
 async function scrapeUrlInBackgroundTab(url) {
   const tab = await chrome.tabs.create({ url, active: false });
   try {
+    const loaded = await waitForTabLoad(tab.id, TAB_LOAD_TIMEOUT_MS);
+    if (!loaded) {
+      return {
+        ok: false,
+        error: { code: "TIMEOUT", message: "Tab did not finish loading in time" },
+      };
+    }
+
     const readiness = await withTimeout(
       chrome.scripting
         .executeScript({

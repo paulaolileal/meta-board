@@ -57,6 +57,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   static `host_permissions` grant instead of trying to relocate the
   runtime request (moving it to the background script would have lost
   the user-gesture context `chrome.permissions.request()` requires).
+- Batch scraping always failed with "Page did not become ready in time":
+  `extension/background.js` injected the readiness-check script right
+  after `chrome.tabs.create()`, but that promise resolves as soon as the
+  tab exists, before it navigates away from the initial `about:blank` —
+  the injected script's context (and the Promise still polling inside
+  it) got torn down mid-navigation and never resolved, so every scrape
+  timed out regardless of the target page. Now waits for
+  `chrome.tabs.onUpdated`'s `status: "complete"` before injecting
+  anything. Also relaxed the readiness signal (accepts `<article>`/
+  `<video>` in addition to `og:title`/`<time>`, and falls back to "DOM
+  finished loading" once out of budget) since a background tab may be
+  exactly the case Instagram's own visibility-based lazy hydration delays
+  the most, and increased the timeouts to give background tabs more room.
 
 ## [2026-08-18]
 

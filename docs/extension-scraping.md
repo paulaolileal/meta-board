@@ -51,6 +51,19 @@ no meio sem nenhum progresso salvo. Mantendo cada chamada `SCRAPE_URL` curta (um
 um `chrome.tabs.remove`), esse risco fica isolado por item — se o service worker for encerrado
 entre uma chamada e outra, o pior caso é o app perceber via timeout e seguir para o próximo.
 
+### `chrome.tabs.create()` resolve antes da navegação terminar
+
+`chrome.tabs.create({url, active: false})` devolve a Promise assim que a aba **existe**, não
+quando ela termina de navegar para `url` — a aba passa brevemente por `about:blank` antes disso.
+Injetar um script logo depois do `create()` pode rodar nesse documento intermediário; quando a
+navegação real acontece em seguida, esse contexto JS é destruído, e qualquer coisa pendente nele
+(inclusive uma Promise de `waitUntilReady()` ainda fazendo polling) nunca resolve — o scrape
+falha com timeout **sempre**, independente da página de destino. `scrapeUrlInBackgroundTab()` em
+`background.js` por isso espera `chrome.tabs.onUpdated` disparar `status: "complete"` antes de
+injetar qualquer script — só depois disso é seguro assumir que o frame injetado é o documento
+final. Qualquer nova chamada a `chrome.scripting.executeScript` logo após criar/navegar uma aba
+precisa do mesmo cuidado.
+
 ### Permissão do Instagram é fixa no manifest, não pedida em runtime
 
 Abrir abas em segundo plano exige host permission — `activeTab` só cobre a aba que o usuário tem

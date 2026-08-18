@@ -101,13 +101,18 @@ function correlatedRequest<T>(post: (id: string) => void, timeoutMs: number): Pr
   });
 }
 
+// Must stay above extension/background.js's own SCRAPE_OVERALL_TIMEOUT_MS
+// (45s) — otherwise the app gives up and reports a timeout for a scrape
+// that was still legitimately in progress on the extension side.
+const SCRAPE_TIMEOUT_MS = 50000;
+
 /** Asks the extension to open `url` in a background tab, scrape it, and
  * return the extracted payload — used by the batch pending-queue processor
  * to run the same extraction as the manual popup flow, one link at a time,
  * without the user opening each page themselves. */
 export function requestExtensionScrape(
   url: string,
-  timeoutMs = 25000,
+  timeoutMs = SCRAPE_TIMEOUT_MS,
 ): Promise<ExtensionImportPayload> {
   return correlatedRequest<ExtensionImportPayload>((id) => {
     window.postMessage(
