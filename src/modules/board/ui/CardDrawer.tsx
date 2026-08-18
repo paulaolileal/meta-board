@@ -22,6 +22,7 @@ import {
   Palette,
   MapPin,
   Clock,
+  HelpCircle,
   type LucideIcon,
 } from "lucide-react";
 import { useBoardStore } from "@/modules/board/store";
@@ -37,6 +38,7 @@ import type {
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const FIELD_TYPE_ICONS: Partial<Record<FieldType, LucideIcon>> = {
   text: Type,
@@ -380,7 +382,7 @@ function CardDrawerContent({
   patch: (key: string, v: unknown) => void;
 }): ReactNode {
   return (
-    <>
+    <TooltipProvider delayDuration={300}>
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="text-xs text-muted-foreground">
           Card · atualizado {new Date(draft._updatedAt).toLocaleTimeString("pt-BR")}
@@ -450,6 +452,19 @@ function CardDrawerContent({
                   <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                     {FieldIcon && <FieldIcon className="h-3 w-3 shrink-0" />}
                     {f.label}
+                    {f.instruction && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 text-muted-foreground/70 hover:text-foreground cursor-help shrink-0" />
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="top"
+                          className="max-w-[240px] normal-case tracking-normal font-normal"
+                        >
+                          {f.instruction}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                   </label>
                   {f.editable === false ? (
                     <FieldRenderer field={f} value={readField(draft, id) as never} mode="open" />
@@ -465,7 +480,7 @@ function CardDrawerContent({
             })}
         </div>
       </div>
-    </>
+    </TooltipProvider>
   );
 }
 

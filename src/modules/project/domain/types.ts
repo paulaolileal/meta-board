@@ -22,6 +22,8 @@ export interface FieldDef {
   id: string;
   boardId: string;
   label: string;
+  /** Help text shown to the user while filling this field (e.g. "opening hours, food details"). */
+  instruction?: string;
   type: FieldType;
   required?: boolean;
   defaultValue?: unknown;

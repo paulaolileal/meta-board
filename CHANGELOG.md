@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Per-field instruction (help text): each field in "Editar board" now has an
+  expandable "Instrução" textarea (available for every field type, not just
+  selectable ones) explaining what should be filled in — shown as a help
+  icon with a tooltip next to the field label when opening a card. Existing
+  spreadsheets are migrated automatically the first time a board is opened
+  (self-healing `_fields` header), no manual action required.
 - Batch processing of the pending queue via the Chrome extension: a new
   "Processar automaticamente" button in the pending list opens each pending
   link in a background tab, scrapes it, runs the same AI field extraction

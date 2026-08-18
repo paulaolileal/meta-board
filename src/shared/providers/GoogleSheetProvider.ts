@@ -47,6 +47,10 @@ const BOARDS_HEADERS = [
   "color",
 ];
 
+// NOTE: new columns must always be appended at the end, never inserted in the
+// middle — fieldDefToRow writes rows in this exact order, and ensureHeaderColumns
+// (self-healing for existing spreadsheets) only knows how to append columns at
+// the end of the real sheet.
 const FIELDS_HEADERS = [
   "id",
   "board_id",
@@ -61,6 +65,7 @@ const FIELDS_HEADERS = [
   "options",
   "width",
   "display_order",
+  "instruction",
 ];
 
 const CARDS_FIXED_HEADERS = [
@@ -184,6 +189,25 @@ export class GoogleSheetProvider implements ISheetProvider {
     this.pendingTabEnsured = true;
   }
 
+  // Ensures `sheetName`'s already-fetched header row contains every column in
+  // `expected`, appending any missing ones at the end. Self-healing for
+  // spreadsheets created before newer columns existed. No API call when
+  // nothing is missing.
+  private async ensureHeaderColumns(
+    sheetName: string,
+    headers: string[],
+    expected: string[],
+  ): Promise<string[]> {
+    const missing = expected.filter((h) => !headers.includes(h));
+    if (!missing.length) return headers;
+    await this.api.setValues(
+      this.sheetId,
+      `${sheetName}!${colLetter(headers.length + 1)}1:${colLetter(headers.length + missing.length)}1`,
+      [missing],
+    );
+    return [...headers, ...missing];
+  }
+
   // Google Sheets' values:append endpoint auto-detects the target "table" shape,
   // which proved unreliable (rows landing at drifting column offsets). Writing to
   // an explicit A1:B2-style range computed from the sheet's actual row count is
@@ -221,7 +245,8 @@ export class GoogleSheetProvider implements ISheetProvider {
   async loadFields(boardId: string): Promise<FieldDef[]> {
     const values = await this.api.getValues(this.sheetId, "_fields");
     if (values.length < 2) return [];
-    const [headers, ...rows] = values;
+    const [initialHeaders, ...rows] = values;
+    const headers = await this.ensureHeaderColumns("_fields", initialHeaders, FIELDS_HEADERS);
     return rows
       .filter((row) => row[0] && row[1] === boardId)
       .map((row) => this.rowToFieldDef(headers, row));
@@ -415,20 +440,25 @@ export class GoogleSheetProvider implements ISheetProvider {
   async saveField(field: FieldDef): Promise<FieldDef> {
     const values = await this.api.getValues(this.sheetId, "_fields");
     if (values.length < 2) throw new Error("Aba _fields não encontrada");
-    const [headers, ...rows] = values;
+    const [initialHeaders, ...rows] = values;
+    const headers = await this.ensureHeaderColumns("_fields", initialHeaders, FIELDS_HEADERS);
     const rowIndex = rows.findIndex((row) => row[0] === field.id && row[1] === field.boardId);
     if (rowIndex < 0) throw new Error(`Campo ${field.id} não encontrado`);
     const newRow = this.fieldDefToRow(field);
     const sheetRow = rowIndex + 2;
     await this.api.setValues(
       this.sheetId,
-      `_fields!A${sheetRow}:${colLetter(headers.length)}${sheetRow}`,
+      `_fields!A${sheetRow}:${colLetter(Math.max(headers.length, newRow.length))}${sheetRow}`,
       [newRow],
     );
     return field;
   }
 
   async createField(field: FieldDef): Promise<FieldDef> {
+    const values = await this.api.getValues(this.sheetId, "_fields");
+    if (values[0]?.length) {
+      await this.ensureHeaderColumns("_fields", values[0], FIELDS_HEADERS);
+    }
     await this.appendRows("_fields", FIELDS_HEADERS.length, [this.fieldDefToRow(field)]);
     return field;
   }
@@ -626,6 +656,7 @@ export class GoogleSheetProvider implements ISheetProvider {
       id: obj.id,
       boardId: obj.boardId,
       label: obj.label,
+      instruction: obj.instruction || undefined,
       type: obj.type as FieldType,
       required: obj.required === "true",
       defaultValue: obj.defaultValue || undefined,

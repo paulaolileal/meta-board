@@ -27,6 +27,7 @@ import {
   MapPin,
   Clock,
   AlertTriangle,
+  HelpCircle,
 } from "lucide-react";
 import {
   DndContext,
@@ -146,6 +147,7 @@ interface SortableFieldRowProps {
   isInClosedLayout: boolean;
   options: string[];
   newOption: string;
+  instruction: string;
   onLabelChange: (val: string) => void;
   onTypeChange: (type: FieldType) => void;
   onToggleExpand: () => void;
@@ -154,6 +156,7 @@ interface SortableFieldRowProps {
   onOptionAdd: () => void;
   onOptionRemove: (opt: string) => void;
   onNewOptionChange: (val: string) => void;
+  onInstructionChange: (val: string) => void;
 }
 
 function SortableFieldRow({
@@ -165,6 +168,7 @@ function SortableFieldRow({
   isInClosedLayout,
   options,
   newOption,
+  instruction,
   onLabelChange,
   onTypeChange,
   onToggleExpand,
@@ -173,6 +177,7 @@ function SortableFieldRow({
   onOptionAdd,
   onOptionRemove,
   onNewOptionChange,
+  onInstructionChange,
 }: SortableFieldRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: field.id,
@@ -211,19 +216,19 @@ function SortableFieldRow({
           aria-label="Nome do campo"
         />
 
-        {isSelectable && (
-          <button
-            onClick={onToggleExpand}
-            className="h-5 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition shrink-0"
-            aria-label={isExpanded ? "Ocultar opções" : "Editar opções"}
-          >
-            {isExpanded ? (
-              <ChevronUp className="h-3.5 w-3.5" />
-            ) : (
-              <List className="h-3.5 w-3.5" />
-            )}
-          </button>
-        )}
+        <button
+          onClick={onToggleExpand}
+          className="h-5 w-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition shrink-0"
+          aria-label={isExpanded ? "Ocultar detalhes do campo" : "Editar detalhes do campo"}
+        >
+          {isExpanded ? (
+            <ChevronUp className="h-3.5 w-3.5" />
+          ) : isSelectable ? (
+            <List className="h-3.5 w-3.5" />
+          ) : (
+            <HelpCircle className="h-3.5 w-3.5" />
+          )}
+        </button>
 
         <select
           value={type}
@@ -273,47 +278,65 @@ function SortableFieldRow({
       )}
 
       {isExpanded && (
-        <div className="px-3 pb-3 pt-2 border-t border-border space-y-2">
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Opções ({options.length})
-          </p>
-          {options.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Nenhuma opção ainda.</p>
-          ) : (
-            <div className="space-y-1">
-              {options.map((opt) => (
-                <div
-                  key={opt}
-                  className="flex items-center justify-between px-2 py-1 rounded bg-muted/40"
-                >
-                  <span className="text-xs">{opt}</span>
-                  <button
-                    onClick={() => onOptionRemove(opt)}
-                    className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-danger transition"
-                    aria-label={`Remover opção ${opt}`}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+        <div className="px-3 pb-3 pt-2 border-t border-border space-y-3">
+          {isSelectable && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Opções ({options.length})
+              </p>
+              {options.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhuma opção ainda.</p>
+              ) : (
+                <div className="space-y-1">
+                  {options.map((opt) => (
+                    <div
+                      key={opt}
+                      className="flex items-center justify-between px-2 py-1 rounded bg-muted/40"
+                    >
+                      <span className="text-xs">{opt}</span>
+                      <button
+                        onClick={() => onOptionRemove(opt)}
+                        className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-danger transition"
+                        aria-label={`Remover opção ${opt}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
+              <div className="flex gap-1.5">
+                <input
+                  value={newOption}
+                  onChange={(e) => onNewOptionChange(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && onOptionAdd()}
+                  placeholder="Nova opção…"
+                  className="flex-1 px-2 py-1 bg-surface border border-border rounded text-xs focus:outline-none focus:ring-2 focus:ring-ring/40"
+                />
+                <button
+                  onClick={onOptionAdd}
+                  disabled={!newOption.trim()}
+                  className="px-2 py-1 rounded bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-40"
+                  aria-label="Adicionar opção"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
+              </div>
             </div>
           )}
-          <div className="flex gap-1.5">
-            <input
-              value={newOption}
-              onChange={(e) => onNewOptionChange(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && onOptionAdd()}
-              placeholder="Nova opção…"
-              className="flex-1 px-2 py-1 bg-surface border border-border rounded text-xs focus:outline-none focus:ring-2 focus:ring-ring/40"
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Instrução (texto de ajuda)
+            </label>
+            <textarea
+              value={instruction}
+              onChange={(e) => onInstructionChange(e.target.value)}
+              rows={2}
+              maxLength={300}
+              placeholder="Ex.: detalhes do lugar, horário de funcionamento, detalhes da comida…"
+              className="w-full px-2 py-1.5 bg-surface border border-border rounded text-xs resize-none focus:outline-none focus:ring-2 focus:ring-ring/40"
             />
-            <button
-              onClick={onOptionAdd}
-              disabled={!newOption.trim()}
-              className="px-2 py-1 rounded bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-40"
-              aria-label="Adicionar opção"
-            >
-              <Plus className="h-3 w-3" />
-            </button>
           </div>
         </div>
       )}
@@ -359,6 +382,7 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
   const [newOptionByField, setNewOptionByField] = useState<Record<string, string>>({});
   const [fieldLabelMap, setFieldLabelMap] = useState<Record<string, string>>({});
   const [fieldTypeMap, setFieldTypeMap] = useState<Record<string, FieldType>>({});
+  const [fieldInstructionMap, setFieldInstructionMap] = useState<Record<string, string>>({});
   const [orderedFieldIds, setOrderedFieldIds] = useState<string[]>([]);
   const [closedLayout, setClosedLayout] = useState<string[]>([]);
   const [fieldsToDelete, setFieldsToDelete] = useState<Set<string>>(new Set());
@@ -384,6 +408,7 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
       setNewOptionByField({});
       setFieldLabelMap({});
       setFieldTypeMap({});
+      setFieldInstructionMap({});
       setFieldsToDelete(new Set());
       setDeleteConfirm(false);
       const sorted = [...fields].sort((a, b) => (a.displayOrder ?? 99) - (b.displayOrder ?? 99));
@@ -423,6 +448,10 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
 
   function getFieldType(field: FieldDef): FieldType {
     return fieldTypeMap[field.id] ?? field.type;
+  }
+
+  function getFieldInstruction(field: FieldDef): string {
+    return fieldInstructionMap[field.id] ?? field.instruction ?? "";
   }
 
   function handleFieldLabelChange(fieldId: string, label: string) {
@@ -574,6 +603,10 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
         const pendingType = fieldTypeMap[fieldId];
         const typeChanged = pendingType !== undefined && pendingType !== field.type;
         const effectiveType = pendingType ?? field.type;
+        const pendingInstruction = fieldInstructionMap[fieldId];
+        const instructionChanged =
+          pendingInstruction !== undefined &&
+          pendingInstruction.trim() !== (field.instruction ?? "");
 
         let newOptions = fieldOptionsMap[fieldId];
         if (
@@ -588,7 +621,11 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
         }
 
         const needsUpdate =
-          field.displayOrder !== i || newOptions !== undefined || labelChanged || typeChanged;
+          field.displayOrder !== i ||
+          newOptions !== undefined ||
+          labelChanged ||
+          typeChanged ||
+          instructionChanged;
 
         if (needsUpdate) {
           const savedField = await provider.saveField({
@@ -597,6 +634,7 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
             ...(newOptions !== undefined ? { options: newOptions } : {}),
             ...(labelChanged ? { label: trimmedLabel } : {}),
             ...(typeChanged ? { type: effectiveType } : {}),
+            ...(instructionChanged ? { instruction: pendingInstruction.trim() || undefined } : {}),
           });
           const idx = updatedFields.findIndex((f) => f.id === fieldId);
           if (idx >= 0) updatedFields[idx] = savedField;
@@ -784,6 +822,7 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
                           isInClosedLayout={closedLayout.includes(f.id)}
                           options={SELECT_TYPES.includes(pendingType) ? getFieldOptions(f.id) : []}
                           newOption={newOptionByField[f.id] ?? ""}
+                          instruction={getFieldInstruction(f)}
                           onLabelChange={(val) => handleFieldLabelChange(f.id, val)}
                           onTypeChange={(type) => handleFieldTypeChange(f.id, type)}
                           onToggleExpand={() =>
@@ -795,6 +834,9 @@ export function EditBoardModal({ open, onClose, onDeleted, boardId, onSaved }: P
                           onOptionRemove={(opt) => removeFieldOption(f.id, opt)}
                           onNewOptionChange={(val) =>
                             setNewOptionByField((prev) => ({ ...prev, [f.id]: val }))
+                          }
+                          onInstructionChange={(val) =>
+                            setFieldInstructionMap((prev) => ({ ...prev, [f.id]: val }))
                           }
                         />
                       );
