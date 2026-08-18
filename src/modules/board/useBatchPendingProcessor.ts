@@ -62,67 +62,74 @@ export function useBatchPendingProcessor() {
     cancelRef.current = true;
   }, []);
 
-  const start = useCallback(async () => {
-    const queue = pendingItems.filter((item) => !item._done && extractUrlFromPendingItem(item));
-    if (queue.length === 0) return;
+  const start = useCallback(
+    async (itemIds?: string[]) => {
+      const idFilter = itemIds ? new Set(itemIds) : undefined;
+      const queue = pendingItems.filter(
+        (item) =>
+          !item._done && extractUrlFromPendingItem(item) && (!idFilter || idFilter.has(item._id)),
+      );
+      if (queue.length === 0) return;
 
-    cancelRef.current = false;
-    setStatus("running");
-    setResults([]);
-    setStopReason(undefined);
-    setProgress({ current: 0, total: queue.length });
+      cancelRef.current = false;
+      setStatus("running");
+      setResults([]);
+      setStopReason(undefined);
+      setProgress({ current: 0, total: queue.length });
 
-    let consecutiveFailures = 0;
+      let consecutiveFailures = 0;
 
-    for (let i = 0; i < queue.length; i++) {
-      if (cancelRef.current) {
-        setStatus("stopped");
-        setStopReason("Cancelado pelo usuário");
-        return;
-      }
-
-      const item = queue[i];
-      setProgress({ current: i + 1, total: queue.length });
-      const url = extractUrlFromPendingItem(item)!;
-
-      try {
-        const payload = await requestExtensionScrape(url);
-        const text = formatExtensionImportAsText(payload);
-        const extracted = await extractFromText(text);
-
-        let cardsCreated = 0;
-        for (const result of extracted) {
-          const card = await createCard({ ...result.values, _autoCreated: true });
-          if (card) cardsCreated++;
-        }
-        if (cardsCreated === 0) {
-          throw new Error("Nenhum card foi criado a partir do conteúdo extraído");
-        }
-
-        await deletePendingItem(item._id);
-        setResults((prev) => [...prev, { item, status: "success", cardsCreated }]);
-        consecutiveFailures = 0;
-      } catch (e) {
-        const reason = e instanceof Error ? e.message : String(e);
-        setResults((prev) => [...prev, { item, status: "error", cardsCreated: 0, reason }]);
-        consecutiveFailures++;
-
-        if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+      for (let i = 0; i < queue.length; i++) {
+        if (cancelRef.current) {
           setStatus("stopped");
-          setStopReason(
-            `Interrompido após ${MAX_CONSECUTIVE_FAILURES} falhas seguidas — o Instagram pode estar bloqueando o acesso.`,
-          );
+          setStopReason("Cancelado pelo usuário");
           return;
         }
+
+        const item = queue[i];
+        setProgress({ current: i + 1, total: queue.length });
+        const url = extractUrlFromPendingItem(item)!;
+
+        try {
+          const payload = await requestExtensionScrape(url);
+          const text = formatExtensionImportAsText(payload);
+          const extracted = await extractFromText(text);
+
+          let cardsCreated = 0;
+          for (const result of extracted) {
+            const card = await createCard({ ...result.values, _autoCreated: true });
+            if (card) cardsCreated++;
+          }
+          if (cardsCreated === 0) {
+            throw new Error("Nenhum card foi criado a partir do conteúdo extraído");
+          }
+
+          await deletePendingItem(item._id);
+          setResults((prev) => [...prev, { item, status: "success", cardsCreated }]);
+          consecutiveFailures = 0;
+        } catch (e) {
+          const reason = e instanceof Error ? e.message : String(e);
+          setResults((prev) => [...prev, { item, status: "error", cardsCreated: 0, reason }]);
+          consecutiveFailures++;
+
+          if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+            setStatus("stopped");
+            setStopReason(
+              `Interrompido após ${MAX_CONSECUTIVE_FAILURES} falhas seguidas — o Instagram pode estar bloqueando o acesso.`,
+            );
+            return;
+          }
+        }
+
+        if (i < queue.length - 1 && !cancelRef.current) {
+          await sleep(randomDelay());
+        }
       }
 
-      if (i < queue.length - 1 && !cancelRef.current) {
-        await sleep(randomDelay());
-      }
-    }
-
-    setStatus("done");
-  }, [pendingItems, createCard, deletePendingItem, extractFromText]);
+      setStatus("done");
+    },
+    [pendingItems, createCard, deletePendingItem, extractFromText],
+  );
 
   return { status, progress, results, stopReason, start, cancel };
 }

@@ -138,11 +138,13 @@ Links compartilhados pelo Android (Web Share Target) caem numa fila de pendentes
 - **Marcado como concluído** ou reaberto
 - **Convertido em card** manualmente (abre o modal de criação padrão com o texto no título)
 - **Processado em lote** — botão "Processar automaticamente", disponível quando a
-  [extensão do Chrome](extension/README.md) está instalada: abre cada link pendente
-  em segundo plano, faz o scrape (mesma extração usada no fluxo manual da extensão), roda a
-  extração de campos por IA e cria os cards automaticamente, um de cada vez, sem precisar abrir
-  cada link manualmente. Uma falha isolada não interrompe o lote; falhas repetidas param o
-  processamento automaticamente (provável bloqueio do Instagram por excesso de requisições).
+  [extensão do Chrome](extension/README.md) está instalada: cada item processável (não concluído,
+  com URL identificável) vem selecionado por padrão, mas pode ser desmarcado individualmente antes
+  de confirmar. A extensão abre cada link selecionado em segundo plano, faz o scrape (mesma
+  extração usada no fluxo manual da extensão), roda a extração de campos por IA e cria os cards
+  automaticamente, um de cada vez, sem precisar abrir cada link manualmente. Uma falha isolada não
+  interrompe o lote; falhas repetidas param o processamento automaticamente (provável bloqueio do
+  Instagram por excesso de requisições).
 
 Cards criados por esse fluxo ficam marcados com um badge "Automático" até serem revisados — ver
 "Drawer de Card" abaixo. Detalhes de implementação do protocolo app↔extensão e das heurísticas de

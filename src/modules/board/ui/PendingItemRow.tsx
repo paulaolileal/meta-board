@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { PendingItem } from "@/modules/project/domain/types";
 import { extractUrlFromPendingItem } from "@/modules/board/pendingUrl";
 
@@ -19,13 +20,33 @@ interface Props {
   item: PendingItem;
   onToggleDone: (id: string, done: boolean) => void;
   onConvert: (item: PendingItem) => void;
+  /** Only items with an extractable URL and not yet done can be picked for
+   * batch processing — when true, this row shows the selection checkbox. */
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
-export function PendingItemRow({ item, onToggleDone, onConvert }: Props) {
+export function PendingItemRow({
+  item,
+  onToggleDone,
+  onConvert,
+  selectable,
+  selected,
+  onToggleSelect,
+}: Props) {
   const url = extractUrlFromPendingItem(item);
 
   return (
     <div className="flex items-start gap-3 py-3 border-b border-border last:border-0">
+      {selectable && (
+        <Checkbox
+          checked={!!selected}
+          onCheckedChange={() => onToggleSelect?.(item._id)}
+          className="mt-1 shrink-0"
+          aria-label="Selecionar para processamento automático"
+        />
+      )}
       <div className="flex-1 min-w-0">
         <p
           className={`text-sm whitespace-pre-wrap break-words ${

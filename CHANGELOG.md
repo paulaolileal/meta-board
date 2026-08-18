@@ -14,7 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   as the manual import flow, and creates the resulting card(s) — no more
   opening each link by hand and clicking the extension one at a time.
   Failures are skipped without aborting the batch, and the batch auto-stops
-  after 3 consecutive failures (likely Instagram rate-limiting).
+  after 3 consecutive failures (likely Instagram rate-limiting). Each
+  processable pending item now has a checkbox (defaulting to selected) so
+  specific links can be excluded from a run instead of always processing
+  the entire queue, plus a "Selecionar todos"/"Limpar seleção" shortcut.
 - `_autoCreated` card field: cards created by the batch flow are flagged and
   show a badge ("Automático") until the user opens the card and clicks the
   new "Aprovar" button in the drawer header.

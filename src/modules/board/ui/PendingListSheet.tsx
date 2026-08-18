@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import {
   Sheet,
@@ -61,14 +61,46 @@ export function PendingListSheet({ open, onClose, onConvert }: Props) {
   );
 
   const hasCompleted = pendingItems.some((p) => p._done);
-  const processableCount = pendingItems.filter(
-    (p) => !p._done && extractUrlFromPendingItem(p),
-  ).length;
-  const canBatchProcess = !!extensionAvailable && processableCount > 0;
+  const processableItems = useMemo(
+    () => pendingItems.filter((p) => !p._done && extractUrlFromPendingItem(p)),
+    [pendingItems],
+  );
+
+  // Selection defaults to "everything processable", matching the previous
+  // always-select-all behavior — but items the user deselects stay
+  // deselected as the queue changes (e.g. a new pending item arrives), and
+  // items that stop being processable (done, converted, deleted) are simply
+  // dropped from the selection.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const knownIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const currentIds = new Set(processableItems.map((p) => p._id));
+    setSelectedIds((prev) => {
+      const next = new Set<string>();
+      for (const id of currentIds) {
+        if (prev.has(id) || !knownIdsRef.current.has(id)) next.add(id);
+      }
+      return next;
+    });
+    knownIdsRef.current = currentIds;
+  }, [processableItems]);
+
+  const selectedCount = selectedIds.size;
+  const canBatchProcess = !!extensionAvailable && selectedCount > 0;
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   function handleStartBatch() {
     setBatchDialogOpen(true);
-    batch.start();
+    batch.start(Array.from(selectedIds));
   }
 
   return (
@@ -82,6 +114,26 @@ export function PendingListSheet({ open, onClose, onConvert }: Props) {
             </SheetDescription>
           </SheetHeader>
 
+          {processableItems.length > 0 && (
+            <div className="flex items-center justify-between text-xs text-muted-foreground pb-1">
+              <span>
+                {selectedCount} de {processableItems.length} selecionado(s) para processar
+              </span>
+              <button
+                onClick={() =>
+                  setSelectedIds(
+                    selectedCount === processableItems.length
+                      ? new Set()
+                      : new Set(processableItems.map((p) => p._id)),
+                  )
+                }
+                className="text-primary hover:underline"
+              >
+                {selectedCount === processableItems.length ? "Limpar seleção" : "Selecionar todos"}
+              </button>
+            </div>
+          )}
+
           <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
             {sortedItems.length === 0 ? (
               <p className="text-sm text-muted-foreground py-8 text-center">
@@ -94,6 +146,9 @@ export function PendingListSheet({ open, onClose, onConvert }: Props) {
                   item={item}
                   onToggleDone={toggleDone}
                   onConvert={onConvert}
+                  selectable={!item._done && !!extractUrlFromPendingItem(item)}
+                  selected={selectedIds.has(item._id)}
+                  onToggleSelect={toggleSelect}
                 />
               ))
             )}
@@ -112,12 +167,12 @@ export function PendingListSheet({ open, onClose, onConvert }: Props) {
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-primary/40 text-primary hover:bg-primary/10 transition disabled:opacity-40 disabled:pointer-events-none"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
-                  Processar automaticamente ({processableCount})
+                  Processar automaticamente ({selectedCount})
                 </button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Processar {processableCount} pendente(s)?</AlertDialogTitle>
+                  <AlertDialogTitle>Processar {selectedCount} pendente(s)?</AlertDialogTitle>
                   <AlertDialogDescription>
                     A extensão vai abrir cada link em segundo plano, extrair os dados e criar os
                     cards automaticamente. Os cards criados ficam marcados até você revisar e
