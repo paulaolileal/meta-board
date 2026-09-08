@@ -8,6 +8,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Local MCP server (`mcp-server/`, run via stdio — never published or
+  hosted) exposing board/card/pending-queue tools to agents outside the
+  browser (Claude Desktop, Claude Code, scripts): `board_list_boards`,
+  `board_list_fields`, `board_list_cards`, `board_create_card`,
+  `board_update_card`, `board_move_card`, `board_archive_card`, and the 5
+  pending-item tools. Reuses the app's own `GoogleSheetProvider` unchanged,
+  authenticating as a Google Service Account instead of the browser's PKCE
+  flow (the spreadsheet must be shared with the service account's email as
+  Editor). Configured via a versioned `.mcp.json` at the repo root; secrets
+  live only in a gitignored `mcp-server/.env` — see `mcp-server/README.md`
+  for setup. Board/field creation is intentionally out of scope for now
+  (structural, riskier without the UI's visual supervision).
+- Extracted `validateRequiredFields`/`moveCardAndReorder` from
+  `CreateCardModal.tsx`/`KanbanBoard.tsx` into
+  `src/modules/board/domain/cardRules.ts` (same behavior, now testable and
+  reused by the new MCP server's `board_create_card`/`board_move_card`
+  tools instead of re-implementing the same validation/reorder logic).
+
+## [2026-09-08]
+
+### Added
+
 - Per-field instruction (help text): each field in "Editar board" now has an
   expandable "Instrução" textarea (available for every field type, not just
   selectable ones) explaining what should be filled in — shown as a help

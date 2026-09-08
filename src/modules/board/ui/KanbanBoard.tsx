@@ -19,6 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBoardStore } from "@/modules/board/store";
 import { useCardMutations } from "@/modules/board/useCardMutations";
+import { moveCardAndReorder } from "@/modules/board/domain/cardRules";
 import { CardItem } from "./CardItem";
 import { CardDrawer } from "./CardDrawer";
 import { CreateCardModal } from "./CreateCardModal";
@@ -186,29 +187,16 @@ export function KanbanBoard() {
     if (!activeCard) return;
 
     let targetStatus = String(activeCard[groupField]);
-    let overCard: CardRecord | undefined;
+    let overCardId: string | undefined;
     if (typeof over.id === "string" && over.id.startsWith("col:")) {
       targetStatus = over.id.slice(4);
     } else {
-      overCard = cards.find((c) => c._id === over.id);
+      overCardId = String(over.id);
+      const overCard = cards.find((c) => c._id === overCardId);
       if (overCard) targetStatus = String(overCard[groupField]);
     }
 
-    const updated: CardRecord = { ...activeCard, [groupField]: targetStatus };
-
-    // Reorder within or across columns
-    const without = cards.filter((c) => c._id !== activeCard._id);
-    const targetList = without.filter((c) => String(c[groupField]) === targetStatus);
-    let insertIndex = targetList.length;
-    if (overCard) {
-      insertIndex = targetList.findIndex((c) => c._id === overCard!._id);
-      if (insertIndex < 0) insertIndex = targetList.length;
-    }
-    targetList.splice(insertIndex, 0, updated);
-
-    const others = without.filter((c) => String(c[groupField]) !== targetStatus);
-    const merged = [...others, ...targetList].map((c, i) => ({ ...c, _sort: i }));
-
+    const merged = moveCardAndReorder(cards, activeCard._id, groupField, targetStatus, overCardId);
     persistReorder(merged);
   }
 

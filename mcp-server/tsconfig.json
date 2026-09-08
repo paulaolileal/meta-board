@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    // "DOM" is needed only because GoogleSheetProvider.ts type-depends on
+    // GoogleAuthService (browser-only), which is pulled into the type-check
+    // graph even though it's used here purely nominally (see googleAuth.ts).
+    // This doesn't add any DOM code at runtime — tsx strips types and never
+    // touches this option.
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@/*": ["../src/*"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

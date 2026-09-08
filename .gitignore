@@ -34,3 +34,7 @@ public/extension.zip
 
 .claude/
 tsconfig.tsbuildinfo
+
+# mcp-server (local MCP server — secrets never get committed)
+mcp-server/.env
+mcp-server/**/*-sa-*.json

@@ -36,5 +36,13 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    // Standalone Node process (local MCP server, run via tsx) — not part of
+    // the Vite/browser bundle, so it needs Node globals instead of browser.
+    files: ["mcp-server/**/*.ts"],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
   eslintPluginPrettier,
 );

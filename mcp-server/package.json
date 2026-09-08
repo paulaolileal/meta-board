@@ -1,0 +1,23 @@
+{
+  "name": "meta-board-mcp-server",
+  "private": true,
+  "type": "module",
+  "description": "Local MCP server exposing meta-board card/board tools to Claude Desktop/Code via stdio.",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "inspect": "npx @modelcontextprotocol/inspector tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "dotenv": "^17.4.2",
+    "google-auth-library": "^11.0.2",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.8.3"
+  }
+}

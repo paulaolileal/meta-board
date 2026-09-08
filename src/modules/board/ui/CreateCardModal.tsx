@@ -10,6 +10,7 @@ import {
 import { FieldEditor } from "./CardDrawer";
 import { useCardMutations } from "@/modules/board/useCardMutations";
 import { useBoardStore } from "@/modules/board/store";
+import { validateRequiredFields } from "@/modules/board/domain/cardRules";
 import type { CardRecord } from "@/modules/project/domain/types";
 
 interface Props {
@@ -47,15 +48,7 @@ export function CreateCardModal({ open, onClose, initialValues, onCreated }: Pro
   }
 
   async function handleCreate() {
-    const newErrors: Record<string, string> = {};
-    editableFields
-      .filter((f) => f.required)
-      .forEach((f) => {
-        const val = values[f.id as keyof typeof values];
-        if (val == null || (typeof val === "string" && !val.trim())) {
-          newErrors[f.id] = `${f.label} é obrigatório`;
-        }
-      });
+    const newErrors = validateRequiredFields(editableFields, values);
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
