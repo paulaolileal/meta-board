@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- [TESTE E2E] Marcador de main para forçar conflito em release_to_main.
 - Local MCP server (`mcp-server/`, run via stdio — never published or
   hosted) exposing board/card/pending-queue tools to agents outside the
   browser (Claude Desktop, Claude Code, scripts): `board_list_boards`,
