@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `E2E_TEST_HAPPY_PATH.md` marker file validating the branch-per-card
+  agentic flow end to end (card 9/9 of the "Fluxo agêntico maduro" plan).
 - Per-field instruction (help text): each field in "Editar board" now has an
   expandable "Instrução" textarea (available for every field type, not just
   selectable ones) explaining what should be filled in — shown as a help
