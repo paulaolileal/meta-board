@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - [TESTE E2E] Marcador de main para forçar conflito em release_to_main.
+- [TESTE E2E] Marcador de release para forçar conflito em release_to_main.
+- [TESTE E2E] Marcador de release para forçar conflito em review_to_release.
 - Local MCP server (`mcp-server/`, run via stdio — never published or
   hosted) exposing board/card/pending-queue tools to agents outside the
   browser (Claude Desktop, Claude Code, scripts): `board_list_boards`,
@@ -26,6 +28,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `src/modules/board/domain/cardRules.ts` (same behavior, now testable and
   reused by the new MCP server's `board_create_card`/`board_move_card`
   tools instead of re-implementing the same validation/reorder logic).
+- `E2E_TEST_HAPPY_PATH.md` marker file validating the branch-per-card
+  agentic flow end to end (card 9/9 of the "Fluxo agêntico maduro" plan).
+  [TESTE E2E] edição do lado release para forçar conflito review_to_release.
+  [TESTE E2E] edição do lado review para forçar conflito review_to_release.
 
 ## [2026-09-08]
 
