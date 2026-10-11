@@ -25,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `src/modules/board/domain/cardRules.ts` (same behavior, now testable and
   reused by the new MCP server's `board_create_card`/`board_move_card`
   tools instead of re-implementing the same validation/reorder logic).
+- `E2E_TEST_HAPPY_PATH.md` marker file validating the branch-per-card
+  agentic flow end to end (card 9/9 of the "Fluxo agêntico maduro" plan).
 
 ## [2026-09-08]
 
