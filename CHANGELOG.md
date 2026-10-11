@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `E2E_TEST_HAPPY_PATH.md` marker file validating the branch-per-card
   agentic flow end to end (card 9/9 of the "Fluxo agêntico maduro" plan).
   [TESTE E2E] edição do lado release para forçar conflito review_to_release.
+  [TESTE E2E] edição do lado review para forçar conflito review_to_release.
 
 ## [2026-09-08]
 
